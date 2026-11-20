@@ -283,7 +283,7 @@ await test("телефон 390×844: нижняя панель, «Приложе
   await page.setViewportSize({ width: 390, height: 844 });
   await page.evaluate(() => window.__hubShell.go("today"));
   await page.waitForSelector("#navbar .hub-navbar__item[aria-current=page]");
-  assert(await page.locator(".hub-capture--phone").isVisible(), "строка ввода телефонная");
+  await page.waitForSelector(".hub-capture--phone", { state: "visible", timeout: 3000 });
   await page.evaluate(() => window.__hubShell.state.add("мысль с телефона"));
   await page.waitForTimeout(300);
   await shot("11-phone-today");
