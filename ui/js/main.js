@@ -76,10 +76,47 @@ function showScreen(name) {
   $("#screen-today").hidden = name !== "today";
   $("#screen-triage").hidden = name !== "triage";
   $("#screen-shell").hidden = name !== "shell";
+  $("#screen-apps").hidden = name !== "apps";
+}
+/* история — для системной кнопки «назад» на Android (и кнопок мыши) */
+let fromHistory = false;
+function remember() {
+  html.dataset.view = view.name;
+  renderNavbar();
+  if (fromHistory) return;
+  const s = { v: view.name, app: view.app || null };
+  const cur = history.state;
+  if (cur && cur.v === s.v && cur.app === s.app) return;
+  history.pushState(s, "");
+}
+window.addEventListener("popstate", e => {
+  if (!unlocked) return;
+  const s = e.state || { v: "today" };
+  fromHistory = true;
+  try { if (s.v === "app" && s.app) openApp(s.app); else go(s.v === "app" ? "today" : s.v); }
+  finally { fromHistory = false; }
+});
+function renderNavbar() {
+  const nav = $("#navbar");
+  if (!nav || !unlocked) { if (nav) nav.innerHTML = ""; return; }
+  const n = state.visibleItems().length;
+  const item = (go, icon, label, badge) => `<button class="hub-navbar__item" type="button" data-go="${go}"${view.name === go ? ' aria-current="page"' : ""}>
+    <span class="hub-navbar__icon"><i data-icon="${icon}"></i>${badge ? `<span class="hub-navbar__badge">${badge > 99 ? "99+" : badge}</span>` : ""}</span>${label}</button>`;
+  nav.innerHTML = item("today", "house", "Сегодня") + item("triage", "inbox", "Корзина", n) + item("apps", "layout-grid", "Приложения") + item("settings", "settings", "Настройки");
+  H.icons(nav);
+}
+function renderApps() {
+  const grid = $("#apps-grid");
+  grid.innerHTML = appsInOrder().map(a => `<button class="shell-app-tile" type="button" data-open="${esc(a.id)}">
+    <span class="hub-app-icon">${iconHTML(a.manifest.icon)}</span><span>${esc(a.manifest.name || a.id)}</span></button>`).join("")
+    || `<p class="hub-muted">Приложений нет.</p>`;
+  H.icons(grid);
 }
 function go(name) {
   closeSnoozeMenu();
-  if (name === "today") { view = { name: "today", app: null }; showScreen("today"); renderToday(); focusCapture(); }
+  if (name === "back") { history.length > 1 ? history.back() : go("today"); return; }
+  if (name === "apps") { view = { name: "apps", app: null }; showScreen("apps"); renderApps(); remember(); return; }
+  if (name === "today") { view = { name: "today", app: null }; showScreen("today"); renderToday(); remember(); if (!isPhone()) focusCapture(); }
   else if (name === "triage") startTriage();
   else if (name === "sync") { go("settings"); setTimeout(() => { const s = $("#sync"); if (s) s.scrollIntoView({ block: "start" }); }, 80); }
   else if (name === "lock") lockNow();
@@ -87,16 +124,29 @@ function go(name) {
     view = { name: "settings", app: null };
     showScreen("shell"); host.show(null);
     $("#settings").hidden = false;
-    renderRail(); renderSettings();
+    $("#appbar-title").textContent = "Настройки";
+    renderRail(); renderSettings(); remember();
   }
 }
+const phoneMQ = window.matchMedia("(max-width: 600px)");
+const isPhone = () => phoneMQ.matches;
+function phoneCapture() {
+  const f = $("#capture-main");
+  f.classList.toggle("hub-capture--phone", isPhone());
+  const send = f.querySelector(".hub-capture__send");
+  if (isPhone()) { send.innerHTML = H.icon("arrow-up", { label: "В корзину" }); }
+  else if (!send.textContent.trim()) send.textContent = "В корзину";
+  document.querySelectorAll(".hub-card").forEach(c => c.classList.toggle("hub-card--compact", isPhone()));
+}
+phoneMQ.addEventListener("change", () => { phoneCapture(); if (unlocked && view.name === "today") renderToday(); });
 function openApp(id, action) {
   if (!host.apps.has(id)) return;
   closeSnoozeMenu();
   view = { name: "app", app: id };
   showScreen("shell"); $("#settings").hidden = true;
   host.show(id);
-  renderRail();
+  $("#appbar-title").textContent = host.name(id);
+  renderRail(); remember();
   if (action) host.post(id, "today.action", action);
   setTimeout(() => host.focus(id), 60);
 }
@@ -120,7 +170,7 @@ function renderHello() {
 }
 function renderSyncPills() {
   const conflicts = (state.conflicts || []).length;
-  for (const [sel, compact] of [["#today-sync", false], ["#shell-sync", true]]) {
+  for (const [sel, compact] of [["#today-sync", isPhone()], ["#shell-sync", true], ["#appbar-sync", true]]) {
     const el = $(sel);
     if (!el) continue;
     el.innerHTML = syncPill(conflicts, compact);
@@ -165,6 +215,7 @@ function renderToday() {
   const cards = [inboxCard(), ...appsInOrder().map(appCard)];
   const box = $("#today-cards");
   box.innerHTML = cards.map(cardHTML).join("");
+  if (isPhone()) box.querySelectorAll(".hub-card").forEach(c => c.classList.add("hub-card--compact"));
   H.icons(box);
   const note = $("#today-note");
   const allDone = cards.every(c => c.done);
@@ -263,6 +314,7 @@ function startTriage() {
   view = { name: "triage", app: null };
   tri.pos = 0; tri.busy = false; tri.stats = { moved: 0, snoozed: 0, deleted: 0 }; tri.menu = null;
   showScreen("triage");
+  remember();
   renderHello();
   renderTriage();
 }
@@ -604,6 +656,7 @@ document.addEventListener("mouseover", e => {
 state.addEventListener("change", e => {
   const what = e.detail;
   if (what === "inbox") {
+    renderNavbar();
     if (view.name === "today") renderToday();
     if (view.name === "triage" && !tri.busy && !tri.menu) renderTriage();
     if (view.name === "app" || view.name === "settings") renderRail();
@@ -643,6 +696,7 @@ async function lockNow() {
   if (!unlocked || locking) return;
   locking = true;
   unlocked = false;
+  html.dataset.view = "none"; renderNavbar();
   closeSnoozeMenu();
   document.querySelectorAll("dialog").forEach(d => d.close());
   if (host) host.reset();
@@ -682,6 +736,7 @@ async function start() {
   const st = await core.status();
   platform = st.platform || "pc";
   html.dataset.platform = platform;
+  html.dataset.view = "none";
   window.__hubShell = { state, core, go, openApp, lockNow, get host() { return host; }, get unlocked() { return unlocked; } };   // для тестов и отладки
   if (!st.setupDone) await runSetup(st);
   else if (!st.unlocked) await runLock();
@@ -718,7 +773,9 @@ async function enterHub() {
     setupCapture($("#capture-main"));
     setupCapture($("#capture-compact"));
     core.onHotkey(k => handleHotkey(k));
+    history.replaceState({ v: "today", app: null }, "");
   }
+  phoneCapture();
   document.querySelector(".hub-backdrop").setAttribute("data-scene", "open");
   go("today");
 }

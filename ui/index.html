@@ -50,8 +50,19 @@
   <div class="hub-triage shell-triage" id="triage"></div>
 </div>
 
+<!-- Телефон: все приложения -->
+<div class="hub-today shell-apps" id="screen-apps" hidden>
+  <header class="hub-appbar"><h1 class="hub-appbar__title">Приложения</h1></header>
+  <div class="shell-apps-grid" id="apps-grid"></div>
+</div>
+
 <!-- Оболочка приложения -->
 <div class="hub-shell" id="screen-shell" hidden>
+  <header class="hub-appbar shell-appbar" id="appbar">
+    <button class="hub-btn hub-btn--quiet hub-btn--icon" type="button" data-go="back" aria-label="Назад"><i data-icon="arrow-left"></i></button>
+    <h1 class="hub-appbar__title" id="appbar-title"></h1>
+    <span id="appbar-sync"></span>
+  </header>
   <nav class="hub-rail hub-glass" id="rail" aria-label="Приложения"></nav>
   <header class="hub-shell__top">
     <form class="hub-capture hub-capture--compact" id="capture-compact" autocomplete="off">
@@ -70,6 +81,8 @@
     <section class="shell-page" id="settings" hidden></section>
   </main>
 </div>
+
+<nav class="hub-navbar shell-navbar" id="navbar" aria-label="Разделы"></nav>
 
 <div class="hub-toasts" role="status" aria-live="polite"></div>
 </body>

@@ -260,7 +260,8 @@ export function runLock() {
         $("#rc-code").focus();
         return;
       }
-      el.innerHTML = `<main class="hub-lock" aria-label="Вход в хаб">
+      const phone = window.matchMedia("(max-width: 600px)").matches;
+      el.innerHTML = `<main class="hub-lock${phone ? " hub-lock--phone" : ""}" aria-label="Вход в хаб">
           <div class="hub-lock__clock">${hm(now)}</div>
           <div class="hub-lock__date">${esc(fmtLong.format(now))}</div>
           <h1 class="hub-lock__greet"><span>${esc(greet())}</span></h1>

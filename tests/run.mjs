@@ -279,6 +279,35 @@ await test("Ctrl+L запирает: приложения закрыты, дан
   await page.waitForSelector("#screen-today:not([hidden])");
 });
 
+await test("телефон 390×844: нижняя панель, «Приложения», приложение с «назад»", async () => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.evaluate(() => window.__hubShell.go("today"));
+  await page.waitForSelector("#navbar .hub-navbar__item[aria-current=page]");
+  assert(await page.locator(".hub-capture--phone").isVisible(), "строка ввода телефонная");
+  await page.evaluate(() => window.__hubShell.state.add("мысль с телефона"));
+  await page.waitForTimeout(300);
+  await shot("11-phone-today");
+  await page.click('#navbar [data-go="apps"]');
+  await page.waitForSelector("#screen-apps:not([hidden]) .shell-app-tile");
+  await shot("12-phone-apps");
+  await page.click(".shell-app-tile");
+  await page.waitForSelector("#screen-shell:not([hidden])");
+  assert(await page.locator("#navbar").isHidden(), "в приложении панель прячется");
+  eq((await text("#appbar-title")).trim(), "Повторение", "заголовок приложения");
+  await page.waitForTimeout(400);
+  await shot("13-phone-app");
+  await page.goBack();
+  await page.waitForSelector("#screen-apps:not([hidden])");
+  await page.click('#navbar [data-go="triage"]');
+  await page.waitForSelector(".hub-triage__item");
+  await shot("14-phone-triage");
+  await page.click('[data-tri="snooze"]');
+  await page.waitForTimeout(300);
+  await shot("15-phone-snooze");
+  await page.keyboard.press("Escape");
+  await page.setViewportSize({ width: 1366, height: 860 });
+});
+
 await test("без ошибок в консоли", async () => { eq(errors, [], "ошибки страницы"); });
 
 await browser.close();
