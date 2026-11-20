@@ -101,26 +101,42 @@ async function encodePhoto(bitmap) {
 
 const slug = s => (String(s).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "theme").slice(0, 20);
 
-/* Диалог «Новая тема из фото». ctx: { toast, afterSave(id), name } */
-export function themeEditor(ctx) {
+/* шрифт крупного текста: Jost по умолчанию или Manrope, как основной текст */
+export const FONTS = [["jost", "Jost — тонкий, как в хабе"], ["manrope", "Manrope — как основной текст"]];
+const FONT_TOKEN = { manrope: "var(--font-body)" };
+
+/* Диалог «Новая тема из фото» и правка своей темы. ctx: { toast, afterSave(id) }; edit: { theme, photo: Blob } */
+export async function themeEditor(ctx, edit = null) {
   const dlg = document.createElement("dialog");
   dlg.className = "hub-dialog";
   dlg.style.width = "min(620px, calc(100vw - 32px))";
   document.body.appendChild(dlg);
   dlg.addEventListener("close", () => { if (st.url) URL.revokeObjectURL(st.url); dlg.remove(); });
-  const st = { bitmap: null, url: null, an: null, base: "auto", accent: "dawn", posY: 0.38, name: "", greeting: "" };
+  const st = { bitmap: null, url: null, an: null, base: "auto", accent: "dawn", posY: 0.38, name: "", greeting: "", font: "jost", newPhoto: false };
+  if (edit) {
+    const t = edit.theme;
+    Object.assign(st, { base: t.baseChoice || t.base, accent: t.accentId || "dawn", name: t.name || "", font: t.font || "jost",
+      greeting: t.greeting && t.greeting !== "auto" ? t.greeting : "", posY: (Number(String(t.photoPosition || "").split(/\s+/)[1]?.replace("%", "")) || 38) / 100 });
+    try {
+      st.bitmap = await createImageBitmap(edit.photo);
+      st.url = URL.createObjectURL(edit.photo);
+      st.an = await analyse(st.bitmap, st.posY);
+    } catch (err) { ctx.toast(`Фото темы не открылось: ${err.message || err}`, { tone: "danger", icon: "circle-alert" }); dlg.remove(); return; }
+  }
 
   function result() {
     if (!st.an) return null;
     const base = st.base === "auto" ? (st.an.median >= 0.4 ? "light" : "dark") : st.base;
     const accent = ACCENTS[base].find(x => x.id === st.accent) || ACCENTS[base][0];
-    return Object.assign({ base, accent }, computeTokens(st.an, base, accent));
+    const r = Object.assign({ base, accent }, computeTokens(st.an, base, accent));
+    if (FONT_TOKEN[st.font]) r.tokens["font-heading"] = FONT_TOKEN[st.font];
+    return r;
   }
 
   function draw() {
     const r = result();
     dlg.innerHTML = `<form method="dialog">
-      <h2 class="hub-dialog__title">Новая тема из фото</h2>
+      <h2 class="hub-dialog__title">${edit ? `Тема «${esc(edit.theme.name)}»` : "Новая тема из фото"}</h2>
       <p class="hub-dialog__body">Хаб сам подберёт основу и силу вуали, чтобы текст читался на любом месте фото.</p>
       <div style="display:grid;gap:var(--space-4);margin-top:var(--space-5)">
         <div class="hub-field"><span class="hub-label">Фото</span>
@@ -130,7 +146,7 @@ export function themeEditor(ctx) {
         ${r ? `<div class="hub-theme__shot" data-theme="${r.base}" style="height:180px;--hub-photo:url('${st.url}');--hub-photo-pos:50% ${Math.round(st.posY * 100)}%;${Object.entries(r.tokens).map(([k, v]) => `--${k}:${v}`).join(";")};color:var(--text);background:var(--bg)">
             <div class="hub-backdrop" data-scene="open" style="position:absolute"><div class="hub-backdrop__photo" style="background-position:50% ${Math.round(st.posY * 100)}%"></div><div class="hub-backdrop__veil"></div></div>
             <div style="position:relative;padding:var(--space-4);display:grid;gap:var(--space-2)">
-              <span style="font-size:var(--font-size-sm)">${esc(H.greeting(new Date()))}</span>
+              <span id="te-hello" style="font-family:var(--font-heading);font-weight:var(--weight-light);font-size:var(--font-size-xl)">${esc(greetingText(st.greeting, ctx.name ? ctx.name() : ""))}</span>
               <div class="hub-capture__bar" style="padding:var(--space-1) var(--space-3)"><i data-icon="lightbulb" class="hub-capture__icon"></i><span class="hub-muted" style="font-size:var(--font-size-sm);padding:var(--space-1) 0">Мысль в корзину…</span></div>
               <div style="display:flex;gap:var(--space-2)"><span class="hub-btn hub-btn--sm hub-btn--primary">Начать</span><span class="hub-tag hub-tag--accent">акцент</span></div>
             </div></div>
@@ -146,6 +162,8 @@ export function themeEditor(ctx) {
             ${r.checks.accentOnGlass < 4.5 || r.checks.onAccent < 4.5 ? `<p class="hub-hint hub-hint--warning">${H.icon("triangle-alert")}акцент читается хуже 4.5:1</p>` : ""}</div>` : ""}
         <label class="hub-field"><span class="hub-label">Название</span><input class="hub-input" id="te-name" maxlength="30" value="${esc(st.name)}" placeholder="Например, Горы"></label>
         <label class="hub-field"><span class="hub-label">Приветствие</span><input class="hub-input" id="te-greet" maxlength="60" value="${esc(st.greeting)}" placeholder="по времени суток; можно своё, {name} — имя"></label>
+        <label class="hub-field"><span class="hub-label">Шрифт крупного текста</span><span class="hub-select"><select id="te-font">
+          ${FONTS.map(([v, l]) => `<option value="${v}"${st.font === v ? " selected" : ""}>${l}</option>`).join("")}</select></span></label>
       </div>
       <div class="hub-dialog__actions"><button class="hub-btn hub-btn--quiet" value="cancel">Отмена</button>
         <button class="hub-btn hub-btn--primary" type="button" id="te-save"${r ? "" : " disabled"}>Сохранить тему</button></div></form>`;
@@ -158,12 +176,15 @@ export function themeEditor(ctx) {
         st.bitmap = await createImageBitmap(f);
         if (st.url) URL.revokeObjectURL(st.url);
         st.url = URL.createObjectURL(f);
+        st.newPhoto = true;
         if (!st.name) st.name = f.name.replace(/\.[^.]+$/, "").slice(0, 30);
         st.an = await analyse(st.bitmap, st.posY);
         draw();
       } catch (err) { ctx.toast(`Фото не открылось: ${err.message || err}`, { tone: "danger", icon: "circle-alert" }); }
     });
-    const keep = () => { st.name = dlg.querySelector("#te-name").value; st.greeting = dlg.querySelector("#te-greet").value; };
+    const keep = () => { st.name = dlg.querySelector("#te-name").value; st.greeting = dlg.querySelector("#te-greet").value; st.font = dlg.querySelector("#te-font").value; };
+    dlg.querySelector("#te-font").addEventListener("change", () => { keep(); draw(); });
+    dlg.querySelector("#te-greet").addEventListener("input", e => { const h = dlg.querySelector("#te-hello"); if (h) h.textContent = greetingText(e.target.value, ctx.name ? ctx.name() : ""); });
     const base = dlg.querySelector("#te-base");
     if (base) base.addEventListener("change", () => { keep(); st.base = base.value; draw(); });
     const pos = dlg.querySelector("#te-pos");
@@ -173,14 +194,15 @@ export function themeEditor(ctx) {
       keep();
       const r = result();
       if (!r) return;
-      const id = `${slug(st.name)}-${Math.random().toString(36).slice(2, 6)}`;
+      const id = edit ? edit.theme.id : `${slug(st.name)}-${Math.random().toString(36).slice(2, 6)}`;
       const theme = {
         id, name: st.name.trim() || "Своя тема", base: r.base, photo: "photo.jpg",
         photoPosition: `50% ${Math.round(st.posY * 100)}%`, photoSource: "своё фото",
         greeting: st.greeting.trim() || "auto", tokens: r.tokens, custom: true, version: "1",
+        baseChoice: st.base, accentId: r.accent.id, font: st.font,
       };
       try {
-        await core.set("hub", `themes/${id}/photo`, await encodePhoto(st.bitmap));
+        if (!edit || st.newPhoto) await core.set("hub", `themes/${id}/photo`, await encodePhoto(st.bitmap));
         await core.set("hub", `themes/${id}`, theme);
         dlg.close();
         await ctx.afterSave(id);
@@ -189,4 +211,11 @@ export function themeEditor(ctx) {
   }
   draw();
   dlg.showModal();
+}
+
+/* Приветствие темы: "auto" или пусто — по времени суток; {name} — имя, без имени лишняя запятая убирается */
+export function greetingText(greeting, name, now = new Date()) {
+  const g = String(greeting || "").trim();
+  if (!g || g === "auto") return H.greeting(now) + (name ? `, ${name}` : "");
+  return g.replace(/\{name\}/g, name || "").replace(/\s*,\s*([!?.…]|$)/u, "$1").replace(/\s{2,}/g, " ").trim();
 }

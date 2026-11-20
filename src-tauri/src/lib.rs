@@ -2,8 +2,11 @@
 //! список приложений, протокол hubapp:// для песочниц, уведомления, Ctrl+Alt+Пробел.
 
 pub mod crypto;
+#[cfg(desktop)]
+pub mod desktop;
 pub mod hubsvc;
 pub mod packages;
+pub mod quick;
 pub mod rclone;
 pub mod sync;
 pub mod store;
@@ -14,8 +17,6 @@ use std::fs;
 use std::path::{Component, Path, PathBuf};
 use store::{Dump, Stat, Store};
 use tauri::ipc::{InvokeBody, Request, Response};
-#[cfg(desktop)]
-use tauri::Emitter;
 use tauri::{AppHandle, Manager, State, WebviewWindow};
 
 struct Paths {
@@ -240,6 +241,12 @@ fn hubapp_response(app: &AppHandle, request: &tauri::http::Request<Vec<u8>>) -> 
 
 /* ───────── пакеты: приложения и темы из папки или zip ───────── */
 
+/// Оболочка перечитывает данные хаба и список приложений (установка могла прийти не из её окна).
+fn hub_changed(app: &AppHandle) {
+    use tauri::Emitter;
+    let _ = app.emit("hub://data-changed", serde_json::json!({ "namespaces": ["hub"] }));
+}
+
 #[tauri::command]
 async fn package_inspect(store: State<'_, Store>, path: String) -> Result<packages::Preview, String> {
     store.data_key()?;
@@ -248,16 +255,18 @@ async fn package_inspect(store: State<'_, Store>, path: String) -> Result<packag
 }
 
 #[tauri::command]
-async fn package_install(store: State<'_, Store>, hub: State<'_, hubsvc::Hub>, path: String) -> Result<String, String> {
+async fn package_install(app: AppHandle, store: State<'_, Store>, hub: State<'_, hubsvc::Hub>, path: String) -> Result<String, String> {
     let pkg = packages::read(Path::new(&path))?;
     let id = packages::install(&pkg, &store)?;
+    hub_changed(&app);
     hub.poke();
     Ok(id)
 }
 
 #[tauri::command]
-async fn app_uninstall(store: State<'_, Store>, hub: State<'_, hubsvc::Hub>, id: String, data: bool) -> Result<(), String> {
+async fn app_uninstall(app: AppHandle, store: State<'_, Store>, hub: State<'_, hubsvc::Hub>, id: String, data: bool) -> Result<(), String> {
     packages::uninstall_app(&store, &id, data)?;
+    hub_changed(&app);
     hub.poke();
     Ok(())
 }
@@ -317,16 +326,6 @@ fn window_focused(window: WebviewWindow) -> bool {
     window.is_focused().unwrap_or(true) && !window.is_minimized().unwrap_or(false)
 }
 
-/// Поднять окно хаба (на ПК: второй запуск, Ctrl+Alt+Пробел). На телефоне окна не сворачиваются.
-#[cfg(desktop)]
-fn bring_to_front(app: &AppHandle) {
-    if let Some(w) = app.get_webview_window("main") {
-        let _ = w.unminimize();
-        let _ = w.show();
-        let _ = w.set_focus();
-    }
-}
-
 /* ───────── запуск ───────── */
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -337,7 +336,10 @@ pub fn run() {
     #[cfg(desktop)]
     {
         // второй запуск хаба не открывает второе окно, а поднимает первое
-        builder = builder.plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| bring_to_front(app)));
+        builder = builder
+            .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| desktop::bring_to_front(app)))
+            .plugin(tauri_plugin_autostart::init(tauri_plugin_autostart::MacosLauncher::LaunchAgent, Some(vec![desktop::HIDDEN_ARG])))
+            .on_window_event(desktop::on_window_event);
     }
 
     builder
@@ -355,6 +357,8 @@ pub fn run() {
             fs::create_dir_all(&paths.apps)?;
             app.manage(Store::new(paths.data.clone()));
             app.manage(hubsvc::Hub::new(base.clone()));
+            #[cfg(desktop)]
+            app.manage(desktop::Desktop::new(base.clone()));
             app.manage(paths);
             hubsvc::Hub::spawn_worker(app.handle().clone());
 
@@ -366,8 +370,7 @@ pub fn run() {
                     tauri_plugin_global_shortcut::Builder::new()
                         .with_handler(move |app, shortcut, event| {
                             if shortcut == &capture && event.state() == ShortcutState::Pressed {
-                                bring_to_front(app);
-                                let _ = app.emit("hub://capture", ());
+                                desktop::hotkey(app);
                             }
                         })
                         .build(),
@@ -375,6 +378,15 @@ pub fn run() {
                 if let Err(e) = app.global_shortcut().register(capture) {
                     // клавиша может быть занята другой программой — хаб работает и без неё
                     eprintln!("[хаб] Ctrl+Alt+Пробел не зарегистрирована: {e}");
+                }
+                if let Err(e) = desktop::tray(app.handle()) {
+                    eprintln!("[хаб] значок в трее не появился: {e}");
+                }
+                // автозапуск при входе в систему: хаб сразу в трее, окно не мешает
+                if std::env::args().any(|a| a == desktop::HIDDEN_ARG) {
+                    if let Some(w) = app.get_webview_window("main") {
+                        let _ = w.hide();
+                    }
                 }
             }
             Ok(())
@@ -414,7 +426,17 @@ pub fn run() {
             hubsvc::folder_preview,
             hubsvc::folder_sync,
             hubsvc::folder_resolve,
-            hubsvc::folder_forget
+            hubsvc::folder_forget,
+            #[cfg(desktop)]
+            desktop::quick_capture,
+            #[cfg(desktop)]
+            desktop::mini_hide,
+            #[cfg(desktop)]
+            desktop::mini_open_hub,
+            #[cfg(desktop)]
+            desktop::desktop_prefs,
+            #[cfg(desktop)]
+            desktop::desktop_set
         ])
         .run(tauri::generate_context!())
         .expect("хаб не запустился");

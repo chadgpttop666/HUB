@@ -147,3 +147,8 @@ html:not([data-platform="phone"]) .hub-shell__top .hub-topbar__right { display: 
 .shell-row-open:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: var(--radius-sm); }
 .shell-drop { z-index: var(--z-dialog); }
 .shell-drop .hub-drop { width: min(560px, calc(100vw - 48px)); }
+
+/* ───────── мини-окно поверх других программ (ui/mini.html) ───────── */
+html.mini, html.mini body { background: transparent; min-height: 0; height: 100%; overflow: hidden; }
+html.mini body { display: grid; place-items: start center; padding: var(--space-3) 0 0; margin: 0; }
+html.mini .hub-capture--mini { max-width: calc(100vw - var(--space-6)); }

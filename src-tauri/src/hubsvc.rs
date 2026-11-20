@@ -105,6 +105,28 @@ impl Hub {
         fs::write(&tmp, serde_json::to_vec_pretty(kf).map_err(|e| e.to_string())?).map_err(|e| e.to_string())?;
         fs::rename(&tmp, self.keys_path()).map_err(|e| e.to_string())
     }
+    /// Номер этого устройства (известен, когда хаб открыт); иначе — «pc»/«phone».
+    pub fn device(&self) -> String {
+        self.rt().state.as_ref().map(|s| s.device.clone()).filter(|d| !d.is_empty()).unwrap_or_else(|| PLATFORM.to_string())
+    }
+    pub fn quick(&self) -> crate::quick::Quick {
+        crate::quick::Quick::new(&self.base)
+    }
+    /// Сохранить состояние синхронизации перед выходом из программы.
+    pub fn flush(&self, store: &Store) {
+        if store.is_open() {
+            let mut rt = self.rt();
+            let _ = self.save_runtime(store, &mut rt);
+        }
+    }
+    /// После входа: ключ корзины на месте, мысли из мини-окна, оставленные при запертом хабе, — в корзине.
+    fn opened(&self, store: &Store) {
+        match self.quick().after_unlock(store) {
+            Ok(n) if n > 0 => eprintln!("[хаб] из мини-окна в корзину: {n}"),
+            Ok(_) => {}
+            Err(e) => eprintln!("[хаб] мысли из мини-окна не забраны: {e}"),
+        }
+    }
     pub fn poke(&self) {
         let (m, c) = &self.wake;
         *m.lock().unwrap_or_else(|e| e.into_inner()) = true;
@@ -357,6 +379,7 @@ pub async fn setup_create(hub: State<'_, Hub>, store: State<'_, Store>, password
     store.take_changes();
     hub.write_keys(&c.file)?;
     hub.open_runtime(&c.key)?;
+    hub.opened(&store);
     Ok(c.recovery)
 }
 
@@ -366,6 +389,7 @@ pub async fn unlock(app: AppHandle, hub: State<'_, Hub>, store: State<'_, Store>
     let key = crypto::unlock_password(&kf, &password)?;
     store.set_key(Some(key.clone()));
     hub.open_runtime(&key)?;
+    hub.opened(&store);
     let _ = app.emit("hub://sync", hub.status(&store));
     hub.poke();
     Ok(())
@@ -380,6 +404,7 @@ pub async fn unlock_with_recovery(hub: State<'_, Hub>, store: State<'_, Store>, 
     hub.write_keys(&kf2)?;
     store.set_key(Some(key.clone()));
     hub.open_runtime(&key)?;
+    hub.opened(&store);
     hub.rt().keys_pending = true;
     hub.poke();
     Ok(())
@@ -555,6 +580,7 @@ pub async fn setup_join(app: AppHandle, hub: State<'_, Hub>, store: State<'_, St
     store.encrypt_all()?;
     store.take_changes();
     hub.open_runtime(&key)?;
+    hub.opened(&store);
     {
         let mut rt = hub.rt();
         rt.target = Some(target);

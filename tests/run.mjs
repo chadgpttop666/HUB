@@ -30,9 +30,10 @@ function assert(cond, msg) { if (!cond) throw new Error(msg || "условие �
 function eq(a, b, msg) { if (JSON.stringify(a) !== JSON.stringify(b)) throw new Error(`${msg || "не равно"}: ${JSON.stringify(a)} ≠ ${JSON.stringify(b)}`); }
 
 const browser = await chromium.launch();
-const page = await browser.newPage({ viewport: { width: 1366, height: 860 }, acceptDownloads: true });
+const context = await browser.newContext({ viewport: { width: 1366, height: 860 }, acceptDownloads: true });
+const page = await context.newPage();
 const errors = [];
-page.on("pageerror", e => errors.push(e.message));
+page.on("pageerror", e => { errors.push(e.message); if (process.env.HUB_TEST_DEBUG) console.log("    [ошибка]", e.stack); });
 page.on("console", m => { if (m.type() === "error" && !/Content Security Policy|Failed to load resource|ERR_FAILED/.test(m.text())) errors.push(m.text()); });
 
 const appFrame = () => page.frames().find(f => f !== page.mainFrame() && f.url() === "about:srcdoc");
@@ -368,8 +369,104 @@ await test("своя тема из фото: основа и вуаль счит
   eq(await appFrame().evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--accent").trim()), "#1d5f8a", "акцент дошёл до приложения");
   await page.waitForTimeout(300);
   await shot("17-custom-theme");
+  // правка своей темы: приветствие с именем и шрифт; фото остаётся прежним
+  await page.click("[data-theme-edit]");
+  await page.waitForSelector("#te-save:not([disabled])");
+  await page.fill("#te-greet", "Привет, {name}");
+  await page.selectOption("#te-font", "manrope");
+  await page.click("#te-save");
+  await waitFor(() => page.evaluate(() => window.__hubShell.state.themes[0].greeting === "Привет, {name}"), 4000, "правка сохранена");
+  eq(await page.evaluate(() => window.__hubShell.state.themes.length), 1, "правка не создаёт новую тему");
+  eq(await page.evaluate(() => document.documentElement.style.getPropertyValue("--font-heading")), "var(--font-body)", "шрифт крупного текста");
+  await page.evaluate(() => window.__hubShell.go("today"));
+  eq(await text("#today-hello"), "Привет, Тест", "приветствие темы с именем");
+  eq(await page.evaluate(() => localStorage.getItem("hub:greeting")), "Привет, {name}", "приветствие — и для экрана входа");
+  await page.evaluate(() => window.__hubShell.go("settings"));
   await page.click("[data-theme-remove]");
   await waitFor(() => page.evaluate(() => window.__hubShell.state.themes.length === 0 && window.__hubShell.state.settings.theme === "forest"), 4000, "тема удалена");
+});
+
+await test("имя в настройках и порядок приложений: ↑↓ меняют Alt+1…9", async () => {
+  await page.evaluate(() => window.__hubShell.go("settings"));
+  await page.fill("#set-name", "Аня");
+  await page.locator("#set-name").dispatchEvent("change");
+  eq(await page.evaluate(() => window.__hubShell.state.settings.name), "Аня", "имя в общих настройках");
+  eq(await page.evaluate(() => localStorage.getItem("hub:name")), "Аня", "копия для экрана входа");
+  const before = await page.locator("#settings .hub-row__title").allInnerTexts();
+  const cal = before.indexOf("Календарь");
+  assert(cal > 0, `календарь не первый: ${before}`);
+  for (let i = cal; i > 0; i--) await page.click('[data-app-move="calendar"][data-d="-1"]');
+  eq((await page.locator("#settings .hub-row__title").allInnerTexts())[0], "Календарь", "календарь — первым");
+  eq(await page.evaluate(() => [...document.querySelectorAll(".hub-rail__item[data-open]")].map(b => b.dataset.open)[0]), "calendar", "и в боковой панели");
+  await page.keyboard.press("Alt+1");
+  await waitFor(() => page.evaluate(() => document.querySelector("#appbar-title").textContent === "Календарь"), 4000, "Alt+1 — календарь");
+  await page.evaluate(() => window.__hubShell.state.setSetting("appOrder", []));
+  await page.evaluate(() => window.__hubShell.go("today"));
+  assert((await text("#today-hello")).includes("Аня"), "приветствие с новым именем");
+});
+
+await test("Ctrl+K: приложение, раскладка, запись и «в корзину как мысль»", async () => {
+  await page.evaluate(() => window.__hubShell.go("today"));
+  await page.keyboard.press("Control+k");
+  await page.waitForSelector("dialog.hub-command[open] #cmd-q");
+  assert((await page.locator("#cmd-list .hub-menu__label").allInnerTexts()).some(t => /Команды/i.test(t)), "пустой запрос — команды");
+  await page.keyboard.type("кален");
+  eq(await text("#cmd-list .is-active"), "Календарь\nприложение", "первым — приложение");
+  await page.keyboard.press("Enter");
+  await waitFor(() => page.evaluate(() => document.documentElement.dataset.view === "app" && document.querySelector("#appbar-title").textContent === "Календарь" && !document.querySelector("dialog.hub-command")), 4000, "открыт календарь");
+  await page.keyboard.press("Control+k");
+  await page.waitForSelector("dialog.hub-command[open] #cmd-q");
+  await page.keyboard.type("gjdnjhtybt");   // «повторение» в английской раскладке
+  await page.waitForSelector('[data-cmd="alt"]');
+  assert((await text('[data-cmd="alt"]')).includes("повторение"), "предложен исправленный запрос");
+  await shot("19-command-layout");
+  await page.keyboard.press("Enter");
+  eq(await page.inputValue("#cmd-q"), "повторение", "запрос исправлен");
+  await page.keyboard.press("Escape");
+  await page.evaluate(() => window.__hubShell.state.add("найти цитату Толстого о привычках #чтение"));
+  await page.keyboard.press("Control+k");
+  await page.waitForSelector("dialog.hub-command[open] #cmd-q");
+  await page.keyboard.type("толст");
+  assert((await page.locator("#cmd-list .hub-menu__label").allInnerTexts()).some(t => /Записи/i.test(t)), "нашлась запись из корзины");
+  await shot("19-command-search");
+  await page.keyboard.press("Enter");
+  await waitFor(async () => (await page.evaluate(() => window.__hubShell && document.querySelector("#screen-triage:not([hidden]) .hub-triage__text")?.textContent || "")).includes("Толстого"), 4000, "открыта при разборе");
+  await page.keyboard.press("Escape");
+  const n0 = await page.evaluate(() => window.__hubShell.state.visibleItems().length);
+  await page.keyboard.press("Control+k");
+  await page.waitForSelector("dialog.hub-command[open] #cmd-q");
+  await page.keyboard.type("купить батарейки");
+  await page.keyboard.press("Control+Enter");
+  await waitFor(() => page.evaluate(n => window.__hubShell.state.visibleItems().length === n + 1, n0), 3000, "мысль в корзине");
+});
+
+await test("мини-окно: мысль при запертом хабе попадает в корзину только после входа", async () => {
+  const mini = await context.newPage();   // то же происхождение и localStorage, что у хаба
+  await mini.setViewportSize({ width: 600, height: 132 });
+  mini.on("pageerror", e => errors.push("мини: " + e.message));
+  await mini.goto(URL0 + "mini.html");
+  await mini.waitForSelector("#mini-input:focus");
+  await mini.keyboard.type("позвонить в деканат #учёба");
+  assert((await mini.locator("#mini-note").innerText()).includes("#учёба"), "метка видна в подсказке");
+  await mini.screenshot({ path: join(out, "20-mini.png") });
+  await mini.keyboard.press("Enter");
+  await mini.waitForSelector("#mini-note.is-ok");
+  assert((await mini.locator("#mini-note").innerText()).includes("после входа"), "заперто до входа");
+  eq(await mini.inputValue("#mini-input"), "", "строка очищена");
+  await mini.close();
+  const has = () => page.evaluate(() => window.__hubShell.state.items.some(i => i.text.startsWith("позвонить в деканат")));
+  assert(!(await has()), "до входа в корзине нет");
+  await page.evaluate(() => { window.__hubShell.lockNow(); });   // вход ждёт пароля — не дожидаться
+  await page.waitForSelector(".hub-lock");
+  assert((await page.locator(".hub-lock").innerText()).includes("Аня"), "экран входа знает имя");
+  await page.keyboard.press("x");
+  await page.waitForSelector(".hub-lock__form:not([hidden])");
+  await page.fill(".hub-lock__form input", "новый пароль хаба");
+  await page.keyboard.press("Enter");
+  await page.waitForSelector("#screen-today:not([hidden])");
+  assert(await has(), "после входа — в корзине");
+  const item = await page.evaluate(() => window.__hubShell.state.items.find(i => i.text.startsWith("позвонить в деканат")));
+  eq(item.tags, ["учёба"], "метка сохранилась");
 });
 
 await test("без ошибок в консоли", async () => { eq(errors, [], "ошибки страницы"); });

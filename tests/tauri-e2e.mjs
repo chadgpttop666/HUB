@@ -23,7 +23,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 function device(name, port) {
   const env = { ...process.env, HOME: join(W, name), XDG_DATA_HOME: join(W, name, "share"), HUB_SYNC_LOCAL: join(W, "drive") };
-  const drv = spawn("dbus-run-session", ["--", "tauri-driver", "--port", String(port), "--native-port", String(port + 1)], { env, stdio: "ignore" });
+  const drv = spawn("dbus-run-session", ["--", "tauri-driver", "--port", String(port), "--native-port", String(port + 1)], { env, stdio: "ignore", detached: true });   // своя группа процессов — чтобы остановить и драйвер, и хаб
   const base = `http://127.0.0.1:${port}`;
   let sid = null;
   async function wd(method, path, body) {
@@ -36,6 +36,9 @@ function device(name, port) {
     name, drv,
     dataDir: join(W, name, "share", "local.hub.desktop"),
     async start() {
+      // крестик в тестах закрывает хаб совсем, а не прячет в трей
+      mkdirSync(this.dataDir, { recursive: true });
+      writeFileSync(join(this.dataDir, "prefs.json"), JSON.stringify({ closeToTray: false, trayHintShown: true }));
       for (let i = 0; i < 50; i++) { try { await fetch(`${base}/status`); break; } catch { await sleep(200); } }
       const s = await wd("POST", "/session", { capabilities: { alwaysMatch: { "tauri:options": { application: app } } } });
       sid = s.sessionId;
@@ -48,7 +51,7 @@ function device(name, port) {
       for (;;) { try { if (await this.js(fn, ...args)) return; } catch { /* ещё нет */ } if (Date.now() - t0 > ms) throw new Error(`${this.name}: не дождались — ${what}`); await sleep(400); }
     },
     async shot(file) { const b64 = await wd("GET", `/session/${sid}/screenshot`); writeFileSync(join(root, "tests", "out", file), Buffer.from(b64, "base64")); },
-    async stop() { try { await wd("DELETE", `/session/${sid}`); } catch { /* ничего */ } drv.kill(); },
+    async stop() { try { await wd("DELETE", `/session/${sid}`); } catch { /* ничего */ } try { process.kill(-drv.pid, "SIGTERM"); } catch { drv.kill(); } },
   };
 }
 
@@ -147,11 +150,22 @@ try {
     await pc.js(async () => { window.__hubShell.lockNow(); return true; });
     await pc.until(has, 5000, "экран входа", ".hub-lock");
     await pc.shot("t3-pc-lock.png");
+    // мини-окно при запертом хабе: мысль запечатана ключом устройства и ждёт входа
+    const r = await pc.js(async () => window.__TAURI__.core.invoke("quick_capture", { text: "секрет из мини-окна #тайна" }));
+    assert(r.status === "sealed", JSON.stringify(r));
+    const pend = readdirSync(join(pc.dataDir, "pending"));
+    assert(pend.length === 1 && pend[0].endsWith(".bin"), String(pend));
+    assert(!readFileSync(join(pc.dataDir, "pending", pend[0])).toString("latin1").includes("секрет"), "на диске не читается");
     await pc.js(async () => { document.querySelector(".shell-lock").click(); return true; });
     await pc.until(has, 3000, "поле пароля", ".hub-lock__form:not([hidden]) input");
     await pc.js(fill, ".hub-lock__form input", PW);
     await pc.js(async () => { document.querySelector(".hub-lock__form").requestSubmit(); return true; });
     await pc.until(has, 20000, "«Сегодня» после входа", "#screen-today:not([hidden])");
+    await pc.until(async () => window.__hubShell.state.items.some(i => i.text === "секрет из мини-окна #тайна" && i.tags[0] === "тайна"), 5000, "мысль из мини-окна в корзине");
+    assert(readdirSync(join(pc.dataDir, "pending")).length === 0, "файл мысли удалён");
+    const r2 = await pc.js(async () => window.__TAURI__.core.invoke("quick_capture", { text: "открытая мысль" }));
+    assert(r2.status === "saved" && r2.count >= 2, JSON.stringify(r2));
+    await pc.until(async () => window.__hubShell.state.items.some(i => i.text === "открытая мысль"), 5000, "оболочка увидела мысль из мини-окна");
   });
   await test("ПК: установка приложения из папки — проверка, установка, карточка", async () => {
     const dir = join(root, "templates", "app");
@@ -160,7 +174,11 @@ try {
     await pc.js(async d => window.__hubShell.core.installPackage(d), dir);
     await pc.until(async () => (await window.__hubShell.core.apps()).some(a => a.id === "notes-template" && a.source === "installed"), 5000, "в списке приложений");
     await pc.js(async () => { window.__hubShell.openApp("notes-template"); return true; });
-    await pc.until(async () => !!window.__hubShell.state.cards["notes-template"] || document.querySelector('[data-card="notes-template"]'), 15000, "приложение запустилось и прислало карточку");
+    await pc.until(async () => !!window.__hubShell.state.cards["notes-template"] || document.querySelector('[data-card="notes-template"]'), 15000, "приложение запустилось и прислало карточку").catch(async e => {
+      await pc.shot("t-fail-install.png");
+      console.log("    состояние:", await pc.js(async () => JSON.stringify({ view: document.documentElement.dataset.view, cards: Object.keys(window.__hubShell.state.cards), frames: [...document.querySelectorAll("iframe")].map(f => f.title + ":" + f.hidden), title: document.querySelector("#appbar-title").textContent })));
+      throw e;
+    });
     await pc.shot("t4-pc-installed.png");
   });
 

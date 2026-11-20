@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="ru" data-theme="dark" class="mini">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Мысль в корзину</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="hub/tokens.css">
+<link rel="stylesheet" href="hub/hub.css">
+<link rel="stylesheet" href="shell.css">
+<script src="hub/hub-ui.js"></script>
+<script type="module" src="js/mini.js"></script>
+</head>
+<body class="mini">
+<!-- Мини-окно поверх других программ (Ctrl+Alt+Пробел): только строка и подсказка -->
+<form class="hub-capture hub-capture--mini" id="mini" autocomplete="off" data-tauri-drag-region>
+  <div class="hub-capture__bar">
+    <i data-icon="lightbulb" class="hub-capture__icon"></i>
+    <input class="hub-capture__input" id="mini-input" placeholder="Мысль в корзину…" aria-label="Мысль в корзину" autofocus>
+    <button class="hub-capture__send" type="submit" disabled>В корзину</button>
+  </div>
+  <p class="hub-capture__note" id="mini-note" aria-live="polite"></p>
+</form>
+</body>
+</html>

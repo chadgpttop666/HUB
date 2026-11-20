@@ -3,7 +3,8 @@
   "identifier": "default",
   "description": "Окно хаба: события ядра и выбор папки. Команды хаба разрешены по умолчанию.",
   "windows": [
-    "main"
+    "main",
+    "mini"
   ],
   "permissions": [
     "core:default",

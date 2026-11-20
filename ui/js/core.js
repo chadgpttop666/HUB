@@ -74,6 +74,12 @@ const tauriCore = {
     T.event.listen("tauri://drag-leave", () => leave());
     T.event.listen("tauri://drag-drop", e => drop(e.payload && e.payload.paths));
   },
+  /* ПК: мини-окно, трей, автозапуск */
+  quickCapture: text => T.core.invoke("quick_capture", { text }),
+  miniHide: () => T.core.invoke("mini_hide"),
+  desktopPrefs: () => T.core.invoke("desktop_prefs"),
+  desktopSet: (prefs) => T.core.invoke("desktop_set", prefs),
+  onLockRequest(cb) { T.event.listen("hub://lock-request", () => cb()); },
   /* своё окно без системной рамки: свернуть, развернуть, закрыть */
   get nativeWindow() { return !!(T.window && !/Android/i.test(navigator.userAgent)); },
   windowAction(kind) {
@@ -90,6 +96,13 @@ const blobs = new Map();
 let devOpen = false;
 const devKeys = () => localStorage.getItem("hubdev-keys");
 function devGuard() { if (!devOpen) throw new Error("Хаб заперт"); }
+/* мини-окно в браузере — отдельная страница, она всегда «заперта»: мысли ждут входа в hubdev-pending */
+function devDrain() {
+  let list = [];
+  try { list = JSON.parse(localStorage.getItem("hubdev-pending") || "[]"); } catch { /* пусто */ }
+  for (const item of list) localStorage.setItem(`${LSP}hub:inbox/${item.id}`, JSON.stringify(item));
+  localStorage.removeItem("hubdev-pending");
+}
 const devCore = {
   async apps() {
     const ids = await (await fetch("apps/index.json")).json();
@@ -138,15 +151,15 @@ const devCore = {
   async setupCreate(password) {
     if (devKeys()) throw new Error("Хаб уже настроен");
     if ([...password].length < 8) throw new Error("Пароль — не короче 8 знаков");
-    localStorage.setItem("hubdev-keys", password); devOpen = true;
+    localStorage.setItem("hubdev-keys", password); devOpen = true; devDrain();
     return "7KQ2-M9XD-R4TW-HC8P-3VNJ-6YBF-Q2MS-W9EA";
   },
   async setupJoin() { throw new Error("В браузере синхронизации нет — только в приложении хаба"); },
-  async unlock(password) { if (password !== devKeys()) throw new Error("Неверный пароль"); devOpen = true; },
+  async unlock(password) { if (password !== devKeys()) throw new Error("Неверный пароль"); devOpen = true; devDrain(); },
   async unlockWithRecovery(code, p) {
     if (code.replace(/[^0-9a-z]/gi, "").toUpperCase() !== "7KQ2M9XDR4TWHC8P3VNJ6YBFQ2MSW9EA") throw new Error("Ключ восстановления не подходит");
     if ([...p].length < 8) throw new Error("Пароль — не короче 8 знаков");
-    localStorage.setItem("hubdev-keys", p); devOpen = true;
+    localStorage.setItem("hubdev-keys", p); devOpen = true; devDrain();
   },
   async changePassword(o, n) {
     if (o !== devKeys()) throw new Error("Старый пароль неверный");
@@ -177,6 +190,22 @@ const devCore = {
   async removeTheme(id) { await devCore.remove("hub", `themes/${id}`); await devCore.remove("hub", `themes/${id}/photo`); },
   async pickPackage() { return null; },
   onDragDrop() {},
+  async quickCapture(text) {
+    text = String(text).trim();
+    if (!text) throw new Error("Напишите мысль и нажмите Enter");
+    if (!devKeys()) throw new Error("Хаб ещё не настроен — войдите в него хотя бы раз");
+    const tags = [...new Set((text.match(/(^|\s)#([\p{L}\p{N}_-]+)/gu) || []).map(t => t.trim().slice(1).toLowerCase()))];
+    const item = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8), text, created: new Date().toISOString(), device: "pc", tags };
+    if (devOpen) { localStorage.setItem(`${LSP}hub:inbox/${item.id}`, JSON.stringify(item)); return { status: "saved", count: Object.keys(localStorage).filter(k => k.startsWith(`${LSP}hub:inbox/`)).length }; }
+    let list = [];
+    try { list = JSON.parse(localStorage.getItem("hubdev-pending") || "[]"); } catch { /* пусто */ }
+    list.push(item); localStorage.setItem("hubdev-pending", JSON.stringify(list));
+    return { status: "sealed", count: null };
+  },
+  async miniHide() {},
+  async desktopPrefs() { return { closeToTray: true, autostart: false, pending: 0, dev: true }; },
+  async desktopSet() {},
+  onLockRequest() {},
 };
 
 export const core = inTauri ? tauriCore : devCore;

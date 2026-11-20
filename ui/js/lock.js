@@ -1,6 +1,7 @@
 /* lock.js — первая настройка (пароль, ключ восстановления, Google Drive) и экран входа.
    До ввода пароля ядро не читает ни одного файла данных: всё, что здесь видно, — фото темы, часы и дата. */
 import { core, inTauri } from "./core.js";
+import { greetingText } from "./themes.js";
 
 const H = window.HubUI;
 const $ = s => document.querySelector(s);
@@ -18,7 +19,7 @@ function screen() {
 }
 function close() { const el = $("#screen-lock"); if (el) { el.hidden = true; el.innerHTML = ""; } }
 const name = () => { try { return localStorage.getItem("hub:name") || ""; } catch { return ""; } };
-const greet = () => H.greeting(new Date()) + (name() ? `, ${name()}` : "");
+const greet = () => { let g = ""; try { g = localStorage.getItem("hub:greeting") || ""; } catch { /* нет */ } return greetingText(g, name()); };
 
 /* ───────── первая настройка ───────── */
 

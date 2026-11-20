@@ -6,7 +6,8 @@ import { runSetup, runLock } from "./lock.js";
 import { renderSyncSettings, setSyncStatus, syncPill, syncStatus } from "./syncui.js";
 import { watchSecrets } from "./secret.js";
 import { installFromPath, pickAndInstall, uninstall, watchDrops } from "./install.js";
-import { themeEditor } from "./themes.js";
+import { themeEditor, greetingText } from "./themes.js";
+import { openCommand } from "./command.js";
 
 const H = window.HubUI;
 const $ = sel => document.querySelector(sel);
@@ -89,7 +90,13 @@ function applyTheme() {
   for (const [k, v] of Object.entries(t.tokens || {})) html.style.setProperty(`--${k}`, v);
   html.style.setProperty("--hub-photo", themePhoto(t));
   html.style.setProperty("--hub-photo-pos", t.photoPosition || "50% 38%");
-  try { if (unlocked) { localStorage.setItem("hub:theme", t.id); localStorage.setItem("hub:theme-base", t.base); } } catch { /* ничего */ }
+  try {
+    if (unlocked) {
+      localStorage.setItem("hub:theme", t.id); localStorage.setItem("hub:theme-base", t.base);
+      localStorage.setItem("hub:greeting", t.greeting || "auto");
+      if (typeof state.settings.name === "string") localStorage.setItem("hub:name", state.settings.name);
+    }
+  } catch { /* ничего */ }
   if (host) host.broadcastTheme();
 }
 
@@ -173,6 +180,7 @@ function phoneCapture() {
 phoneMQ.addEventListener("change", () => { phoneCapture(); if (unlocked && view.name === "today") renderToday(); });
 function openApp(id, action) {
   if (!host.apps.has(id)) return;
+  recentApps.splice(0, recentApps.length, id, ...recentApps.filter(x => x !== id).slice(0, 5));
   closeSnoozeMenu();
   view = { name: "app", app: id };
   showScreen("shell"); $("#settings").hidden = true;
@@ -182,7 +190,23 @@ function openApp(id, action) {
   if (action) host.post(id, "today.action", action);
   setTimeout(() => host.focus(id), 60);
 }
-const appsInOrder = () => host.list();
+/* порядок в меню — свой (настройки → приложения, ↑↓); он же задаёт Alt+1…9 */
+function appsInOrder() {
+  const order = Array.isArray(state.settings.appOrder) ? state.settings.appOrder : [];
+  const list = host.list();
+  const pos = (a, i) => { const k = order.indexOf(a.id); return k < 0 ? order.length + i : k; };
+  return list.map((a, i) => [a, pos(a, i)]).sort((x, y) => x[1] - y[1]).map(x => x[0]);
+}
+function moveApp(id, d) {
+  const ids = appsInOrder().map(a => a.id);
+  const i = ids.indexOf(id), j = i + d;
+  if (i < 0 || j < 0 || j >= ids.length) return;
+  [ids[i], ids[j]] = [ids[j], ids[i]];
+  state.setSetting("appOrder", ids);
+  renderRail();
+  if (view.name === "settings") renderSettings();
+}
+const recentApps = [];
 
 function iconHTML(icon, cls) {
   icon = icon || "package";
@@ -191,11 +215,15 @@ function iconHTML(icon, cls) {
 }
 
 /* ───────── «Сегодня» ───────── */
-function userName() { try { return localStorage.getItem("hub:name") || ""; } catch { return ""; } }
+/* имя — в общих настройках (синхронизируется); копия в localStorage нужна экрану входа */
+function userName() {
+  if (unlocked && typeof state.settings.name === "string") return state.settings.name;
+  try { return localStorage.getItem("hub:name") || ""; } catch { return ""; }
+}
 function renderHello() {
   const now = new Date(), name = userName();
   for (const id of ["today", "triage"]) {
-    $(`#${id}-hello`).textContent = H.greeting(now) + (name ? `, ${name}` : "");
+    $(`#${id}-hello`).textContent = greetingText(currentTheme().greeting, name, now);
     $(`#${id}-date`).textContent = fmtLong.format(now);
   }
   renderSyncPills();
@@ -577,18 +605,25 @@ async function renderSettings() {
   const info = await core.info().catch(() => ({}));
   const cur = currentTheme();
   const apps = appsInOrder();
+  const desk = inTauri && platform !== "phone" ? await core.desktopPrefs().catch(() => null) : null;
   const keys = [
     [["Ctrl", "Alt", "Пробел"], "мысль в корзину из любой программы"],
     [["Ctrl", "Пробел"], "к строке ввода (или /, на «Сегодня»)"],
     [["Alt", "1…9"], "приложение по номеру"],
     [["Enter"], "в строке ввода — сохранить; Ctrl Z — отменить"],
     [["1…9", "S", "Del", "← →", "Esc"], "разбор корзины: перенести, отложить, удалить, листать, выйти"],
+    [["Ctrl", "K"], "командная строка: приложение, команда или запись"],
     [["Ctrl", "L"], "заблокировать хаб"],
   ];
   el.innerHTML = `
     <div><h1 class="hub-page-title">Настройки</h1>
       <p class="hub-muted" style="margin:var(--space-1) 0 0">${syncStatus.configured ? "данные зашифрованы · синхронизация с Google Drive" : "данные зашифрованы · только на этом устройстве"}</p></div>
-    <section class="shell-section"><h2 class="hub-section-title">Тема</h2>
+    <section class="shell-section"><h2 class="hub-section-title">Вы</h2>
+      <label class="hub-field" style="max-width:360px"><span class="hub-label">Как к вам обращаться</span>
+        <input class="hub-input" id="set-name" maxlength="40" value="${esc(userName())}" placeholder="Имя для приветствия"></label>
+      <p class="hub-hint" style="margin-top:var(--space-3)">Видно в приветствии на «Сегодня» и на экране входа. Своё приветствие можно задать в теме.</p>
+    </section>
+    <section class="shell-section" id="settings-themes"><h2 class="hub-section-title">Тема</h2>
       <div class="hub-themes" role="radiogroup" aria-label="Тема">${allThemes().map(t => `
         <button class="hub-theme" type="button" role="radio" aria-checked="${t.id === cur.id}" data-theme-id="${esc(t.id)}">
           <div class="hub-theme__shot" data-theme="${esc(t.base)}" style="--hub-photo:${themePhoto(t)};color:var(--text);background:var(--bg)">
@@ -603,7 +638,7 @@ async function renderSettings() {
         </button>`).join("")}
         <button class="hub-theme hub-theme--new" type="button" data-act="theme-new"><i data-icon="image-plus" class="hub-icon--lg"></i><span>Новая тема из фото</span><span class="hub-theme__meta">основа и вуаль подберутся сами</span></button>
       </div>
-      ${(state.themes || []).length ? `<div class="hub-btn-row" style="margin-top:var(--space-3)">${state.themes.map(t => `<button class="hub-btn hub-btn--sm hub-btn--quiet" type="button" data-theme-remove="${esc(t.id)}"><i data-icon="trash-2"></i>Удалить «${esc(t.name)}»</button>`).join("")}</div>` : ""}
+      ${(state.themes || []).length ? `<div class="hub-btn-row" style="margin-top:var(--space-3)">${state.themes.map(t => `<button class="hub-btn hub-btn--sm" type="button" data-theme-edit="${esc(t.id)}"><i data-icon="pencil"></i>Изменить «${esc(t.name)}»</button><button class="hub-btn hub-btn--sm hub-btn--quiet" type="button" data-theme-remove="${esc(t.id)}"><i data-icon="trash-2"></i>Удалить</button>`).join("")}</div>` : ""}
       <p class="hub-hint" style="margin-top:var(--space-3)">Своя тема синхронизируется на телефон. Тему от нейросети (папка или zip с theme.json) — перетащите в окно хаба.</p>
     </section>
     <div id="settings-sync"></div>
@@ -616,6 +651,8 @@ async function renderSettings() {
               (a.manifest.accepts || []).length ? `принимает: ${(a.manifest.accepts || []).map(x => x.label).join(", ")}` : "",
               (a.manifest.permissions && (a.manifest.permissions.network || []).length) ? "сеть" : ""].filter(Boolean).join(" · "))}</span></button>
           <span class="hub-row__trail">${i < 9 ? `<kbd class="hub-kbd">Alt</kbd><kbd class="hub-kbd">${i + 1}</kbd>` : ""}
+            <button class="hub-btn hub-btn--sm hub-btn--quiet hub-btn--icon" type="button" data-app-move="${esc(a.id)}" data-d="-1" aria-label="Выше" title="Выше"${i === 0 ? " disabled" : ""}><i data-icon="arrow-up"></i></button>
+            <button class="hub-btn hub-btn--sm hub-btn--quiet hub-btn--icon" type="button" data-app-move="${esc(a.id)}" data-d="1" aria-label="Ниже" title="Ниже"${i === apps.length - 1 ? " disabled" : ""}><i data-icon="arrow-down"></i></button>
             ${a.source === "installed" ? `<button class="hub-btn hub-btn--sm hub-btn--quiet hub-btn--icon" type="button" data-app-remove="${esc(a.id)}" aria-label="Удалить ${esc(a.manifest.name || a.id)}" title="Удалить"><i data-icon="trash-2"></i></button>` : ""}</span>
         </div></li>`).join("") || `<li class="hub-muted" style="padding:var(--space-3)">Приложений нет.</li>`}
       </ul>
@@ -624,6 +661,13 @@ async function renderSettings() {
         <button class="hub-btn" type="button" data-act="install-zip"><i data-icon="file-archive"></i>Из zip</button></div>` : ""}
       <p class="hub-hint" style="margin-top:var(--space-3)">${platform === "phone" ? "Приложения ставятся на ПК и приезжают сюда с синхронизацией." : "Или перетащите папку или zip в окно хаба. Как написать приложение с нейросетью — APP_SPEC.md: приложите его к запросу «сделай мне приложение для…»."}</p>
     </section>
+    ${desk ? `<section class="shell-section" id="settings-pc"><h2 class="hub-section-title">Этот компьютер</h2>
+      <div style="display:grid;gap:var(--space-4)">
+        <label class="hub-switch"><input type="checkbox" role="switch" id="pc-autostart"${desk.autostart ? " checked" : ""}><span>Открывать хаб при входе в Windows</span></label>
+        <label class="hub-switch"><input type="checkbox" role="switch" id="pc-tray"${desk.closeToTray ? " checked" : ""}><span>Крестик прячет хаб в трей</span></label>
+      </div>
+      <p class="hub-hint" style="margin-top:var(--space-3)">${desk.closeToTray ? "Хаб остаётся в трее, и <kbd class=\"hub-kbd\">Ctrl</kbd><kbd class=\"hub-kbd\">Alt</kbd><kbd class=\"hub-kbd\">Пробел</kbd> открывает мини-окно поверх любой программы — даже когда хаб заперт: такая мысль запирается ключом этого компьютера и попадает в корзину после входа. Выйти — правой кнопкой по значку в трее." : "Крестик закрывает хаб совсем; Ctrl+Alt+Пробел работает, только пока хаб открыт."}</p>
+    </section>` : ""}
     <section class="shell-section"><h2 class="hub-section-title">Данные</h2>
       <dl class="shell-kv">
         <dt>Папка данных</dt><dd>${esc(info.dataDir || "—")}</dd>
@@ -637,6 +681,16 @@ async function renderSettings() {
       <dl class="shell-keys">${keys.map(([ks, what]) => `<dt>${ks.map(k => `<kbd class="hub-kbd">${esc(k)}</kbd>`).join(" ")}</dt><dd>${esc(what)}</dd>`).join("")}</dl>
     </section>`;
   H.icons(el);
+  const nm = $("#set-name");
+  nm.addEventListener("change", () => { if (nm.value.trim() === userName()) return; state.setSetting("name", nm.value.trim()); applyTheme(); renderHello(); toast("Сохранено", { icon: "check" }); });
+  for (const [sel, key] of [["#pc-autostart", "autostart"], ["#pc-tray", "closeToTray"]]) {
+    const sw = $(sel);
+    if (sw) sw.addEventListener("change", async () => {
+      try { await core.desktopSet({ [key]: sw.checked }); toast("Сохранено", { icon: "check" }); }
+      catch (err) { sw.checked = !sw.checked; toast(String(err.message || err), { tone: "danger", icon: "circle-alert" }); }
+      if (key === "closeToTray") renderSettings();
+    });
+  }
   renderSyncSettings($("#settings-sync"), syncCtx());
 }
 function syncCtx() {
@@ -662,7 +716,28 @@ function handleHotkey(k) {
   if (k === "capture") focusCapture();
   else if (k === "lock") lockNow();
   else if (k.startsWith("app:")) { const a = appsInOrder()[Number(k.slice(4)) - 1]; if (a) openApp(a.id); }
-  // command (Ctrl K) — следующий этап; клавиша уже зарезервирована за хабом
+  else if (k === "command") openPalette();
+}
+function openPalette() {
+  openCommand({
+    apps: () => appsInOrder().map(a => ({ id: a.id, name: a.manifest.name || a.id, icon: a.manifest.icon })),
+    items: () => state.visibleItems(),
+    recent: () => recentApps,
+    iconHTML: icon => iconHTML(icon),
+    openApp: id => openApp(id),
+    openItem: id => { startTriage(); const i = state.visibleItems().findIndex(x => x.id === id); if (i >= 0) { tri.pos = i; renderTriage(); } },
+    capture: text => { const item = state.add(text); if (item) { lastAdded = item.id; toast(`В корзине — ${plural(state.visibleItems().length, UNSORTED)}`, { icon: "check", tone: "accent", action: "Отменить", onAction: undoCapture, timeout: 2600 }); } },
+    commands: [
+      { id: "capture", label: "Новая мысль", icon: "lightbulb", keys: ["Ctrl", "Пробел"], words: "корзина ввод", run: () => focusCapture() },
+      { id: "today", label: "Сегодня", icon: "house", words: "главная", run: () => go("today") },
+      { id: "triage", label: "Разобрать корзину", icon: "inbox", meta: plural(state.visibleItems().length, ["элемент", "элемента", "элементов"]), words: "разбор", run: () => go("triage") },
+      ...(syncStatus.configured ? [{ id: "sync", label: "Синхронизировать сейчас", icon: "refresh-cw", words: "drive google", run: () => { core.syncNow(); toast("Синхронизация запущена", { icon: "refresh-cw" }); } }] : []),
+      { id: "theme", label: "Сменить тему…", icon: "palette", words: "фон фото", run: () => { go("settings"); setTimeout(() => { const s = $("#settings-themes"); if (s) s.scrollIntoView({ block: "start" }); }, 80); } },
+      ...(inTauri && platform !== "phone" ? [{ id: "install", label: "Установить приложение…", icon: "package", words: "zip папка", run: () => pickAndInstall("folder", installCtx()) }] : []),
+      { id: "settings", label: "Настройки", icon: "settings", run: () => go("settings") },
+      { id: "lock", label: "Заблокировать", icon: "lock", keys: ["Ctrl", "L"], words: "запереть", run: () => lockNow() },
+    ],
+  });
 }
 const isTyping = t => t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName));
 document.addEventListener("keydown", e => {
@@ -694,12 +769,19 @@ document.addEventListener("click", e => {
   else if (d.act === "open-data") core.openDataDir().catch(err => toast(`Не открылась: ${err.message || err}`, { tone: "danger" }));
   else if (d.act === "install-folder") pickAndInstall("folder", installCtx());
   else if (d.act === "install-zip") pickAndInstall("zip", installCtx());
-  else if (d.act === "theme-new") themeEditor({ toast, afterSave: async id => { await state.load(); await loadCustomPhotos(); state.setSetting("theme", id); toast("Тема сохранена", { tone: "success", icon: "circle-check" }); } });
+  else if (d.act === "theme-new") themeEditor(themeCtx());
 });
 document.addEventListener("click", async e => {
-  const t = e.target.closest("[data-app-remove],[data-theme-remove]");
+  const t = e.target.closest("[data-app-remove],[data-theme-remove],[data-theme-edit],[data-app-move]");
   if (!t || !unlocked) return;
-  if (t.dataset.appRemove) { const a = host.apps.get(t.dataset.appRemove); if (a) uninstall(a, installCtx()); }
+  if (t.dataset.appMove) moveApp(t.dataset.appMove, Number(t.dataset.d));
+  else if (t.dataset.themeEdit) {
+    const theme = (state.themes || []).find(x => x.id === t.dataset.themeEdit);
+    const photo = theme && await core.get("hub", `themes/${theme.id}/photo`).catch(() => null);
+    if (!(photo instanceof Blob)) { toast("Фото темы ещё не пришло с другого устройства", { tone: "warning", icon: "triangle-alert" }); return; }
+    themeEditor(themeCtx(), { theme, photo });
+  }
+  else if (t.dataset.appRemove) { const a = host.apps.get(t.dataset.appRemove); if (a) uninstall(a, installCtx()); }
   else {
     const id = t.dataset.themeRemove;
     if (state.settings.theme === id) state.setSetting("theme", "forest");
@@ -710,6 +792,19 @@ document.addEventListener("click", async e => {
     toast("Тема удалена", { icon: "trash-2" });
   }
 });
+function themeCtx() {
+  return {
+    toast, name: userName,
+    afterSave: async id => {
+      if (customPhotos.has(id)) { URL.revokeObjectURL(customPhotos.get(id)); customPhotos.delete(id); }
+      await state.load(); await loadCustomPhotos();
+      if (state.settings.theme === id) applyTheme(); else state.setSetting("theme", id);
+      if (view.name === "settings") renderSettings();
+      renderHello();
+      toast("Тема сохранена", { tone: "success", icon: "circle-check" });
+    },
+  };
+}
 function installCtx() {
   return {
     toast,
@@ -850,6 +945,8 @@ async function start() {
 async function enterHub() {
   await state.load();
   unlocked = true; lastActivity = Date.now();
+  // имя, введённое при настройке (до того, как появились данные), переезжает в общие настройки
+  if (typeof state.settings.name !== "string") { let n = ""; try { n = localStorage.getItem("hub:name") || ""; } catch { /* нет */ } state.setSetting("name", n); }
   await loadCustomPhotos();
   setSyncStatus(await core.syncStatus().catch(() => null));
   setDevice(syncStatus.device || (platform === "phone" ? "phone" : "pc"));
@@ -877,6 +974,7 @@ async function enterHub() {
     setupCapture($("#capture-main"));
     setupCapture($("#capture-compact"));
     core.onHotkey(k => handleHotkey(k));
+    core.onLockRequest(() => lockNow());
     watchDrops(installCtx());
     history.replaceState({ v: "today", app: null }, "");
   }
