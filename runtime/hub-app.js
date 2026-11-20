@@ -554,6 +554,11 @@
     });
   }
 
+  /* ───────── активность — для автозамка хаба ───────── */
+  var lastPing = 0;
+  function ping() { var t = Date.now(); if (t - lastPing > 20000) { lastPing = t; send("activity", {}); } }
+  ["keydown", "pointerdown", "wheel", "touchstart"].forEach(function (ev) { document.addEventListener(ev, ping, { capture: true, passive: true }); });
+
   /* ───────── горячие клавиши хаба ─────────
      Пока фокус внутри приложения, клавиши хаба всё равно должны работать: передаём их хабу. */
   document.addEventListener("keydown", function (e) {

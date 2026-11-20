@@ -41,13 +41,14 @@ export function injectPrelude(html, prelude) {
 }
 
 export class AppHost {
-  constructor({ state, container, getTheme, toast, onHotkey, onCard }) {
+  constructor({ state, container, getTheme, toast, onHotkey, onCard, onActivity }) {
     this.state = state;
     this.container = container;
     this.getTheme = getTheme;
     this.toast = toast;
     this.onHotkey = onHotkey;
     this.onCard = onCard;
+    this.onActivity = onActivity || (() => {});
     this.apps = new Map();     // id → { id, manifest, source }
     this.frames = new Map();   // id → { iframe, loaded, inboxReady, sent:Set, queue:Promise }
     this.timers = new Map();
@@ -119,6 +120,15 @@ export class AppHost {
   }
 
   reload(id) { if (this.frames.has(id)) return this.load(id); }
+
+  /* замок: страницы приложений держат расшифрованные данные в памяти — убрать их целиком */
+  reset() {
+    for (const f of this.frames.values()) { f.iframe.srcdoc = ""; f.iframe.remove(); }
+    this.frames.clear();
+    for (const t of this.timers.values()) clearTimeout(t);
+    this.timers.clear();
+  }
+  visible(id) { const f = this.frames.get(id); return !!(f && !f.iframe.hidden); }
 
   show(id) {
     for (const [fid, f] of this.frames) f.iframe.hidden = fid !== id;
@@ -208,6 +218,7 @@ export class AppHost {
           break;
         }
         case "hotkey": this.onHotkey(String(p.key || "")); break;
+        case "activity": this.onActivity(); break;
         default: reply(undefined, new Error(`нет такой функции: ${m.method}`));
       }
     } catch (err) {

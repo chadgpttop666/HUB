@@ -31,11 +31,43 @@ const tauriCore = {
   async openDataDir() { return T.core.invoke("open_data_dir"); },
   onHotkey(cb) { T.event.listen("hub://capture", () => cb("capture")); },
   async windowFocused() { try { return await T.core.invoke("window_focused"); } catch { return true; } },
+
+  /* пароль и замок */
+  status: () => T.core.invoke("hub_status"),
+  setupCreate: password => T.core.invoke("setup_create", { password }),
+  setupJoin: (target, password) => T.core.invoke("setup_join", { target: Object.assign({ kind: "drive", token: "", clientId: "", clientSecret: "", path: "" }, target), password }),
+  unlock: password => T.core.invoke("unlock", { password }),
+  unlockWithRecovery: (code, newPassword) => T.core.invoke("unlock_with_recovery", { code, newPassword }),
+  changePassword: (oldPassword, newPassword) => T.core.invoke("change_password", { oldPassword, newPassword }),
+  lock: () => T.core.invoke("lock"),
+
+  /* синхронизация */
+  syncStatus: () => T.core.invoke("sync_status"),
+  syncNow: () => T.core.invoke("sync_now"),
+  driveAuthorize: ({ clientId = "", clientSecret = "" } = {}) => T.core.invoke("drive_authorize", { clientId, clientSecret }),
+  syncConnect: target => T.core.invoke("sync_connect", { target: Object.assign({ kind: "drive", token: "", clientId: "", clientSecret: "", path: "" }, target) }),
+  syncDisconnect: () => T.core.invoke("sync_disconnect"),
+  rclonePasswords: password => T.core.invoke("sync_rclone_passwords", { password }),
+  folderAdd: (path, name, mode, exclude = []) => T.core.invoke("folder_add", { path, name, mode, exclude }),
+  folderPlace: (id, path) => T.core.invoke("folder_place", { id, path }),
+  folderPreview: id => T.core.invoke("folder_preview", { id }),
+  folderSync: (id, action) => T.core.invoke("folder_sync", { id, action }),
+  folderResolve: (id, keep) => T.core.invoke("folder_resolve", { id, keep }),
+  folderForget: id => T.core.invoke("folder_forget", { id }),
+  async pickFolder() {
+    try { return await T.core.invoke("plugin:dialog|open", { options: { directory: true, multiple: false } }); }
+    catch (e) { console.warn(e); return null; }
+  },
+  onSync(cb) { T.event.listen("hub://sync", e => cb(e.payload)); },
+  onDataChanged(cb) { T.event.listen("hub://data-changed", e => cb(e.payload)); },
 };
 
-/* Заглушка для браузера */
+/* Заглушка для браузера: пароль хранится открыто в localStorage — только для разработки и тестов */
 const LSP = "hubdev:";
 const blobs = new Map();
+let devOpen = false;
+const devKeys = () => localStorage.getItem("hubdev-keys");
+function devGuard() { if (!devOpen) throw new Error("Хаб заперт"); }
 const devCore = {
   async apps() {
     const ids = await (await fetch("apps/index.json")).json();
@@ -47,6 +79,7 @@ const devCore = {
     return out;
   },
   async dump(ns) {
+    devGuard();
     const json = {}, blobMeta = {}, pre = `${LSP}${ns}:`;
     for (let i = 0; i < localStorage.length; i++) {
       const k = localStorage.key(i);
@@ -56,23 +89,64 @@ const devCore = {
     return { json, blobs: blobMeta };
   },
   async get(ns, key) {
+    devGuard();
     if (blobs.has(`${LSP}${ns}:${key}`)) return blobs.get(`${LSP}${ns}:${key}`);
     const v = localStorage.getItem(`${LSP}${ns}:${key}`);
     return v === null ? undefined : JSON.parse(v);
   },
   async set(ns, key, value) {
+    devGuard();
     const k = `${LSP}${ns}:${key}`;
     if (value instanceof Blob) { localStorage.removeItem(k); blobs.set(k, value); return; }
     blobs.delete(k);
     localStorage.setItem(k, JSON.stringify(value));
   },
-  async remove(ns, key) { const k = `${LSP}${ns}:${key}`; localStorage.removeItem(k); blobs.delete(k); },
+  async remove(ns, key) { devGuard(); const k = `${LSP}${ns}:${key}`; localStorage.removeItem(k); blobs.delete(k); },
   appBase() { return new URL("hubapp/", location.href).href; },
   async notify(title, body) { console.info("[уведомление]", title, body); },
   async info() { return { dataDir: "(браузер: localStorage этой страницы)", version: "dev" }; },
   async openDataDir() {},
   onHotkey() {},
   async windowFocused() { return document.hasFocus(); },
+
+  async status() {
+    const old = Object.keys(localStorage).some(k => k.startsWith(LSP));
+    return { setupDone: !!devKeys(), unlocked: devOpen, hasOldData: old, platform: "pc" };
+  },
+  async setupCreate(password) {
+    if (devKeys()) throw new Error("Хаб уже настроен");
+    if ([...password].length < 8) throw new Error("Пароль — не короче 8 знаков");
+    localStorage.setItem("hubdev-keys", password); devOpen = true;
+    return "7KQ2-M9XD-R4TW-HC8P-3VNJ-6YBF-Q2MS-W9EA";
+  },
+  async setupJoin() { throw new Error("В браузере синхронизации нет — только в приложении хаба"); },
+  async unlock(password) { if (password !== devKeys()) throw new Error("Неверный пароль"); devOpen = true; },
+  async unlockWithRecovery(code, p) {
+    if (code.replace(/[^0-9a-z]/gi, "").toUpperCase() !== "7KQ2M9XDR4TWHC8P3VNJ6YBFQ2MSW9EA") throw new Error("Ключ восстановления не подходит");
+    if ([...p].length < 8) throw new Error("Пароль — не короче 8 знаков");
+    localStorage.setItem("hubdev-keys", p); devOpen = true;
+  },
+  async changePassword(o, n) {
+    if (o !== devKeys()) throw new Error("Старый пароль неверный");
+    if ([...n].length < 8) throw new Error("Пароль — не короче 8 знаков");
+    localStorage.setItem("hubdev-keys", n);
+  },
+  async lock() { devOpen = false; },
+  async syncStatus() { return { configured: false, kind: "", state: "off", message: "", lastSync: null, device: "browser", folders: [] }; },
+  async syncNow() {},
+  async driveAuthorize() { throw new Error("В браузере синхронизации нет — только в приложении хаба"); },
+  async syncConnect() { throw new Error("В браузере синхронизации нет — только в приложении хаба"); },
+  async syncDisconnect() {},
+  async rclonePasswords() { throw new Error("В браузере синхронизации нет"); },
+  async folderAdd() { throw new Error("В браузере синхронизации нет"); },
+  async folderPlace() {},
+  async folderPreview() { return { upload: [], download: [], differ: [], same: 0 }; },
+  async folderSync() { return []; },
+  async folderResolve() {},
+  async folderForget() {},
+  async pickFolder() { return null; },
+  onSync() {},
+  onDataChanged() {},
 };
 
 export const core = inTauri ? tauriCore : devCore;

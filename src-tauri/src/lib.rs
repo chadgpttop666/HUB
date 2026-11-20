@@ -1,8 +1,10 @@
-//! Ядро хаба (этап 1): файлы данных, список приложений, протокол hubapp:// для песочниц,
-//! системные уведомления и глобальная клавиша Ctrl+Alt+Пробел.
-//!
-//! Чего здесь пока нет — шифрования, rclone и входа в Google: это этап 2 (см. docs/design-doc.md).
+//! Ядро хаба: зашифрованные файлы данных, пароль и замок, синхронизация через rclone,
+//! список приложений, протокол hubapp:// для песочниц, уведомления, Ctrl+Alt+Пробел.
 
+pub mod crypto;
+pub mod hubsvc;
+pub mod rclone;
+pub mod sync;
 pub mod store;
 
 use serde::Serialize;
@@ -222,6 +224,8 @@ struct HubInfo {
     data_dir: String,
     apps_dir: String,
     version: String,
+    platform: &'static str,
+    rclone: String,
 }
 
 #[tauri::command]
@@ -230,6 +234,8 @@ fn hub_info(app: AppHandle, paths: State<'_, Paths>) -> HubInfo {
         data_dir: paths.data.display().to_string(),
         apps_dir: paths.apps.display().to_string(),
         version: app.package_info().version.to_string(),
+        platform: hubsvc::PLATFORM,
+        rclone: rclone::locate().display().to_string(),
     }
 }
 
@@ -268,6 +274,7 @@ fn bring_to_front(app: &AppHandle) {
 
 /* ───────── запуск ───────── */
 
+#[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let mut builder = tauri::Builder::default();
 
@@ -279,6 +286,8 @@ pub fn run() {
 
     builder
         .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_dialog::init())
         .register_asynchronous_uri_scheme_protocol("hubapp", |ctx, request, responder| {
             let app = ctx.app_handle().clone();
             std::thread::spawn(move || responder.respond(hubapp_response(&app, &request)));
@@ -289,7 +298,9 @@ pub fn run() {
             fs::create_dir_all(&paths.data)?;
             fs::create_dir_all(&paths.apps)?;
             app.manage(Store::new(paths.data.clone()));
+            app.manage(hubsvc::Hub::new(base.clone()));
             app.manage(paths);
+            hubsvc::Hub::spawn_worker(app.handle().clone());
 
             #[cfg(desktop)]
             {
@@ -324,7 +335,26 @@ pub fn run() {
             hub_info,
             open_data_dir,
             notify,
-            window_focused
+            window_focused,
+            hubsvc::hub_status,
+            hubsvc::setup_create,
+            hubsvc::setup_join,
+            hubsvc::unlock,
+            hubsvc::unlock_with_recovery,
+            hubsvc::change_password,
+            hubsvc::lock,
+            hubsvc::sync_status,
+            hubsvc::sync_now,
+            hubsvc::drive_authorize,
+            hubsvc::sync_connect,
+            hubsvc::sync_disconnect,
+            hubsvc::sync_rclone_passwords,
+            hubsvc::folder_add,
+            hubsvc::folder_place,
+            hubsvc::folder_preview,
+            hubsvc::folder_sync,
+            hubsvc::folder_resolve,
+            hubsvc::folder_forget
         ])
         .run(tauri::generate_context!())
         .expect("хаб не запустился");

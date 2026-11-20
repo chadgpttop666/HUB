@@ -19,8 +19,10 @@
   <header class="hub-topbar">
     <div><span class="hub-topbar__hello" id="today-hello">Добрый день</span> · <span id="today-date"></span></div>
     <div class="hub-topbar__right">
+      <span id="today-sync"></span>
       <span class="hub-row__trail shell-hint-keys"><kbd class="hub-kbd">Alt</kbd><kbd class="hub-kbd">1…9</kbd> приложения</span>
-      <button class="hub-btn hub-btn--sm hub-btn--glass hub-btn--icon" type="button" data-go="settings" aria-label="Настройки" title="Настройки"><i data-icon="settings"></i></button>
+      <button class="hub-btn hub-btn--sm hub-btn--glass hub-btn--icon shell-desktop" type="button" data-go="settings" aria-label="Настройки" title="Настройки"><i data-icon="settings"></i></button>
+      <button class="hub-btn hub-btn--sm hub-btn--glass shell-desktop" type="button" data-go="lock" title="Ctrl+L"><i data-icon="lock"></i>Заблокировать</button>
     </div>
   </header>
   <div class="shell-capture-wrap">
@@ -60,6 +62,8 @@
       </div>
       <p class="hub-capture__note" aria-live="polite"></p>
     </form>
+    <div class="hub-topbar__right"><span id="shell-sync"></span>
+      <button class="hub-btn hub-btn--sm hub-btn--glass hub-btn--icon" type="button" data-go="lock" aria-label="Заблокировать" title="Заблокировать · Ctrl+L"><i data-icon="lock"></i></button></div>
   </header>
   <main class="hub-shell__main hub-glass shell-main" id="shell-main">
     <div class="shell-frames" id="frames"></div>

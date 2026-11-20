@@ -39,3 +39,16 @@
 
 @media (max-width: 1100px) { .shell-hint-keys { display: none; } }
 .shell-row { display: inline-flex; align-items: center; gap: var(--space-1); }
+
+/* первая настройка и вход */
+.shell-lock { position: fixed; inset: 0; overflow: auto; }
+.shell-center { min-height: 100%; display: grid; place-items: center; padding: var(--space-6) var(--space-4); }
+.shell-setup { width: min(620px, 100%); padding: var(--space-8); border-radius: var(--radius-xl); }
+.shell-setup__body { margin-top: var(--space-6); }
+.shell-setup__bar { justify-content: space-between; margin-top: var(--space-8); }
+.shell-choice { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--space-3); }
+.shell-details summary { cursor: pointer; }
+.shell-pre { margin: var(--space-4) 0 0; padding: var(--space-3) var(--space-4); border-radius: var(--radius-sm); background: var(--surface-sunken);
+  font-size: var(--font-size-sm); white-space: pre-wrap; overflow-wrap: anywhere; user-select: all; }
+.shell-form-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--space-4); }
+.hub-topbar__right .hub-sync { white-space: nowrap; }

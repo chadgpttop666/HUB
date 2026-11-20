@@ -45,8 +45,44 @@ const waitFor = async (fn, ms = 6000, what = "условие") => {
 
 console.log("Хаб — сквозные тесты");
 await page.goto(URL0);
-await page.evaluate(() => localStorage.clear());
+await page.evaluate(() => {
+  localStorage.clear();
+  // корзина этапа 1 — одним списком; хаб должен разложить её по ключам
+  localStorage.setItem("hubdev:hub:inbox", JSON.stringify([{ id: "old1", text: "Мысль этапа 1", created: new Date().toISOString(), device: "pc", tags: [] }]));
+});
 await page.reload();
+const PASSWORD = "лес на рассвете";
+
+await test("первая настройка: имя, пароль дважды, ключ восстановления, Drive — позже", async () => {
+  await page.waitForSelector("#screen-lock .shell-setup");
+  await shot("00-setup-choice");
+  await page.click('[data-choose="new"]');
+  await page.fill("#su-name", "Тест");
+  await page.keyboard.press("Enter");
+  await page.fill("#su-p1", PASSWORD);
+  await page.fill("#su-p2", "не тот");
+  assert((await text("#su-hint")).includes("не совпадают"), "несовпадение видно сразу");
+  assert(await page.locator('.shell-setup [type="submit"]').isDisabled(), "«Дальше» недоступна");
+  await page.fill("#su-p2", PASSWORD);
+  await page.keyboard.press("Enter");
+  await page.waitForSelector(".hub-key");
+  eq((await page.locator(".hub-key span").count()), 8, "ключ — 8 групп");
+  await shot("00-setup-key");
+  assert(await page.locator('.shell-setup [type="submit"]').isDisabled(), "без отметки дальше нельзя");
+  await page.check("#su-saved");
+  await page.click('.shell-setup [type="submit"]');
+  await page.waitForSelector('[data-step="skip"]');
+  await page.click('[data-step="skip"]');
+  await page.waitForSelector("#screen-today:not([hidden])");
+  assert((await text("#today-hello")).includes("Тест"), "приветствие по имени");
+});
+
+await test("корзина этапа 1 перенесена по ключам", async () => {
+  await waitFor(async () => (await text('[data-card="inbox"] .hub-card__main')).includes("1 неразобранная"), 4000, "старая мысль на месте");
+  const keys = await page.evaluate(() => Object.keys(localStorage).filter(k => k.startsWith("hubdev:hub:inbox")));
+  eq(keys, ["hubdev:hub:inbox/old1"], "ключи корзины");
+  await page.evaluate(() => { const s = window.__hubShell.state; s.take("old1"); });
+});
 
 await test("«Сегодня» открывается, курсор в строке ввода", async () => {
   await page.waitForSelector("#screen-today:not([hidden])");
@@ -172,9 +208,24 @@ await test("Hub API: JSON, Blob и indexedDB-подмена", async () => {
   eq(r, { json: { a: [1, "ё"] }, blob: "байты", keys: ["t/blob", "t/json"], idb: [2, "a"] }, "Hub API");
 });
 
-await test("данные приложения переживают перезагрузку хаба", async () => {
+await test("перезапуск: экран входа, неверный пароль, вход", async () => {
   await page.reload();
+  await page.waitForSelector(".hub-lock");
+  assert(await page.locator(".hub-lock__form").isHidden(), "заставка без поля");
+  await shot("09-lock");
+  await page.keyboard.press("x");
+  await page.waitForSelector(".hub-lock__form:not([hidden])");
+  eq(await page.inputValue(".hub-lock__form input"), "x", "первый символ уже в поле");
+  await page.keyboard.type("yz"); await page.keyboard.press("Enter");
+  await page.waitForSelector(".hub-lock__msg[data-tone=danger]");
+  assert((await text(".hub-lock__msg")).includes("английская раскладка"), "подсказка про раскладку");
+  await shot("10-lock-wrong");
+  await page.fill(".hub-lock__form input", PASSWORD);
+  await page.keyboard.press("Enter");
   await page.waitForSelector("#screen-today:not([hidden])");
+});
+
+await test("данные приложения переживают перезагрузку хаба", async () => {
   await page.keyboard.press("Alt+1");
   await waitFor(async () => appFrame() && (await appFrame().evaluate(() => JSON.parse(localStorage.getItem("tb-records") || "[]").length)) === 1, 6000, "запись на месте");
 });
@@ -205,6 +256,27 @@ await test("тема: «Туман» перекрашивает хаб и при
   await page.click('#rail [data-go="today"]');
   await shot("08-today-mist");
   await page.evaluate(() => window.__hubShell.state.setSetting("theme", "forest"));
+});
+
+await test("Ctrl+L запирает: приложения закрыты, данные недоступны; вход ключом восстановления", async () => {
+  await page.keyboard.press("Alt+1");
+  await page.waitForTimeout(300);
+  await page.keyboard.press("Control+l");
+  await page.waitForSelector(".hub-lock");
+  eq(page.frames().length, 1, "песочниц приложений не осталось");
+  eq(await page.evaluate(() => window.__hubShell.state.items.length), 0, "корзина выгружена из памяти");
+  await page.keyboard.press("Enter");
+  await page.fill(".hub-lock__form input", "неверно"); await page.keyboard.press("Enter");
+  await page.click("[data-act=recover]");
+  await page.fill("#rc-code", "7kq2 m9xd r4tw hc8p 3vnj 6ybf q2ms w9ea");
+  await page.fill("#rc-p1", "новый пароль хаба"); await page.fill("#rc-p2", "новый пароль хаба");
+  await page.keyboard.press("Enter");
+  await page.waitForSelector("#screen-today:not([hidden])");
+  await page.keyboard.press("Control+l");
+  await page.waitForSelector(".hub-lock");
+  await page.keyboard.press("Enter");
+  await page.fill(".hub-lock__form input", "новый пароль хаба"); await page.keyboard.press("Enter");
+  await page.waitForSelector("#screen-today:not([hidden])");
 });
 
 await test("без ошибок в консоли", async () => { eq(errors, [], "ошибки страницы"); });

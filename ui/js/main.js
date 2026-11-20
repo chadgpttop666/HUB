@@ -1,7 +1,9 @@
 /* main.js — оболочка хаба: «Сегодня», строка ввода, разбор корзины, панель приложений, настройки, клавиши. */
 import { core, inTauri } from "./core.js";
-import { HubState, tagsOf } from "./state.js";
+import { HubState, tagsOf, setDevice, DEVICE } from "./state.js";
 import { AppHost } from "./host.js";
+import { runSetup, runLock } from "./lock.js";
+import { renderSyncSettings, setSyncStatus, syncPill, syncStatus } from "./syncui.js";
 
 const H = window.HubUI;
 const $ = sel => document.querySelector(sel);
@@ -50,7 +52,9 @@ async function loadThemes() {
   }
   if (!themes.length) themes.push({ id: "forest", name: "Лес", base: "dark", photo: null, tokens: {} });
 }
-const currentTheme = () => themes.find(t => t.id === state.settings.theme) || themes[0];
+const cachedTheme = () => { try { return localStorage.getItem("hub:theme"); } catch { return null; } };
+const currentTheme = () => themes.find(t => t.id === (unlocked ? state.settings.theme : cachedTheme())) || themes[0];
+let unlocked = false;
 // url() внутри переменной разрешается относительно hub.css, где она используется, поэтому адрес — абсолютный
 const themePhoto = t => (t.photo ? `url('${new URL(`hub/themes/${t.id}/${t.photo}`, location.href).href}')` : "none");
 function themePayload() { const t = currentTheme(); return { id: t.id, name: t.name, base: t.base, tokens: t.tokens || {} }; }
@@ -63,6 +67,7 @@ function applyTheme() {
   for (const [k, v] of Object.entries(t.tokens || {})) html.style.setProperty(`--${k}`, v);
   html.style.setProperty("--hub-photo", themePhoto(t));
   html.style.setProperty("--hub-photo-pos", t.photoPosition || "50% 38%");
+  try { if (unlocked) localStorage.setItem("hub:theme", t.id); } catch { /* ничего */ }
   if (host) host.broadcastTheme();
 }
 
@@ -76,6 +81,8 @@ function go(name) {
   closeSnoozeMenu();
   if (name === "today") { view = { name: "today", app: null }; showScreen("today"); renderToday(); focusCapture(); }
   else if (name === "triage") startTriage();
+  else if (name === "sync") { go("settings"); setTimeout(() => { const s = $("#sync"); if (s) s.scrollIntoView({ block: "start" }); }, 80); }
+  else if (name === "lock") lockNow();
   else if (name === "settings") {
     view = { name: "settings", app: null };
     showScreen("shell"); host.show(null);
@@ -102,11 +109,22 @@ function iconHTML(icon, cls) {
 }
 
 /* ───────── «Сегодня» ───────── */
+function userName() { try { return localStorage.getItem("hub:name") || ""; } catch { return ""; } }
 function renderHello() {
-  const now = new Date();
+  const now = new Date(), name = userName();
   for (const id of ["today", "triage"]) {
-    $(`#${id}-hello`).textContent = H.greeting(now);
+    $(`#${id}-hello`).textContent = H.greeting(now) + (name ? `, ${name}` : "");
     $(`#${id}-date`).textContent = fmtLong.format(now);
+  }
+  renderSyncPills();
+}
+function renderSyncPills() {
+  const conflicts = (state.conflicts || []).length;
+  for (const [sel, compact] of [["#today-sync", false], ["#shell-sync", true]]) {
+    const el = $(sel);
+    if (!el) continue;
+    el.innerHTML = syncPill(conflicts, compact);
+    H.icons(el);
   }
 }
 function cardHTML(c) {
@@ -251,8 +269,10 @@ function startTriage() {
 function triageTargets() { return host.targets().slice(0, 9); }
 function originHTML(item) {
   if (item.source) return `${iconHTML((host.apps.get(item.source) || { manifest: {} }).manifest.icon, "hub-icon--sm")}из «${esc(host.name(item.source))}»`;
-  if (item.device === "phone") return `${iconHTML("smartphone", "hub-icon--sm")}с телефона`;
-  return `${iconHTML("monitor", "hub-icon--sm")}с этого ПК`;
+  const phone = String(item.device || "").startsWith("phone");
+  const here = item.device === DEVICE || (item.device === "pc" && DEVICE.startsWith("pc"));
+  if (phone) return `${iconHTML("smartphone", "hub-icon--sm")}${here ? "с этого телефона" : "с телефона"}`;
+  return `${iconHTML("monitor", "hub-icon--sm")}${here ? "с этого ПК" : "с другого ПК"}`;
 }
 function renderTriage() {
   const el = $("#triage");
@@ -473,10 +493,11 @@ async function renderSettings() {
     [["Alt", "1…9"], "приложение по номеру"],
     [["Enter"], "в строке ввода — сохранить; Ctrl Z — отменить"],
     [["1…9", "S", "Del", "← →", "Esc"], "разбор корзины: перенести, отложить, удалить, листать, выйти"],
+    [["Ctrl", "L"], "заблокировать хаб"],
   ];
   el.innerHTML = `
     <div><h1 class="hub-page-title">Настройки</h1>
-      <p class="hub-muted" style="margin:var(--space-1) 0 0">этап 1 · данные только на этом компьютере, без синхронизации</p></div>
+      <p class="hub-muted" style="margin:var(--space-1) 0 0">${syncStatus.configured ? "данные зашифрованы · синхронизация с Google Drive" : "данные зашифрованы · только на этом устройстве"}</p></div>
     <section class="shell-section"><h2 class="hub-section-title">Тема</h2>
       <div class="hub-themes" role="radiogroup" aria-label="Тема">${themes.map(t => `
         <button class="hub-theme" type="button" role="radio" aria-checked="${t.id === cur.id}" data-theme-id="${esc(t.id)}">
@@ -492,6 +513,7 @@ async function renderSettings() {
         </button>`).join("")}
       </div>
     </section>
+    <div id="settings-sync"></div>
     <section class="shell-section"><h2 class="hub-section-title">Приложения</h2>
       <ul class="hub-list hub-list--divided hub-glass" style="padding:var(--space-1) var(--space-2)">${apps.map((a, i) => `
         <li><button class="hub-row" type="button" data-open="${esc(a.id)}">
@@ -510,13 +532,23 @@ async function renderSettings() {
         <dt>Папка приложений</dt><dd>${esc(info.appsDir || "—")}</dd>
         <dt>Версия хаба</dt><dd>${esc(info.version || "—")}</dd>
       </dl>
-      <p class="hub-hint" style="margin-top:var(--space-3)">Каждая запись — отдельный файл JSON. Шифрование и синхронизация с Drive — на этапе 2.</p>
+      <p class="hub-hint" style="margin-top:var(--space-3)">Каждая запись — отдельный файл, зашифрованный ключом данных. Ключ открывается паролем или ключом восстановления.</p>
       ${inTauri ? `<div class="hub-btn-row" style="margin-top:var(--space-4)"><button class="hub-btn" type="button" data-act="open-data"><i data-icon="folder"></i>Открыть папку</button></div>` : ""}
     </section>
     <section class="shell-section"><h2 class="hub-section-title">Клавиши</h2>
       <dl class="shell-keys">${keys.map(([ks, what]) => `<dt>${ks.map(k => `<kbd class="hub-kbd">${esc(k)}</kbd>`).join(" ")}</dt><dd>${esc(what)}</dd>`).join("")}</dl>
     </section>`;
   H.icons(el);
+  renderSyncSettings($("#settings-sync"), syncCtx());
+}
+function syncCtx() {
+  return {
+    state, toast, platform,
+    appName: ns => (ns === "hub" ? "Хаб" : host && host.apps.has(ns) ? host.name(ns) : ns),
+    refresh: async () => { setSyncStatus(await core.syncStatus().catch(() => null)); await state.load(); if (view.name === "settings") renderSettings(); renderSyncPills(); },
+    lockNow,
+    afterRestore: c => { if (c && c.ns !== "hub" && host) host.reload(c.ns); state.load().then(() => { if (view.name === "settings") renderSettings(); }); },
+  };
 }
 
 /* ───────── клавиши ───────── */
@@ -528,12 +560,15 @@ function hotkeyOf(e) {
   return null;
 }
 function handleHotkey(k) {
+  if (!unlocked) return;
   if (k === "capture") focusCapture();
+  else if (k === "lock") lockNow();
   else if (k.startsWith("app:")) { const a = appsInOrder()[Number(k.slice(4)) - 1]; if (a) openApp(a.id); }
-  // command (Ctrl K) и lock (Ctrl L) — следующие этапы; клавиши уже зарезервированы за хабом
+  // command (Ctrl K) — следующий этап; клавиша уже зарезервирована за хабом
 }
 const isTyping = t => t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName));
 document.addEventListener("keydown", e => {
+  if (!unlocked) return;
   const k = hotkeyOf(e);
   if (k) { e.preventDefault(); handleHotkey(k); return; }
   if (view.name === "triage") { triageKey(e); return; }
@@ -577,6 +612,9 @@ state.addEventListener("change", e => {
   } else if (what === "settings") {
     applyTheme();
     if (view.name === "settings") renderSettings();
+  } else if (what === "conflicts") {
+    renderSyncPills();
+    if (view.name === "settings") renderSettings();
   }
 });
 
@@ -586,33 +624,103 @@ setInterval(() => {
   const now = Date.now();
   const back = state.items.some(i => i.snoozeUntil && Date.parse(i.snoozeUntil) > lastSnoozeCheck && Date.parse(i.snoozeUntil) <= now);
   lastSnoozeCheck = now;
+  if (!unlocked) return;
   if (back) state.changed("inbox");
   else if (view.name === "today") renderToday();
   else renderHello();
 }, 30e3);
 
-/* ───────── запуск ───────── */
-async function start() {
-  await Promise.all([state.load(), loadThemes()]);
+/* ───────── замок ───────── */
+let lastActivity = Date.now(), locking = false;
+const touch = () => { lastActivity = Date.now(); };
+["keydown", "pointerdown", "wheel", "touchstart"].forEach(ev => document.addEventListener(ev, touch, { capture: true, passive: true }));
+setInterval(() => {
+  const min = Number(state.local && state.local.autolock);
+  if (unlocked && min > 0 && Date.now() - lastActivity > min * 60e3) lockNow();
+}, 15e3);
+
+async function lockNow() {
+  if (!unlocked || locking) return;
+  locking = true;
+  unlocked = false;
+  closeSnoozeMenu();
+  document.querySelectorAll("dialog").forEach(d => d.close());
+  if (host) host.reset();
+  try { await core.lock(); } catch (e) { console.error(e); }
+  state.items = []; state.cards = {}; state.deliveries = []; state.conflicts = [];
+  for (const sel of ["#today-cards", "#triage", "#settings"]) { const el = $(sel); if (el) el.innerHTML = ""; }
   applyTheme();
-  host = new AppHost({
-    state,
-    container: $("#frames"),
-    getTheme: themePayload,
-    toast,
-    onHotkey: handleHotkey,
-    onCard: () => {},
-  });
+  await runLock();
+  locking = false;
+  await enterHub();
+}
+
+/* синхронизация: статус и чужие правки */
+core.onSync(st => { setSyncStatus(st); if (unlocked) renderSyncPills(); });
+core.onDataChanged(async ({ namespaces = [] } = {}) => {
+  if (!unlocked) return;
+  if (namespaces.includes("hub")) {
+    await state.load();
+    if (view.name === "today") renderToday();
+    else if (view.name === "triage" && !tri.busy && !tri.menu) renderTriage();
+    renderRail(); renderSyncPills();
+    host.flushAll();
+  }
+  for (const ns of namespaces) {
+    if (ns === "hub" || !host.frames.has(ns)) continue;
+    const shown = view.name === "app" && view.app === ns;
+    host.reload(ns);
+    if (shown) toast(`Пришли изменения с другого устройства — «${host.name(ns)}» обновлено`, { icon: "refresh-cw" });
+  }
+});
+
+/* ───────── запуск ───────── */
+let platform = "pc", wired = false;
+async function start() {
+  await loadThemes();
+  applyTheme();
+  const st = await core.status();
+  platform = st.platform || "pc";
+  html.dataset.platform = platform;
+  window.__hubShell = { state, core, go, openApp, lockNow, get host() { return host; }, get unlocked() { return unlocked; } };   // для тестов и отладки
+  if (!st.setupDone) await runSetup(st);
+  else if (!st.unlocked) await runLock();
+  await enterHub();
+}
+
+/* после пароля: данные, приложения, «Сегодня» */
+async function enterHub() {
+  await state.load();
+  unlocked = true; lastActivity = Date.now();
+  setSyncStatus(await core.syncStatus().catch(() => null));
+  setDevice(syncStatus.device || (platform === "phone" ? "phone" : "pc"));
+  applyTheme();
+  if (!host) {
+    host = new AppHost({
+      state,
+      container: $("#frames"),
+      getTheme: themePayload,
+      toast,
+      onHotkey: handleHotkey,
+      onCard: () => {},
+      onActivity: touch,
+    });
+  }
+  host.reset();
+  host.apps.clear();
   try { host.setApps(await core.apps()); }
   catch (e) { console.error(e); toast(`Список приложений не прочитался: ${e.message || e}`, { tone: "danger", icon: "circle-alert" }); }
   // приложения с карточкой на «Сегодня» и получатели корзины запускаются сразу, в фоне
   for (const a of host.list()) if (a.manifest.card || (a.manifest.accepts || []).length) host.ensure(a.id);
   host.flushAll();
-  setupCapture($("#capture-main"));
-  setupCapture($("#capture-compact"));
-  core.onHotkey(k => handleHotkey(k));
+  if (!wired) {
+    wired = true;
+    setupCapture($("#capture-main"));
+    setupCapture($("#capture-compact"));
+    core.onHotkey(k => handleHotkey(k));
+  }
+  document.querySelector(".hub-backdrop").setAttribute("data-scene", "open");
   go("today");
-  window.__hubShell = { state, host, go, openApp };   // для тестов и отладки из консоли
 }
 start().catch(e => {
   console.error(e);

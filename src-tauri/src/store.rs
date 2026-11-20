@@ -7,18 +7,41 @@
 //! Части ключа экранируются так, чтобы имя файла было допустимо на Windows и не зависело
 //! от регистра: остаются только `a-z 0-9 - _ .`, всё остальное (и заглавные буквы) — `%XX` по байтам UTF-8.
 //! Файл пишется во временный и переименовывается — недописанного файла не бывает.
+//!
+//! Содержимое файлов зашифровано ключом данных (crypto::seal). Пока хаб заперт, ключа нет —
+//! хранилище ничего не читает и не пишет. Незашифрованные файлы этапа 1 читаются,
+//! а `encrypt_all` переписывает их зашифрованными.
+//! Каждое изменение через обычные set/remove попадает в список для синхронизации (`take_changes`).
 
+use crate::crypto::{self, DataKey};
 use serde::Serialize;
 use serde_json::{Map, Value};
 use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::sync::Mutex;
+use std::sync::{Mutex, RwLock};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 pub struct Store {
     root: PathBuf,
     lock: Mutex<()>,
+    key: RwLock<Option<DataKey>>,
+    changes: Mutex<Vec<Change>>,
 }
+
+/// Изменение ключа: для журнала синхронизации.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Change {
+    pub ns: String,
+    pub key: String,
+    pub ts: u64,
+}
+
+pub fn now_ms() -> u64 {
+    SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_millis() as u64).unwrap_or(0)
+}
+
+pub const LOCKED: &str = "Хаб заперт";
 
 #[derive(Serialize, Debug, PartialEq)]
 pub struct BlobMeta {
@@ -131,7 +154,47 @@ fn remove_if_exists(path: &Path) -> Result<(), String> {
 
 impl Store {
     pub fn new(root: PathBuf) -> Self {
-        Store { root, lock: Mutex::new(()) }
+        Store { root, lock: Mutex::new(()), key: RwLock::new(None), changes: Mutex::new(Vec::new()) }
+    }
+
+    pub fn set_key(&self, key: Option<DataKey>) {
+        *self.key.write().unwrap_or_else(|e| e.into_inner()) = key;
+    }
+
+    pub fn is_open(&self) -> bool {
+        self.key.read().unwrap_or_else(|e| e.into_inner()).is_some()
+    }
+
+    pub fn data_key(&self) -> Result<DataKey, String> {
+        self.key.read().unwrap_or_else(|e| e.into_inner()).clone().ok_or_else(|| LOCKED.to_string())
+    }
+
+    fn seal(&self, plain: &[u8]) -> Result<Vec<u8>, String> {
+        Ok(crypto::seal(&self.data_key()?, plain))
+    }
+
+    fn unseal(&self, bytes: Vec<u8>) -> Result<Vec<u8>, String> {
+        let key = self.data_key()?;
+        if crypto::is_sealed(&bytes) {
+            crypto::open(&key, &bytes)
+        } else {
+            Ok(bytes) // файл этапа 1, ещё не зашифрован
+        }
+    }
+
+    fn record(&self, ns: &str, key: &str) {
+        self.changes.lock().unwrap_or_else(|e| e.into_inner()).push(Change { ns: ns.into(), key: key.into(), ts: now_ms() });
+    }
+
+    /// Сколько изменений ждёт и когда было последнее (мс) — чтобы синхронизировать после паузы в правках.
+    pub fn pending_changes(&self) -> (usize, u64) {
+        let c = self.changes.lock().unwrap_or_else(|e| e.into_inner());
+        (c.len(), c.last().map(|x| x.ts).unwrap_or(0))
+    }
+
+    /// Изменения с прошлого вызова (для журнала синхронизации).
+    pub fn take_changes(&self) -> Vec<Change> {
+        std::mem::take(&mut *self.changes.lock().unwrap_or_else(|e| e.into_inner()))
     }
 
     pub fn root(&self) -> &Path {
@@ -165,10 +228,18 @@ impl Store {
     }
 
     pub fn set_json(&self, ns: &str, key: &str, value: &Value) -> Result<(), String> {
+        self.set_json_quiet(ns, key, value)?;
+        self.record(ns, key);
+        Ok(())
+    }
+
+    /// Запись без отметки для синхронизации — так применяются изменения с других устройств.
+    pub fn set_json_quiet(&self, ns: &str, key: &str, value: &Value) -> Result<(), String> {
         let base = self.key_base(ns, key)?;
         let compact = serde_json::to_vec(value).map_err(|e| e.to_string())?;
         // маленькие файлы — с отступами, чтобы их было удобно читать глазами
         let bytes = if compact.len() < 64 * 1024 { serde_json::to_vec_pretty(value).map_err(|e| e.to_string())? } else { compact };
+        let bytes = self.seal(&bytes)?;
         let _g = self.guard();
         write_atomic(&with_ext(&base, ".json"), &bytes)?;
         remove_if_exists(&with_ext(&base, ".bin"))?;
@@ -176,9 +247,16 @@ impl Store {
     }
 
     pub fn set_blob(&self, ns: &str, key: &str, mime: &str, bytes: &[u8]) -> Result<(), String> {
+        self.set_blob_quiet(ns, key, mime, bytes)?;
+        self.record(ns, key);
+        Ok(())
+    }
+
+    pub fn set_blob_quiet(&self, ns: &str, key: &str, mime: &str, bytes: &[u8]) -> Result<(), String> {
         let base = self.key_base(ns, key)?;
+        let sealed = self.seal(bytes)?;
         let _g = self.guard();
-        write_atomic(&with_ext(&base, ".bin"), bytes)?;
+        write_atomic(&with_ext(&base, ".bin"), &sealed)?;
         write_atomic(&with_ext(&base, ".type"), mime.as_bytes())?;
         remove_if_exists(&with_ext(&base, ".json"))
     }
@@ -186,7 +264,7 @@ impl Store {
     pub fn get_json(&self, ns: &str, key: &str) -> Result<Option<Value>, String> {
         let path = with_ext(&self.key_base(ns, key)?, ".json");
         match fs::read(&path) {
-            Ok(b) => serde_json::from_slice(&b).map(Some).map_err(|e| format!("{}: {e}", path.display())),
+            Ok(b) => serde_json::from_slice(&self.unseal(b)?).map(Some).map_err(|e| format!("{}: {e}", path.display())),
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
             Err(e) => Err(format!("{}: {e}", path.display())),
         }
@@ -195,7 +273,7 @@ impl Store {
     pub fn get_blob(&self, ns: &str, key: &str) -> Result<Option<Vec<u8>>, String> {
         let path = with_ext(&self.key_base(ns, key)?, ".bin");
         match fs::read(&path) {
-            Ok(b) => Ok(Some(b)),
+            Ok(b) => Ok(Some(self.unseal(b)?)),
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
             Err(e) => Err(format!("{}: {e}", path.display())),
         }
@@ -208,12 +286,19 @@ impl Store {
         }
         if let Ok(m) = fs::metadata(with_ext(&base, ".bin")) {
             let mime = fs::read_to_string(with_ext(&base, ".type")).unwrap_or_default();
-            return Ok(Some(Stat { kind: "blob", mime: Some(mime), size: m.len() }));
+            return Ok(Some(Stat { kind: "blob", mime: Some(mime), size: plain_size(m.len()) }));
         }
         Ok(None)
     }
 
     pub fn remove(&self, ns: &str, key: &str) -> Result<(), String> {
+        self.remove_quiet(ns, key)?;
+        self.record(ns, key);
+        Ok(())
+    }
+
+    pub fn remove_quiet(&self, ns: &str, key: &str) -> Result<(), String> {
+        self.data_key()?;
         let base = self.key_base(ns, key)?;
         let ns_dir = self.ns_dir(ns)?;
         let _g = self.guard();
@@ -233,18 +318,70 @@ impl Store {
 
     /// Все данные пространства: JSON-значения целиком, у Blob — только тип и размер.
     pub fn dump(&self, ns: &str) -> Result<Dump, String> {
+        let key = self.data_key()?;
         let dir = self.ns_dir(ns)?;
         let mut out = Dump::default();
         if !dir.exists() {
             return Ok(out);
         }
         let _g = self.guard();
-        walk(&dir, &mut Vec::new(), &mut out)?;
+        walk(&dir, &mut Vec::new(), &mut out, &key)?;
         Ok(out)
+    }
+
+    /// Все пространства данных (папки верхнего уровня).
+    pub fn namespaces(&self) -> Vec<String> {
+        let mut out: Vec<String> = fs::read_dir(&self.root)
+            .map(|rd| rd.flatten().filter(|e| e.path().is_dir()).map(|e| e.file_name().to_string_lossy().to_string()).filter(|n| valid_ns(n)).collect())
+            .unwrap_or_default();
+        out.sort();
+        out
+    }
+
+    /// Все ключи пространства с видом значения: для первой выгрузки на Drive.
+    pub fn keys(&self, ns: &str) -> Result<Vec<(String, bool)>, String> {
+        let d = self.dump(ns)?;
+        let mut out: Vec<(String, bool)> = d.json.keys().map(|k| (k.clone(), false)).collect();
+        out.extend(d.blobs.keys().map(|k| (k.clone(), true)));
+        out.sort();
+        Ok(out)
+    }
+
+    /// Зашифровать всё, что осталось открытым с этапа 1. Возвращает число переписанных файлов.
+    pub fn encrypt_all(&self) -> Result<usize, String> {
+        let key = self.data_key()?;
+        let _g = self.guard();
+        let mut n = 0;
+        let mut stack = vec![self.root.clone()];
+        while let Some(dir) = stack.pop() {
+            let Ok(rd) = fs::read_dir(&dir) else { continue };
+            for e in rd.flatten() {
+                let p = e.path();
+                if p.is_dir() {
+                    stack.push(p);
+                    continue;
+                }
+                let name = e.file_name().to_string_lossy().to_string();
+                if !(name.ends_with(".json") || name.ends_with(".bin")) {
+                    continue;
+                }
+                let bytes = fs::read(&p).map_err(|e| format!("{}: {e}", p.display()))?;
+                if !crypto::is_sealed(&bytes) {
+                    write_atomic(&p, &crypto::seal(&key, &bytes))?;
+                    n += 1;
+                }
+            }
+        }
+        Ok(n)
     }
 }
 
-fn walk(dir: &Path, prefix: &mut Vec<String>, out: &mut Dump) -> Result<(), String> {
+/// размер открытого содержимого по размеру зашифрованного файла
+fn plain_size(sealed: u64) -> u64 {
+    sealed.saturating_sub((crypto::MAGIC.len() + 24 + 16) as u64)
+}
+
+fn walk(dir: &Path, prefix: &mut Vec<String>, out: &mut Dump, dkey: &DataKey) -> Result<(), String> {
     let mut entries: Vec<_> = fs::read_dir(dir).map_err(|e| format!("{}: {e}", dir.display()))?.flatten().collect();
     entries.sort_by_key(|e| e.file_name());
     for entry in entries {
@@ -257,7 +394,7 @@ fn walk(dir: &Path, prefix: &mut Vec<String>, out: &mut Dump) -> Result<(), Stri
         if ft.is_dir() {
             if let Some(seg) = decode_segment(&name) {
                 prefix.push(seg);
-                walk(&path, prefix, out)?;
+                walk(&path, prefix, out, dkey)?;
                 prefix.pop();
             }
             continue;
@@ -272,14 +409,18 @@ fn walk(dir: &Path, prefix: &mut Vec<String>, out: &mut Dump) -> Result<(), Stri
         let Some(seg) = decode_segment(stem) else { continue };
         let key = if prefix.is_empty() { seg } else { format!("{}/{}", prefix.join("/"), seg) };
         if kind == "json" {
-            match fs::read(&path).map_err(|e| e.to_string()).and_then(|b| serde_json::from_slice::<Value>(&b).map_err(|e| e.to_string())) {
+            let read = fs::read(&path).map_err(|e| e.to_string()).and_then(|b| {
+                let plain = if crypto::is_sealed(&b) { crypto::open(dkey, &b)? } else { b };
+                serde_json::from_slice::<Value>(&plain).map_err(|e| e.to_string())
+            });
+            match read {
                 Ok(v) => {
                     out.json.insert(key, v);
                 }
                 Err(e) => eprintln!("[хаб] файл данных не читается и пропущен: {}: {e}", path.display()),
             }
         } else {
-            let size = entry.metadata().map(|m| m.len()).unwrap_or(0);
+            let size = entry.metadata().map(|m| plain_size(m.len())).unwrap_or(0);
             let mime = fs::read_to_string(with_ext(&path.with_extension(""), ".type")).unwrap_or_default();
             out.blobs.insert(key, serde_json::json!({ "type": mime, "size": size }));
         }
@@ -295,6 +436,7 @@ mod tests {
     fn store() -> (tempfile::TempDir, Store) {
         let dir = tempfile::tempdir().unwrap();
         let s = Store::new(dir.path().to_path_buf());
+        s.set_key(Some(DataKey::random()));
         (dir, s)
     }
 
@@ -354,5 +496,42 @@ mod tests {
             assert!(s.set_json("ok", key, &json!(1)).is_err(), "key {key:?}");
         }
         assert!(s.set_json("ok", &"x".repeat(600), &json!(1)).is_err());
+    }
+
+    #[test]
+    fn encrypted_on_disk_and_locked_without_key() {
+        let (d, s) = store();
+        s.set_json("hub", "inbox/a", &json!({"text": "секретная мысль"})).unwrap();
+        let raw = fs::read(d.path().join("hub/inbox/a.json")).unwrap();
+        assert!(crypto::is_sealed(&raw));
+        assert!(!String::from_utf8_lossy(&raw).contains("секрет"));
+        s.set_key(None);
+        assert_eq!(s.get_json("hub", "inbox/a").unwrap_err(), LOCKED);
+        assert_eq!(s.dump("hub").unwrap_err(), LOCKED);
+        assert!(s.set_json("hub", "x", &json!(1)).is_err());
+    }
+
+    #[test]
+    fn stage1_plaintext_is_read_and_encrypted() {
+        let (d, s) = store();
+        fs::create_dir_all(d.path().join("repetition/localstorage")).unwrap();
+        fs::write(d.path().join("repetition/localstorage/tb-meta.json"), br#"{"version":2}"#).unwrap();
+        assert_eq!(s.get_json("repetition", "localstorage/tb-meta").unwrap(), Some(json!({"version": 2})));
+        assert_eq!(s.encrypt_all().unwrap(), 1);
+        assert!(crypto::is_sealed(&fs::read(d.path().join("repetition/localstorage/tb-meta.json")).unwrap()));
+        assert_eq!(s.dump("repetition").unwrap().json.get("localstorage/tb-meta"), Some(&json!({"version": 2})));
+        assert_eq!(s.encrypt_all().unwrap(), 0);
+    }
+
+    #[test]
+    fn changes_are_recorded_except_quiet() {
+        let (_d, s) = store();
+        s.set_json("hub", "a", &json!(1)).unwrap();
+        s.set_json_quiet("hub", "b", &json!(2)).unwrap();
+        s.remove("hub", "a").unwrap();
+        let ch: Vec<_> = s.take_changes().into_iter().map(|c| (c.ns, c.key)).collect();
+        assert_eq!(ch, vec![("hub".into(), "a".into()), ("hub".into(), "a".into())]);
+        assert!(s.take_changes().is_empty());
+        assert_eq!(s.namespaces(), vec!["hub".to_string()]);
     }
 }

@@ -49,6 +49,9 @@
           "Russian"
         ]
       }
-    }
+    },
+    "externalBin": [
+      "binaries/rclone"
+    ]
   }
 }
