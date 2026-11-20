@@ -13,7 +13,9 @@ use std::fs;
 use std::path::{Component, Path, PathBuf};
 use store::{Dump, Stat, Store};
 use tauri::ipc::{InvokeBody, Request, Response};
-use tauri::{AppHandle, Emitter, Manager, State, WebviewWindow};
+#[cfg(desktop)]
+use tauri::Emitter;
+use tauri::{AppHandle, Manager, State, WebviewWindow};
 
 struct Paths {
     data: PathBuf,
@@ -264,6 +266,8 @@ fn window_focused(window: WebviewWindow) -> bool {
     window.is_focused().unwrap_or(true) && !window.is_minimized().unwrap_or(false)
 }
 
+/// Поднять окно хаба (на ПК: второй запуск, Ctrl+Alt+Пробел). На телефоне окна не сворачиваются.
+#[cfg(desktop)]
 fn bring_to_front(app: &AppHandle) {
     if let Some(w) = app.get_webview_window("main") {
         let _ = w.unminimize();
@@ -276,6 +280,7 @@ fn bring_to_front(app: &AppHandle) {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    #[allow(unused_mut)]
     let mut builder = tauri::Builder::default();
 
     #[cfg(desktop)]
