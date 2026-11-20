@@ -123,8 +123,10 @@ export function themeEditor(ctx) {
       <h2 class="hub-dialog__title">Новая тема из фото</h2>
       <p class="hub-dialog__body">Хаб сам подберёт основу и силу вуали, чтобы текст читался на любом месте фото.</p>
       <div style="display:grid;gap:var(--space-4);margin-top:var(--space-5)">
-        <label class="hub-field"><span class="hub-label">Фото</span>
-          <input class="hub-input" type="file" id="te-file" accept="image/jpeg,image/png,image/webp"></label>
+        <div class="hub-field"><span class="hub-label">Фото</span>
+          <div class="hub-btn-row"><button class="hub-btn" type="button" id="te-pick"><i data-icon="image-plus"></i>${st.bitmap ? "Другое фото" : "Выбрать фото"}</button>
+            <span class="hub-muted" style="font-size:var(--font-size-sm)">${st.bitmap ? `${st.bitmap.width}×${st.bitmap.height}` : "JPEG, PNG или WebP; лучше от 1920 по длинной стороне"}</span></div>
+          <input type="file" id="te-file" accept="image/jpeg,image/png,image/webp" hidden></div>
         ${r ? `<div class="hub-theme__shot" data-theme="${r.base}" style="height:180px;--hub-photo:url('${st.url}');--hub-photo-pos:50% ${Math.round(st.posY * 100)}%;${Object.entries(r.tokens).map(([k, v]) => `--${k}:${v}`).join(";")};color:var(--text);background:var(--bg)">
             <div class="hub-backdrop" data-scene="open" style="position:absolute"><div class="hub-backdrop__photo" style="background-position:50% ${Math.round(st.posY * 100)}%"></div><div class="hub-backdrop__veil"></div></div>
             <div style="position:relative;padding:var(--space-4);display:grid;gap:var(--space-2)">
@@ -148,6 +150,7 @@ export function themeEditor(ctx) {
       <div class="hub-dialog__actions"><button class="hub-btn hub-btn--quiet" value="cancel">Отмена</button>
         <button class="hub-btn hub-btn--primary" type="button" id="te-save"${r ? "" : " disabled"}>Сохранить тему</button></div></form>`;
     H.icons(dlg);
+    dlg.querySelector("#te-pick").addEventListener("click", () => dlg.querySelector("#te-file").click());
     dlg.querySelector("#te-file").addEventListener("change", async e => {
       const f = e.target.files && e.target.files[0];
       if (!f) return;

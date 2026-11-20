@@ -315,6 +315,41 @@ await test("телефон 390×844: нижняя панель, «Приложе
   await page.setViewportSize({ width: 1366, height: 860 });
 });
 
+await test("календарь (написан по APP_SPEC.md): разбор даты, приём из корзины, карточка", async () => {
+  await page.evaluate(() => window.__hubShell.openApp("calendar"));
+  await page.waitForTimeout(500);
+  const fr = page.frames().filter(f => f.url() === "about:srcdoc");
+  let calFrame = null;
+  for (const f of fr) if (await f.evaluate(() => !!window.__calendar).catch(() => false)) calFrame = f;
+  assert(calFrame, "календарь открыт");
+  const base = "2026-11-20T12:00:00";
+  const parsed = await calFrame.evaluate(b => [
+    "завтра в 16:00 консультация", "25 ноября доклад", "купить 5 яблок", "в пятницу встреча в 9", "12.01 экзамен #учёба", "сегодня в 18.30 ужин",
+  ].map(t => window.__calendar.parseText(t, new Date(b))), base);
+  eq(parsed, [
+    { title: "Консультация", date: "2026-11-21", time: "16:00" },
+    { title: "Доклад", date: "2026-11-25", time: "" },
+    { title: "Купить 5 яблок", date: null, time: "" },
+    { title: "Встреча", date: "2026-11-27", time: "09:00" },
+    { title: "Экзамен", date: "2027-01-12", time: "" },
+    { title: "Ужин", date: "2026-11-20", time: "18:30" },
+  ], "разбор дат");
+  // из корзины: «завтра в 16:00 консультация» → цифра календаря в разборе
+  await page.evaluate(() => window.__hubShell.state.add("завтра в 16:00 консультация"));
+  await page.evaluate(() => window.__hubShell.go("triage"));
+  await page.waitForSelector(".hub-target");
+  const targets = await page.locator(".hub-target__name").allInnerTexts();
+  const n = targets.indexOf("Календарь") + 1;
+  assert(n > 0, `плитка календаря есть: ${targets}`);
+  while (!(await text(".hub-triage__text")).includes("консультация")) await page.keyboard.press("ArrowRight");
+  await page.keyboard.press(String(n));
+  await waitFor(() => calFrame.evaluate(() => [...document.querySelectorAll("#day-list .hub-row__title, #undated .hub-row__title")].some(e => e.textContent === "Консультация")), 9000, "событие в календаре");
+  await waitFor(async () => /завтра — консультация в 16:00/.test((await page.evaluate(() => (window.__hubShell.state.cards.calendar || {}).note)) || ""), 4000, "карточка календаря");
+  await page.evaluate(() => window.__hubShell.openApp("calendar"));
+  await page.waitForTimeout(400);
+  await shot("18-calendar");
+});
+
 await test("своя тема из фото: основа и вуаль считаются, тема применяется и удаляется", async () => {
   await page.evaluate(() => window.__hubShell.go("settings"));
   await page.click('[data-act="theme-new"]');

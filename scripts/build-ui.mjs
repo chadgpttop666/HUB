@@ -27,7 +27,10 @@ export function build({ quiet = false } = {}) {
   const apps = [];
   const appsOut = join(dist, "apps");
   mkdirSync(appsOut, { recursive: true });
-  for (const id of readdirSync(join(root, "apps")).sort()) {
+  // порядок в меню и для Alt+1…9: сначала основные, остальные — по алфавиту
+  const FIRST = ["repetition", "calendar"];
+  const order = id => (FIRST.includes(id) ? FIRST.indexOf(id) : FIRST.length);
+  for (const id of readdirSync(join(root, "apps")).sort((a, b) => order(a) - order(b) || a.localeCompare(b))) {
     const dir = join(root, "apps", id);
     if (!existsSync(join(dir, "manifest.json"))) continue;
     const m = JSON.parse(readFileSync(join(dir, "manifest.json"), "utf8"));

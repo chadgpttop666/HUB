@@ -477,6 +477,17 @@ mod tests {
         assert!(st.get_json(NS, "themes/dawn").unwrap().is_none());
     }
 
+    /// Шаблон и календарь — по правилам APP_SPEC.md: проверка установщика не находит ни одного нарушения.
+    #[test]
+    fn template_and_calendar_follow_spec() {
+        let (_d, st) = store();
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("..");
+        for dir in ["templates/app", "apps/calendar"] {
+            let p = check(&read(&root.join(dir)).unwrap(), &st);
+            assert!(p.errors.is_empty() && p.warnings.is_empty(), "{dir}: {:?} {:?}", p.errors, p.warnings);
+        }
+    }
+
     #[test]
     fn hex_detection() {
         assert!(hex_color("color: #fff;"));

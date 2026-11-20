@@ -1,0 +1,11 @@
+{
+  "id": "calendar",
+  "name": "Календарь",
+  "version": "1.0.0",
+  "description": "События по дням; из корзины — «завтра в 16:00 консультация»",
+  "icon": "calendar",
+  "entry": "index.html",
+  "card": true,
+  "accepts": [{ "type": "event", "label": "Событие с датой" }],
+  "permissions": { "network": [] }
+}

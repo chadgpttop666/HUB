@@ -153,6 +153,28 @@ try {
     await pc.js(async () => { document.querySelector(".hub-lock__form").requestSubmit(); return true; });
     await pc.until(has, 20000, "«Сегодня» после входа", "#screen-today:not([hidden])");
   });
+  await test("ПК: установка приложения из папки — проверка, установка, карточка", async () => {
+    const dir = join(root, "templates", "app");
+    const p = await pc.js(async d => window.__hubShell.core.inspectPackage(d), dir);
+    assert(p.kind === "app" && p.id === "notes-template" && p.errors.length === 0 && p.warnings.length === 0, JSON.stringify(p));
+    await pc.js(async d => window.__hubShell.core.installPackage(d), dir);
+    await pc.until(async () => (await window.__hubShell.core.apps()).some(a => a.id === "notes-template" && a.source === "installed"), 5000, "в списке приложений");
+    await pc.js(async () => { window.__hubShell.openApp("notes-template"); return true; });
+    await pc.until(async () => !!window.__hubShell.state.cards["notes-template"] || document.querySelector('[data-card="notes-template"]'), 15000, "приложение запустилось и прислало карточку");
+    await pc.shot("t4-pc-installed.png");
+  });
+
+  await test("Телефон: установленное на ПК приложение приезжает синхронизацией", async () => {
+    await pc.js(async () => { await window.__hubShell.core.syncNow(); return true; });
+    await sleep(6000);
+    await phone.js(async () => { await window.__hubShell.core.syncNow(); return true; });
+    await phone.until(async () => (await window.__hubShell.core.apps()).some(a => a.id === "notes-template"), 40000, "приложение на телефоне");
+  });
+
+  await test("ПК: удаление приложения", async () => {
+    await pc.js(async () => window.__hubShell.core.uninstallApp("notes-template", true));
+    await pc.until(async () => !(await window.__hubShell.core.apps()).some(a => a.id === "notes-template"), 5000, "приложение удалено");
+  });
 } finally {
   await pc.stop(); await phone.stop();
 }

@@ -27,6 +27,9 @@ jobs:
           npm install --no-save playwright@1.49.1
           npx playwright install --with-deps chromium
 
+      - name: APP_SPEC.md свежий
+        run: node scripts/app-spec.mjs --check
+
       - name: Сквозные тесты оболочки
         run: npm test
 
