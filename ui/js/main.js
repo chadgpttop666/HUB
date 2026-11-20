@@ -5,6 +5,8 @@ import { AppHost } from "./host.js";
 import { runSetup, runLock } from "./lock.js";
 import { renderSyncSettings, setSyncStatus, syncPill, syncStatus } from "./syncui.js";
 import { watchSecrets } from "./secret.js";
+import { installFromPath, pickAndInstall, uninstall, watchDrops } from "./install.js";
+import { themeEditor } from "./themes.js";
 
 const H = window.HubUI;
 const $ = sel => document.querySelector(sel);
@@ -53,11 +55,30 @@ async function loadThemes() {
   }
   if (!themes.length) themes.push({ id: "forest", name: "Лес", base: "dark", photo: null, tokens: {} });
 }
-const cachedTheme = () => { try { return localStorage.getItem("hub:theme"); } catch { return null; } };
-const currentTheme = () => themes.find(t => t.id === (unlocked ? state.settings.theme : cachedTheme())) || themes[0];
+const cached = k => { try { return localStorage.getItem(k); } catch { return null; } };
+const allThemes = () => (unlocked ? themes.concat(state.themes || []) : themes);
+function currentTheme() {
+  const id = unlocked ? state.settings.theme : cached("hub:theme");
+  const t = allThemes().find(x => x.id === id);
+  if (t) return t;
+  // своя тема до входа недоступна (её фото зашифровано) — встроенная той же основы
+  const base = cached("hub:theme-base");
+  return themes.find(x => x.base === base && x.photo) || themes[0];
+}
 let unlocked = false;
+const customPhotos = new Map();   // id своей темы → blob: URL её фото
+async function loadCustomPhotos() {
+  for (const t of state.themes || []) {
+    if (customPhotos.has(t.id) || !t.photo) continue;
+    try { const b = await core.get("hub", `themes/${t.id}/photo`); if (b instanceof Blob) customPhotos.set(t.id, URL.createObjectURL(b)); }
+    catch (e) { console.warn("фото темы не открылось", t.id, e); }
+  }
+}
 // url() внутри переменной разрешается относительно hub.css, где она используется, поэтому адрес — абсолютный
-const themePhoto = t => (t.photo ? `url('${new URL(`hub/themes/${t.id}/${t.photo}`, location.href).href}')` : "none");
+const themePhoto = t => {
+  if (t.custom) return customPhotos.has(t.id) ? `url('${customPhotos.get(t.id)}')` : "none";
+  return t.photo ? `url('${new URL(`hub/themes/${t.id}/${t.photo}`, location.href).href}')` : "none";
+};
 function themePayload() { const t = currentTheme(); return { id: t.id, name: t.name, base: t.base, tokens: t.tokens || {} }; }
 let appliedTokens = [];
 function applyTheme() {
@@ -68,7 +89,7 @@ function applyTheme() {
   for (const [k, v] of Object.entries(t.tokens || {})) html.style.setProperty(`--${k}`, v);
   html.style.setProperty("--hub-photo", themePhoto(t));
   html.style.setProperty("--hub-photo-pos", t.photoPosition || "50% 38%");
-  try { if (unlocked) localStorage.setItem("hub:theme", t.id); } catch { /* ничего */ }
+  try { if (unlocked) { localStorage.setItem("hub:theme", t.id); localStorage.setItem("hub:theme-base", t.base); } } catch { /* ничего */ }
   if (host) host.broadcastTheme();
 }
 
@@ -568,7 +589,7 @@ async function renderSettings() {
     <div><h1 class="hub-page-title">Настройки</h1>
       <p class="hub-muted" style="margin:var(--space-1) 0 0">${syncStatus.configured ? "данные зашифрованы · синхронизация с Google Drive" : "данные зашифрованы · только на этом устройстве"}</p></div>
     <section class="shell-section"><h2 class="hub-section-title">Тема</h2>
-      <div class="hub-themes" role="radiogroup" aria-label="Тема">${themes.map(t => `
+      <div class="hub-themes" role="radiogroup" aria-label="Тема">${allThemes().map(t => `
         <button class="hub-theme" type="button" role="radio" aria-checked="${t.id === cur.id}" data-theme-id="${esc(t.id)}">
           <div class="hub-theme__shot" data-theme="${esc(t.base)}" style="--hub-photo:${themePhoto(t)};color:var(--text);background:var(--bg)">
             <div class="hub-backdrop" data-scene="open" style="position:absolute"><div class="hub-backdrop__photo"></div><div class="hub-backdrop__veil"></div></div>
@@ -578,22 +599,30 @@ async function renderSettings() {
             </div>
           </div>
           <span class="hub-theme__name">${esc(t.name)}${t.id === cur.id ? `<i data-icon="check"></i>` : ""}</span>
-          <span class="hub-theme__meta">${t.base === "light" ? "светлая" : t.base === "solid" ? "сплошной цвет" : "тёмная"}</span>
+          <span class="hub-theme__meta">${t.base === "light" ? "светлая" : t.base === "solid" ? "сплошной цвет" : "тёмная"}${t.custom ? " · своя" : ""}</span>
         </button>`).join("")}
+        <button class="hub-theme hub-theme--new" type="button" data-act="theme-new"><i data-icon="image-plus" class="hub-icon--lg"></i><span>Новая тема из фото</span><span class="hub-theme__meta">основа и вуаль подберутся сами</span></button>
       </div>
+      ${(state.themes || []).length ? `<div class="hub-btn-row" style="margin-top:var(--space-3)">${state.themes.map(t => `<button class="hub-btn hub-btn--sm hub-btn--quiet" type="button" data-theme-remove="${esc(t.id)}"><i data-icon="trash-2"></i>Удалить «${esc(t.name)}»</button>`).join("")}</div>` : ""}
+      <p class="hub-hint" style="margin-top:var(--space-3)">Своя тема синхронизируется на телефон. Тему от нейросети (папка или zip с theme.json) — перетащите в окно хаба.</p>
     </section>
     <div id="settings-sync"></div>
     <section class="shell-section"><h2 class="hub-section-title">Приложения</h2>
       <ul class="hub-list hub-list--divided hub-glass" style="padding:var(--space-1) var(--space-2)">${apps.map((a, i) => `
-        <li><button class="hub-row" type="button" data-open="${esc(a.id)}">
+        <li><div class="hub-row">
           <span class="hub-row__lead">${iconHTML(a.manifest.icon)}</span>
-          <span class="hub-row__body"><span class="hub-row__title">${esc(a.manifest.name || a.id)}</span>
-            <span class="hub-row__meta">${esc([a.manifest.version ? `версия ${a.manifest.version}` : "", a.source === "user" ? "из папки приложений" : "встроено",
-              (a.manifest.accepts || []).length ? `принимает: ${(a.manifest.accepts || []).map(x => x.label).join(", ")}` : ""].filter(Boolean).join(" · "))}</span></span>
-          ${i < 9 ? `<span class="hub-row__trail"><kbd class="hub-kbd">Alt</kbd><kbd class="hub-kbd">${i + 1}</kbd></span>` : ""}
-        </button></li>`).join("") || `<li class="hub-muted" style="padding:var(--space-3)">Приложений нет.</li>`}
+          <button class="hub-row__body shell-row-open" type="button" data-open="${esc(a.id)}"><span class="hub-row__title">${esc(a.manifest.name || a.id)}</span>
+            <span class="hub-row__meta">${esc([a.manifest.version ? `версия ${a.manifest.version}` : "", { user: "из папки приложений", installed: "установлено" }[a.source] || "встроено",
+              (a.manifest.accepts || []).length ? `принимает: ${(a.manifest.accepts || []).map(x => x.label).join(", ")}` : "",
+              (a.manifest.permissions && (a.manifest.permissions.network || []).length) ? "сеть" : ""].filter(Boolean).join(" · "))}</span></button>
+          <span class="hub-row__trail">${i < 9 ? `<kbd class="hub-kbd">Alt</kbd><kbd class="hub-kbd">${i + 1}</kbd>` : ""}
+            ${a.source === "installed" ? `<button class="hub-btn hub-btn--sm hub-btn--quiet hub-btn--icon" type="button" data-app-remove="${esc(a.id)}" aria-label="Удалить ${esc(a.manifest.name || a.id)}" title="Удалить"><i data-icon="trash-2"></i></button>` : ""}</span>
+        </div></li>`).join("") || `<li class="hub-muted" style="padding:var(--space-3)">Приложений нет.</li>`}
       </ul>
-      <p class="hub-hint" style="margin-top:var(--space-3)">Своё приложение — папка с manifest.json и index.html в папке apps рядом с данными. Установка перетаскиванием — на этапе 3.</p>
+      ${inTauri && platform !== "phone" ? `<div class="hub-btn-row" style="margin-top:var(--space-4)">
+        <button class="hub-btn" type="button" data-act="install-folder"><i data-icon="folder-plus"></i>Установить из папки</button>
+        <button class="hub-btn" type="button" data-act="install-zip"><i data-icon="file-archive"></i>Из zip</button></div>` : ""}
+      <p class="hub-hint" style="margin-top:var(--space-3)">${platform === "phone" ? "Приложения ставятся на ПК и приезжают сюда с синхронизацией." : "Или перетащите папку или zip в окно хаба. Как написать приложение с нейросетью — APP_SPEC.md: приложите его к запросу «сделай мне приложение для…»."}</p>
     </section>
     <section class="shell-section"><h2 class="hub-section-title">Данные</h2>
       <dl class="shell-kv">
@@ -663,7 +692,51 @@ document.addEventListener("click", e => {
   else if (d.snooze) chooseSnooze(Number(d.snooze));
   else if (d.themeId) { state.setSetting("theme", d.themeId); }
   else if (d.act === "open-data") core.openDataDir().catch(err => toast(`Не открылась: ${err.message || err}`, { tone: "danger" }));
+  else if (d.act === "install-folder") pickAndInstall("folder", installCtx());
+  else if (d.act === "install-zip") pickAndInstall("zip", installCtx());
+  else if (d.act === "theme-new") themeEditor({ toast, afterSave: async id => { await state.load(); await loadCustomPhotos(); state.setSetting("theme", id); toast("Тема сохранена", { tone: "success", icon: "circle-check" }); } });
 });
+document.addEventListener("click", async e => {
+  const t = e.target.closest("[data-app-remove],[data-theme-remove]");
+  if (!t || !unlocked) return;
+  if (t.dataset.appRemove) { const a = host.apps.get(t.dataset.appRemove); if (a) uninstall(a, installCtx()); }
+  else {
+    const id = t.dataset.themeRemove;
+    if (state.settings.theme === id) state.setSetting("theme", "forest");
+    await core.removeTheme(id);
+    if (customPhotos.has(id)) { URL.revokeObjectURL(customPhotos.get(id)); customPhotos.delete(id); }
+    await state.load();
+    if (view.name === "settings") renderSettings();
+    toast("Тема удалена", { icon: "trash-2" });
+  }
+});
+function installCtx() {
+  return {
+    toast,
+    unlocked: () => unlocked,
+    openApp: id => openApp(id),
+    afterInstall: async () => { await state.load(); await loadCustomPhotos(); await reloadApps(); },
+  };
+}
+/* список приложений поменялся: установка, удаление, синхронизация с другого устройства */
+async function reloadApps() {
+  if (!host) return;
+  let list = [];
+  try { list = await core.apps(); } catch (e) { console.error(e); return; }
+  const ids = new Set(list.map(a => a.id));
+  for (const id of [...host.frames.keys()]) if (!ids.has(id)) { const f = host.frames.get(id); f.iframe.remove(); host.frames.delete(id); }
+  const changed = list.filter(a => { const old = host.apps.get(a.id); return old && JSON.stringify(old.manifest) !== JSON.stringify(a.manifest); }).map(a => a.id);
+  host.apps.clear();
+  host.setApps(list);
+  for (const id of changed) host.reload(id);
+  for (const a of host.list()) if (a.manifest.card || (a.manifest.accepts || []).length) host.ensure(a.id);
+  host.flushAll();
+  if (view.name === "app" && !host.apps.has(view.app)) go("today");
+  else if (view.name === "today") renderToday();
+  else if (view.name === "settings") renderSettings();
+  else if (view.name === "apps") renderApps();
+  renderRail();
+}
 /* кнопки заголовка: панели и окно */
 document.addEventListener("click", e => {
   const p = e.target.closest("[data-panel]");
@@ -739,6 +812,9 @@ core.onDataChanged(async ({ namespaces = [] } = {}) => {
   if (!unlocked) return;
   if (namespaces.includes("hub")) {
     await state.load();
+    await loadCustomPhotos();
+    applyTheme();
+    await reloadApps();
     if (view.name === "today") renderToday();
     else if (view.name === "triage" && !tri.busy && !tri.menu) renderTriage();
     renderRail(); renderSyncPills();
@@ -774,6 +850,7 @@ async function start() {
 async function enterHub() {
   await state.load();
   unlocked = true; lastActivity = Date.now();
+  await loadCustomPhotos();
   setSyncStatus(await core.syncStatus().catch(() => null));
   setDevice(syncStatus.device || (platform === "phone" ? "phone" : "pc"));
   applyTheme();
@@ -800,6 +877,7 @@ async function enterHub() {
     setupCapture($("#capture-main"));
     setupCapture($("#capture-compact"));
     core.onHotkey(k => handleHotkey(k));
+    watchDrops(installCtx());
     history.replaceState({ v: "today", app: null }, "");
   }
   phoneCapture();

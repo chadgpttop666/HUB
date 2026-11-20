@@ -3,6 +3,7 @@
 
 pub mod crypto;
 pub mod hubsvc;
+pub mod packages;
 pub mod rclone;
 pub mod sync;
 pub mod store;
@@ -100,6 +101,16 @@ fn apps_list(app: AppHandle, paths: State<'_, Paths>) -> Result<Vec<AppEntry>, S
             out.push(AppEntry { id, source: "builtin", manifest: m });
         }
     }
+    // установленные из папки или zip (лежат в данных хаба — видны, только когда хаб открыт)
+    let store = app.state::<Store>();
+    if store.is_open() {
+        for (id, m) in packages::installed_apps(&store) {
+            if valid_app_id(&id) {
+                out.retain(|a| a.id != id);
+                out.push(AppEntry { id, source: "installed", manifest: m });
+            }
+        }
+    }
     if let Ok(rd) = fs::read_dir(&paths.apps) {
         let mut dirs: Vec<_> = rd.flatten().filter(|e| e.path().is_dir()).collect();
         dirs.sort_by_key(|e| e.file_name());
@@ -194,6 +205,15 @@ fn serve(app: &AppHandle, uri_path: &str) -> Option<(Vec<u8>, String)> {
     if !valid_app_id(first) {
         return None;
     }
+    let store = app.state::<Store>();
+    if store.is_open() {
+        if let Some(bytes) = packages::app_file(&store, first, &rest) {
+            return Some((bytes, mime_of(&rest).to_string()));
+        }
+        if store.get_json("hub", &format!("apps/{first}/manifest")).ok().flatten().is_some() {
+            return None; // установлено, но такого файла нет
+        }
+    }
     let paths = app.state::<Paths>();
     let own = paths.apps.join(first);
     if own.join("manifest.json").is_file() {
@@ -216,6 +236,37 @@ fn hubapp_response(app: &AppHandle, request: &tauri::http::Request<Vec<u8>>) -> 
         Some((bytes, mime)) => builder.status(200).header("Content-Type", mime).body(bytes).unwrap(),
         None => builder.status(404).header("Content-Type", "text/plain; charset=utf-8").body("не найдено".as_bytes().to_vec()).unwrap(),
     }
+}
+
+/* ───────── пакеты: приложения и темы из папки или zip ───────── */
+
+#[tauri::command]
+async fn package_inspect(store: State<'_, Store>, path: String) -> Result<packages::Preview, String> {
+    store.data_key()?;
+    let pkg = packages::read(Path::new(&path))?;
+    Ok(packages::check(&pkg, &store))
+}
+
+#[tauri::command]
+async fn package_install(store: State<'_, Store>, hub: State<'_, hubsvc::Hub>, path: String) -> Result<String, String> {
+    let pkg = packages::read(Path::new(&path))?;
+    let id = packages::install(&pkg, &store)?;
+    hub.poke();
+    Ok(id)
+}
+
+#[tauri::command]
+async fn app_uninstall(store: State<'_, Store>, hub: State<'_, hubsvc::Hub>, id: String, data: bool) -> Result<(), String> {
+    packages::uninstall_app(&store, &id, data)?;
+    hub.poke();
+    Ok(())
+}
+
+#[tauri::command]
+async fn theme_remove(store: State<'_, Store>, hub: State<'_, hubsvc::Hub>, id: String) -> Result<(), String> {
+    packages::remove_theme(&store, &id)?;
+    hub.poke();
+    Ok(())
 }
 
 /* ───────── окно, уведомления, сведения ───────── */
@@ -341,6 +392,10 @@ pub fn run() {
             open_data_dir,
             notify,
             window_focused,
+            package_inspect,
+            package_install,
+            app_uninstall,
+            theme_remove,
             hubsvc::hub_status,
             hubsvc::setup_create,
             hubsvc::setup_join,

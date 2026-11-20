@@ -60,6 +60,20 @@ const tauriCore = {
   },
   onSync(cb) { T.event.listen("hub://sync", e => cb(e.payload)); },
   onDataChanged(cb) { T.event.listen("hub://data-changed", e => cb(e.payload)); },
+  /* пакеты: приложения и темы из папки или zip */
+  inspectPackage: path => T.core.invoke("package_inspect", { path }),
+  installPackage: path => T.core.invoke("package_install", { path }),
+  uninstallApp: (id, data) => T.core.invoke("app_uninstall", { id, data }),
+  removeTheme: id => T.core.invoke("theme_remove", { id }),
+  async pickPackage(kind) {
+    const options = kind === "folder" ? { directory: true, multiple: false } : { directory: false, multiple: false, filters: [{ name: "Архив приложения или темы", extensions: ["zip"] }] };
+    try { return await T.core.invoke("plugin:dialog|open", { options }); } catch (e) { console.warn(e); return null; }
+  },
+  onDragDrop({ enter, leave, drop }) {
+    T.event.listen("tauri://drag-enter", e => enter(e.payload && e.payload.paths));
+    T.event.listen("tauri://drag-leave", () => leave());
+    T.event.listen("tauri://drag-drop", e => drop(e.payload && e.payload.paths));
+  },
   /* своё окно без системной рамки: свернуть, развернуть, закрыть */
   get nativeWindow() { return !!(T.window && !/Android/i.test(navigator.userAgent)); },
   windowAction(kind) {
@@ -157,6 +171,12 @@ const devCore = {
   onDataChanged() {},
   nativeWindow: false,
   windowAction() {},
+  async inspectPackage() { throw new Error("Установка — только в приложении хаба"); },
+  async installPackage() { throw new Error("Установка — только в приложении хаба"); },
+  async uninstallApp() { throw new Error("Удаление — только в приложении хаба"); },
+  async removeTheme(id) { await devCore.remove("hub", `themes/${id}`); await devCore.remove("hub", `themes/${id}/photo`); },
+  async pickPackage() { return null; },
+  onDragDrop() {},
 };
 
 export const core = inTauri ? tauriCore : devCore;

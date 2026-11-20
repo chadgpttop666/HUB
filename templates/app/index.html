@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Заметки</title>
+<style>
+  /* Своё у приложения — только раскладка. Цвета, шрифты, размеры, скругления — токены хаба. */
+  .layout { max-width: 720px; margin: 0 auto; display: grid; gap: var(--space-6); }
+  .head { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--space-4); flex-wrap: wrap; }
+  .add { display: flex; gap: var(--space-2); }
+  .add .hub-input { flex: 1; }
+  @media (max-width: 600px) { .add { flex-direction: column; } }
+</style>
+</head>
+<body>
+<div class="layout">
+  <header class="head">
+    <div>
+      <h1 class="hub-page-title">Заметки</h1>
+      <p class="hub-muted" id="summary" style="margin:var(--space-1) 0 0"></p>
+    </div>
+  </header>
+
+  <form class="add" id="add">
+    <input class="hub-input hub-input--lg" id="text" placeholder="Что записать" aria-label="Текст заметки" autocomplete="off">
+    <button class="hub-btn hub-btn--primary hub-btn--lg" type="submit"><i data-icon="plus"></i>Добавить</button>
+  </form>
+
+  <section class="hub-glass" style="padding:var(--space-2) var(--space-3)">
+    <ul class="hub-list hub-list--divided" id="list"></ul>
+    <div class="hub-empty" id="empty" hidden>
+      <i data-icon="list-checks" class="hub-empty__icon"></i>
+      <h2 class="hub-empty__title">Пока пусто</h2>
+      <p class="hub-empty__text">Напишите заметку выше или перенесите мысль из корзины.</p>
+    </div>
+  </section>
+</div>
+
+<script>
+"use strict";
+// Данные: каждая заметка — свой ключ «notes/<id>». Так правки с ПК и телефона сливаются, а не затирают друг друга.
+const notes = new Map();
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+const $ = id => document.getElementById(id);
+
+async function load() {
+  for (const key of await hub.data.keys("notes/")) notes.set(key.slice(6), await hub.data.get(key));
+  render();
+}
+function save(note) { notes.set(note.id, note); return hub.data.set(`notes/${note.id}`, note); }
+function remove(id) { notes.delete(id); return hub.data.remove(`notes/${id}`); }
+
+function render() {
+  const list = [...notes.values()].sort((a, b) => a.done - b.done || b.created - a.created);
+  const left = list.filter(n => !n.done).length;
+  $("summary").textContent = list.length ? `${HubUI.plural(left, ["заметка", "заметки", "заметок"])} в работе` : "";
+  $("empty").hidden = list.length > 0;
+  $("list").innerHTML = "";
+  for (const n of list) {
+    const li = document.createElement("li");
+    li.innerHTML = `<div class="hub-row">
+      <label class="hub-check${n.done ? " hub-check--done" : ""}" style="flex:1"><input type="checkbox"${n.done ? " checked" : ""}><span></span></label>
+      <span class="hub-row__trail"><button class="hub-btn hub-btn--quiet hub-btn--icon hub-btn--sm" type="button" aria-label="Удалить"><i data-icon="trash-2"></i></button></span>
+    </div>`;
+    li.querySelector("span").textContent = n.text;   // текст — через textContent, не innerHTML
+    li.querySelector("input").addEventListener("change", e => { save(Object.assign({}, n, { done: e.target.checked })); render(); });
+    li.querySelector("button").addEventListener("click", () => {
+      remove(n.id); render();
+      HubUI.toast("Удалено", { icon: "trash-2", action: "Отменить", onAction: () => { save(n); render(); } });
+    });
+    $("list").appendChild(li);
+  }
+  HubUI.icons($("list"));
+  // карточка на «Сегодня»: только данные, хаб рисует её сам
+  hub.today.set(left
+    ? { main: HubUI.plural(left, ["заметка", "заметки", "заметок"]), note: list.find(n => !n.done).text, action: { label: "Открыть" } }
+    : { main: "Всё сделано", note: list.length ? `${HubUI.plural(list.length, ["заметка", "заметки", "заметок"])} отмечено` : "заметок нет", done: true });
+}
+
+$("add").addEventListener("submit", e => {
+  e.preventDefault();
+  const text = $("text").value.trim();
+  if (!text) return;
+  save({ id: uid(), text, done: false, created: Date.now() });
+  $("text").value = "";
+  render();
+});
+
+// элемент из корзины → заметка. Вернуть false или бросить ошибку — элемент вернётся в корзину.
+hub.inbox.onItem(async item => {
+  await save({ id: uid(), text: item.text, done: false, created: Date.now() });
+  render();
+  HubUI.toast("Из корзины: заметка добавлена", { icon: "inbox" });
+});
+
+load();
+</script>
+</body>
+</html>

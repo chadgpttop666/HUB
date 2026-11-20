@@ -28,11 +28,12 @@ export class HubState extends EventTarget {
     this.local = { autolock: 15 };   // настройки только этого устройства
     this.conflicts = [];             // { id, ns, key, ts, dev, value, note }
     this.folders = [];               // описания помеченных папок (общие для устройств)
+    this.themes = [];                // свои темы (themes/<id>)
     this.onError = null;
   }
   async load() {
     const { json } = await core.dump(NS);
-    this.items = []; this.deliveries = []; this.cards = {}; this.conflicts = []; this.folders = [];
+    this.items = []; this.deliveries = []; this.cards = {}; this.conflicts = []; this.folders = []; this.themes = [];
     for (const [k, v] of Object.entries(json)) {
       if (!v) continue;
       if (k.startsWith("inbox/")) this.items.push(v);
@@ -40,6 +41,7 @@ export class HubState extends EventTarget {
       else if (k.startsWith("cards/")) this.cards[k.slice(6)] = v;
       else if (k.startsWith("conflicts/")) this.conflicts.push(Object.assign({ id: k.slice(10) }, v));
       else if (k.startsWith("sync-folders/")) this.folders.push(v);
+      else if (k.startsWith("themes/") && !k.slice(7).includes("/")) this.themes.push(Object.assign({}, v, { id: k.slice(7), custom: true }));
     }
     this.settings = Object.assign({ theme: "forest" }, json.settings || {});
     this.local = Object.assign({ autolock: 15 }, json["settings-local"] || {});

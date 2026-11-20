@@ -141,3 +141,9 @@ html[data-rail="off"][data-top="off"] .hub-shell { padding: 0 var(--space-3) var
 }
 /* замок и статус — в заголовке окна; в шапке оболочки они бы повторялись */
 html:not([data-platform="phone"]) .hub-shell__top .hub-topbar__right { display: none; }
+
+/* строка списка, где открывается только середина (справа — свои кнопки) */
+.shell-row-open { flex: 1; min-width: 0; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.shell-row-open:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: var(--radius-sm); }
+.shell-drop { z-index: var(--z-dialog); }
+.shell-drop .hub-drop { width: min(560px, calc(100vw - 48px)); }

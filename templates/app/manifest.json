@@ -1,0 +1,11 @@
+{
+  "id": "notes-template",
+  "name": "Заметки",
+  "version": "1.0.0",
+  "description": "Шаблон приложения для хаба: список с отметками, приём из корзины, карточка на «Сегодня»",
+  "icon": "list-checks",
+  "entry": "index.html",
+  "card": true,
+  "accepts": [{ "type": "text", "label": "Заметка в список" }],
+  "permissions": { "network": [] }
+}

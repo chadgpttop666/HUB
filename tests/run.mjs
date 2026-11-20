@@ -315,6 +315,28 @@ await test("телефон 390×844: нижняя панель, «Приложе
   await page.setViewportSize({ width: 1366, height: 860 });
 });
 
+await test("своя тема из фото: основа и вуаль считаются, тема применяется и удаляется", async () => {
+  await page.evaluate(() => window.__hubShell.go("settings"));
+  await page.click('[data-act="theme-new"]');
+  await page.setInputFiles("#te-file", join(root, "design-system", "themes", "mist", "photo.jpg"));
+  await page.waitForSelector("#te-save:not([disabled])");
+  const hint = await text("dialog .hub-hint");
+  assert(/основа: светлая/.test(hint), `светлое фото — светлая основа: ${hint}`);
+  await page.fill("#te-name", "Мой туман");
+  await page.click('[data-accent="sea"]');
+  await page.waitForTimeout(200);
+  await shot("16-theme-editor");
+  await page.click("#te-save");
+  await waitFor(() => page.evaluate(() => window.__hubShell.state.themes.length === 1 && window.__hubShell.state.settings.theme === window.__hubShell.state.themes[0].id), 4000, "тема сохранена и выбрана");
+  const r = await page.evaluate(() => ({ base: document.documentElement.dataset.theme, photo: document.documentElement.style.getPropertyValue("--hub-photo"), accent: document.documentElement.style.getPropertyValue("--accent") }));
+  eq([r.base, r.photo.startsWith("url('blob:"), r.accent], ["light", true, "#1d5f8a"], "тема применена");
+  eq(await appFrame().evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--accent").trim()), "#1d5f8a", "акцент дошёл до приложения");
+  await page.waitForTimeout(300);
+  await shot("17-custom-theme");
+  await page.click("[data-theme-remove]");
+  await waitFor(() => page.evaluate(() => window.__hubShell.state.themes.length === 0 && window.__hubShell.state.settings.theme === "forest"), 4000, "тема удалена");
+});
+
 await test("без ошибок в консоли", async () => { eq(errors, [], "ошибки страницы"); });
 
 await browser.close();
