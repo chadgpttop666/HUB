@@ -1,0 +1,10 @@
+/* app.css — то, что хаб добавляет в страницу каждого приложения поверх tokens.css и hub.css.
+   Селекторы с нулевой специфичностью: любое правило самого приложения сильнее. */
+:where([data-hub-embedded]) :where(body) {
+  margin: 0;
+  padding: var(--space-6) var(--space-8) var(--space-12);
+  min-height: 100vh;
+}
+@media (max-width: 600px) {
+  :where([data-hub-embedded]) :where(body) { padding: var(--space-4) var(--space-4) var(--space-12); }
+}

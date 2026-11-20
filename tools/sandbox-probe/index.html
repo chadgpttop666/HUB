@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="ru">
+<head><meta charset="utf-8"><title>Проверка песочницы</title></head>
+<body>
+<h1 class="hub-page-title">Проверка песочницы</h1>
+<p class="hub-muted">Каждая строка — попытка сделать то, что приложению запрещено, или проверка Hub API. Итог — на карточке «Сегодня».</p>
+<ul class="hub-list hub-list--divided hub-glass" id="out" style="margin-top:var(--space-6);padding:var(--space-1) var(--space-3)"></ul>
+<script>
+(async () => {
+  const rows = [];
+  // ok(true) — запрет сработал / API работает; ok(false) — дыра или поломка
+  const check = async (name, fn) => {
+    let ok, detail;
+    try { [ok, detail] = await fn(); } catch (e) { ok = false; detail = `${e && e.name}: ${e && e.message}`; }
+    rows.push({ name, ok, detail: String(detail) });
+  };
+  const blocked = async p => { try { const r = await p; return [false, `ответ ${r.status !== undefined ? r.status : r}`]; } catch (e) { return [true, `заблокировано (${e.name})`]; } };
+  const base = document.baseURI.replace(/[^/]+\/$/, "");   // …/sandbox-probe/ → корень hubapp
+
+  await check("нет window.__TAURI__ и __TAURI_INTERNALS__", () => [typeof window.__TAURI__ === "undefined" && typeof window.__TAURI_INTERNALS__ === "undefined", `${typeof window.__TAURI__} / ${typeof window.__TAURI_INTERNALS__}`]);
+  await check("нет доступа к странице хаба", () => { try { return [false, typeof parent.document.body]; } catch (e) { return [true, e.name]; } });
+  await check("происхождение «пустое» (null)", () => [self.origin === "null", self.origin]);
+  await check("IPC ядра (ipc://) недоступен", () => blocked(fetch("ipc://localhost/data_dump", { method: "POST", body: "{}" })));
+  await check("IPC ядра (http://ipc.localhost) недоступен", () => blocked(fetch("http://ipc.localhost/data_dump", { method: "POST", body: "{}" })));
+  await check("интернет закрыт (fetch)", () => blocked(fetch("https://example.com/")));
+  await check("интернет закрыт (картинка)", () => new Promise(res => { const i = new Image(); i.onload = () => res([false, "загрузилась"]); i.onerror = () => res([true, "заблокирована"]); i.src = "https://example.com/favicon.ico?" + Date.now(); }));
+  await check("файлы другого приложения закрыты", () => blocked(fetch(base + "repetition/manifest.json")));
+  await check("localStorage — подмена хаба", () => [!(localStorage instanceof Storage), typeof localStorage.getItem]);
+
+  await check("hub.data: JSON туда и обратно", async () => {
+    const v = { n: 1, s: "тест «ёлочки»", a: [1, 2, 3] };
+    await hub.data.set("selftest/json", v);
+    const back = await hub.data.get("selftest/json");
+    return [JSON.stringify(back) === JSON.stringify(v), JSON.stringify(back)];
+  });
+  await check("hub.data: Blob туда и обратно (через ядро)", async () => {
+    const bytes = new Uint8Array(70000).map((_, i) => (i * 31) & 255);
+    await hub.data.set("selftest/blob", new Blob([bytes], { type: "application/x-test" }));
+    const back = await hub.data.get("selftest/blob");
+    const got = new Uint8Array(await back.arrayBuffer());
+    return [back.type === "application/x-test" && got.length === bytes.length && got.every((x, i) => x === bytes[i]), `${back.type}, ${got.length} байт`];
+  });
+  await check("indexedDB-подмена: put/get/getAll/delete с Blob", () => new Promise((res, rej) => {
+    const q = indexedDB.open("selftest", 1);
+    q.onupgradeneeded = () => { if (!q.result.objectStoreNames.contains("files")) q.result.createObjectStore("files", { keyPath: "id" }); };
+    q.onerror = () => rej(q.error);
+    q.onsuccess = () => {
+      const db = q.result, file = new File(["привет"], "hello.txt", { type: "text/plain" });
+      const tx = db.transaction("files", "readwrite");
+      tx.objectStore("files").put({ id: "a", name: "hello", blob: file });
+      tx.oncomplete = () => {
+        const r = db.transaction("files").objectStore("files").get("a");
+        r.onsuccess = async () => {
+          const rec = r.result, text = rec && rec.blob ? await rec.blob.text() : null;
+          const all = db.transaction("files").objectStore("files").getAll();
+          all.onsuccess = () => {
+            const tx2 = db.transaction("files", "readwrite");
+            tx2.objectStore("files").delete("a");
+            tx2.oncomplete = () => res([text === "привет" && all.result.length === 1 && rec.blob.name === "hello.txt", `${text}, ${all.result.length} в getAll, имя ${rec.blob.name}`]);
+          };
+        };
+      };
+    };
+  }));
+  await hub.data.remove("selftest/json");
+  await hub.data.remove("selftest/blob");
+
+  const bad = rows.filter(r => !r.ok);
+  document.getElementById("out").innerHTML = rows.map(r => `<li class="hub-row"><span class="hub-row__lead">${HubUI.icon(r.ok ? "circle-check" : "circle-alert")}</span>
+    <span class="hub-row__body"><span class="hub-row__title">${r.name}</span><span class="hub-row__meta">${r.detail.replace(/</g, "&lt;")}</span></span>
+    <span class="hub-row__trail">${r.ok ? "в порядке" : "ПРОБЛЕМА"}</span></li>`).join("");
+  await hub.data.set("result", { at: new Date().toISOString(), userAgent: navigator.userAgent, rows });
+  hub.today.set(bad.length
+    ? { main: `${bad.length} из ${rows.length} не в порядке`, note: bad.map(r => r.name).join("; ") }
+    : { main: `Все ${rows.length} проверок в порядке`, note: "песочница держит, Hub API работает", done: true });
+})();
+</script>
+</body>
+</html>

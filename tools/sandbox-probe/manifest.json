@@ -1,0 +1,8 @@
+{
+  "id": "sandbox-probe",
+  "name": "Проверка песочницы",
+  "version": "1.0.0",
+  "description": "Пробует выбраться из песочницы и проверяет Hub API; итог — на карточке «Сегодня»",
+  "icon": "shield-check",
+  "card": true
+}

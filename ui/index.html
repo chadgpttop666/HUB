@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="ru" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Хаб</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="hub/tokens.css">
+<link rel="stylesheet" href="hub/hub.css">
+<link rel="stylesheet" href="shell.css">
+<script src="hub/hub-ui.js"></script>
+<script type="module" src="js/main.js"></script>
+</head>
+<body>
+<div class="hub-backdrop" data-scene="open" aria-hidden="true"><div class="hub-backdrop__photo"></div><div class="hub-backdrop__veil"></div></div>
+
+<!-- «Сегодня» -->
+<div class="hub-today" id="screen-today" hidden>
+  <header class="hub-topbar">
+    <div><span class="hub-topbar__hello" id="today-hello">Добрый день</span> · <span id="today-date"></span></div>
+    <div class="hub-topbar__right">
+      <span class="hub-row__trail shell-hint-keys"><kbd class="hub-kbd">Alt</kbd><kbd class="hub-kbd">1…9</kbd> приложения</span>
+      <button class="hub-btn hub-btn--sm hub-btn--glass hub-btn--icon" type="button" data-go="settings" aria-label="Настройки" title="Настройки"><i data-icon="settings"></i></button>
+    </div>
+  </header>
+  <div class="shell-capture-wrap">
+    <form class="hub-capture" id="capture-main" autocomplete="off">
+      <div class="hub-capture__bar">
+        <i data-icon="lightbulb" class="hub-capture__icon"></i>
+        <input class="hub-capture__input" placeholder="Мысль в корзину…" aria-label="Мысль в корзину" maxlength="4000">
+        <button class="hub-capture__send" type="submit" disabled>В корзину</button>
+      </div>
+      <p class="hub-capture__note" aria-live="polite"></p>
+    </form>
+  </div>
+  <p class="hub-today__note" id="today-note" hidden></p>
+  <section class="hub-cards shell-cards" id="today-cards" aria-label="Приложения"></section>
+</div>
+
+<!-- Разбор корзины -->
+<div class="hub-today" id="screen-triage" hidden>
+  <header class="hub-topbar">
+    <div><span class="hub-topbar__hello" id="triage-hello">Добрый день</span> · <span id="triage-date"></span></div>
+    <div class="hub-topbar__right">
+      <button class="hub-btn hub-btn--sm hub-btn--glass" type="button" data-go="today"><i data-icon="house"></i>«Сегодня» <kbd class="hub-kbd">Esc</kbd></button>
+    </div>
+  </header>
+  <div class="hub-triage shell-triage" id="triage"></div>
+</div>
+
+<!-- Оболочка приложения -->
+<div class="hub-shell" id="screen-shell" hidden>
+  <nav class="hub-rail hub-glass" id="rail" aria-label="Приложения"></nav>
+  <header class="hub-shell__top">
+    <form class="hub-capture hub-capture--compact" id="capture-compact" autocomplete="off">
+      <div class="hub-capture__bar">
+        <i data-icon="lightbulb" class="hub-capture__icon"></i>
+        <input class="hub-capture__input" placeholder="Мысль в корзину…" aria-label="Мысль в корзину" maxlength="4000">
+        <button class="hub-capture__send" type="submit" disabled>В корзину</button>
+      </div>
+      <p class="hub-capture__note" aria-live="polite"></p>
+    </form>
+  </header>
+  <main class="hub-shell__main hub-glass shell-main" id="shell-main">
+    <div class="shell-frames" id="frames"></div>
+    <section class="shell-page" id="settings" hidden></section>
+  </main>
+</div>
+
+<div class="hub-toasts" role="status" aria-live="polite"></div>
+</body>
+</html>

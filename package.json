@@ -1,0 +1,16 @@
+{
+  "name": "hub",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Личный хаб: оболочка, корзина, приложения в песочницах",
+  "type": "module",
+  "scripts": {
+    "build:ui": "node scripts/build-ui.mjs",
+    "dev": "node scripts/dev-server.mjs",
+    "test": "node tests/run.mjs",
+    "tauri": "tauri"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.9.0"
+  }
+}

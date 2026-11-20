@@ -1,0 +1,620 @@
+/* main.js — оболочка хаба: «Сегодня», строка ввода, разбор корзины, панель приложений, настройки, клавиши. */
+import { core, inTauri } from "./core.js";
+import { HubState, tagsOf } from "./state.js";
+import { AppHost } from "./host.js";
+
+const H = window.HubUI;
+const $ = sel => document.querySelector(sel);
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const plural = (n, forms) => H.plural(n, forms);
+const UNSORTED = ["неразобранная", "неразобранные", "неразобранных"];
+const html = document.documentElement;
+
+const state = new HubState();
+let host = null;
+let themes = [];
+let view = { name: "today", app: null };
+
+/* ───────── даты ───────── */
+const fmtLong = new Intl.DateTimeFormat("ru-RU", { weekday: "long", day: "numeric", month: "long" });
+const fmtDayMonth = new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "long" });
+const hm = d => `${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}`;
+const dayStart = d => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+function whenText(iso) {
+  const d = new Date(iso), now = new Date();
+  const days = Math.round((dayStart(now) - dayStart(d)) / 864e5);
+  if (days === 0) return `сегодня, ${hm(d)}`;
+  if (days === 1) return `вчера, ${hm(d)}`;
+  if (days === -1) return `завтра, ${hm(d)}`;
+  const dm = fmtDayMonth.format(d) + (d.getFullYear() !== now.getFullYear() ? ` ${d.getFullYear()}` : "");
+  return `${dm}, ${hm(d)}`;
+}
+function ms(token) {
+  if (H.reducedMotion()) return 0;
+  const v = getComputedStyle(html).getPropertyValue(token).trim();
+  return v.endsWith("ms") ? parseFloat(v) : v.endsWith("s") ? parseFloat(v) * 1000 : 0;
+}
+const wait = t => new Promise(r => setTimeout(r, t));
+
+/* ───────── уведомления ───────── */
+function toast(text, opts) { return H.toast(text, opts); }
+state.onError = e => toast(`Не сохранилось: ${e.message || e}`, { tone: "danger", icon: "circle-alert", timeout: 8000 });
+
+/* ───────── темы ───────── */
+const THEME_IDS = ["forest", "mist", "solid"];
+async function loadThemes() {
+  themes = [];
+  for (const id of THEME_IDS) {
+    try { themes.push(await (await fetch(`hub/themes/${id}/theme.json`)).json()); }
+    catch (e) { console.warn("тема не загрузилась", id, e); }
+  }
+  if (!themes.length) themes.push({ id: "forest", name: "Лес", base: "dark", photo: null, tokens: {} });
+}
+const currentTheme = () => themes.find(t => t.id === state.settings.theme) || themes[0];
+// url() внутри переменной разрешается относительно hub.css, где она используется, поэтому адрес — абсолютный
+const themePhoto = t => (t.photo ? `url('${new URL(`hub/themes/${t.id}/${t.photo}`, location.href).href}')` : "none");
+function themePayload() { const t = currentTheme(); return { id: t.id, name: t.name, base: t.base, tokens: t.tokens || {} }; }
+let appliedTokens = [];
+function applyTheme() {
+  const t = currentTheme();
+  html.setAttribute("data-theme", t.base || "dark");
+  appliedTokens.forEach(k => html.style.removeProperty(`--${k}`));
+  appliedTokens = Object.keys(t.tokens || {});
+  for (const [k, v] of Object.entries(t.tokens || {})) html.style.setProperty(`--${k}`, v);
+  html.style.setProperty("--hub-photo", themePhoto(t));
+  html.style.setProperty("--hub-photo-pos", t.photoPosition || "50% 38%");
+  if (host) host.broadcastTheme();
+}
+
+/* ───────── экраны ───────── */
+function showScreen(name) {
+  $("#screen-today").hidden = name !== "today";
+  $("#screen-triage").hidden = name !== "triage";
+  $("#screen-shell").hidden = name !== "shell";
+}
+function go(name) {
+  closeSnoozeMenu();
+  if (name === "today") { view = { name: "today", app: null }; showScreen("today"); renderToday(); focusCapture(); }
+  else if (name === "triage") startTriage();
+  else if (name === "settings") {
+    view = { name: "settings", app: null };
+    showScreen("shell"); host.show(null);
+    $("#settings").hidden = false;
+    renderRail(); renderSettings();
+  }
+}
+function openApp(id, action) {
+  if (!host.apps.has(id)) return;
+  closeSnoozeMenu();
+  view = { name: "app", app: id };
+  showScreen("shell"); $("#settings").hidden = true;
+  host.show(id);
+  renderRail();
+  if (action) host.post(id, "today.action", action);
+  setTimeout(() => host.focus(id), 60);
+}
+const appsInOrder = () => host.list();
+
+function iconHTML(icon, cls) {
+  icon = icon || "package";
+  if (/\.svg$/i.test(icon)) return `<i data-icon="package"${cls ? ` class="${cls}"` : ""}></i>`;
+  return `<i data-icon="${esc(icon)}"${cls ? ` class="${cls}"` : ""}></i>`;
+}
+
+/* ───────── «Сегодня» ───────── */
+function renderHello() {
+  const now = new Date();
+  for (const id of ["today", "triage"]) {
+    $(`#${id}-hello`).textContent = H.greeting(now);
+    $(`#${id}-date`).textContent = fmtLong.format(now);
+  }
+}
+function cardHTML(c) {
+  const list = c.list || null;
+  return `<article class="hub-card${c.done ? " hub-card--done" : ""}" data-card="${esc(c.key)}">
+    <div class="hub-card__app">${iconHTML(c.icon)}<span>${esc(c.name)}</span></div>
+    ${c.loading
+      ? `<div class="shell-card-skeleton"><div class="hub-skeleton hub-skeleton--title"></div><div class="hub-skeleton hub-skeleton--text"></div></div>`
+      : `<div class="hub-card__main">${esc(c.main)}</div>`}
+    ${c.note ? `<p class="hub-card__note">${esc(c.note)}</p>` : ""}
+    ${list ? `<ul class="hub-card__list">${list.slice(0, 4).map(x =>
+      `<li><label class="hub-check${x.done ? " hub-check--done" : ""}"><input type="checkbox" tabindex="-1" ${x.done ? "checked" : ""} onclick="return false"><span>${esc(x.text)}</span></label></li>`).join("")}</ul>
+      ${list.length > 4 ? `<p class="hub-card__more">ещё ${list.length - 4}</p>` : ""}` : ""}
+    ${c.action && !c.done ? `<div class="hub-card__action"><button class="hub-btn hub-btn--sm" type="button" data-card-action="${esc(c.key)}">${esc(c.action.label)}</button></div>` : ""}
+  </article>`;
+}
+function inboxCard() {
+  const items = state.visibleItems(), snoozed = state.items.length - items.length;
+  const last = items[items.length - 1];
+  const short = s => (s.length > 42 ? s.slice(0, 41).trimEnd() + "…" : s);
+  if (!items.length) {
+    return { key: "inbox", icon: "inbox", name: "Корзина", main: "Пусто", done: true,
+             note: snoozed === 1 ? "1 отложена — вернётся сама" : snoozed ? `${plural(snoozed, ["отложена", "отложены", "отложено"])} — вернутся сами` : "всё разобрано" };
+  }
+  return { key: "inbox", icon: "inbox", name: "Корзина", main: plural(items.length, UNSORTED),
+           note: `последнее: «${short(last.text)}»${snoozed ? ` · ещё ${snoozed} отложено` : ""}`,
+           action: { label: "Разобрать" } };
+}
+function appCard(a) {
+  const card = state.cards[a.id];
+  const base = { key: a.id, icon: a.manifest.icon, name: a.manifest.name || a.id };
+  if (card) return Object.assign(base, card, { action: card.action || (card.done ? null : { label: "Открыть" }) });
+  if (a.manifest.card) return Object.assign(base, { loading: true, action: { label: "Открыть" } });
+  return Object.assign(base, { main: a.manifest.description || "Открыть приложение", action: { label: "Открыть" } });
+}
+function renderToday() {
+  renderHello();
+  const cards = [inboxCard(), ...appsInOrder().map(appCard)];
+  const box = $("#today-cards");
+  box.innerHTML = cards.map(cardHTML).join("");
+  H.icons(box);
+  const note = $("#today-note");
+  const allDone = cards.every(c => c.done);
+  note.hidden = !allDone;
+  if (allDone) note.textContent = "На сегодня всё.";
+}
+function bumpInboxCard() {
+  const el = document.querySelector('[data-card="inbox"]');
+  if (!el) return;
+  el.classList.remove("is-bumped"); void el.offsetWidth; el.classList.add("is-bumped");
+  el.addEventListener("animationend", () => el.classList.remove("is-bumped"), { once: true });
+}
+
+/* ───────── строка ввода ───────── */
+let lastAdded = null;
+function setupCapture(form) {
+  const input = form.querySelector(".hub-capture__input");
+  const send = form.querySelector(".hub-capture__send");
+  const note = form.querySelector(".hub-capture__note");
+  const compact = form.classList.contains("hub-capture--compact");
+  const idle = compact ? "" : "Enter — сохранить, разобрать можно потом";
+  let okTimer = null;
+  function showIdle() {
+    note.classList.remove("is-ok");
+    const tags = tagsOf(input.value);
+    if (tags.length) note.innerHTML = `<span>метки:</span>${tags.map(t => `<span class="hub-tag">#${esc(t)}</span>`).join("")}`;
+    else note.textContent = idle;
+  }
+  input.addEventListener("input", () => {
+    send.disabled = !input.value.trim();
+    if (okTimer) { clearTimeout(okTimer); okTimer = null; }
+    showIdle();
+  });
+  form.addEventListener("submit", e => {
+    e.preventDefault();
+    const text = input.value.trim();
+    if (!text) { note.textContent = "Напишите мысль и нажмите Enter"; return; }
+    const item = state.add(text);
+    if (!item) return;
+    lastAdded = item.id;
+    input.value = ""; send.disabled = true;
+    const n = state.visibleItems().length;
+    if (compact) {
+      toast(`В корзине — ${plural(n, UNSORTED)}`, { icon: "check", tone: "accent", action: "Отменить", onAction: undoCapture, timeout: 2600 });
+      return;
+    }
+    clearTimeout(okTimer);
+    note.classList.add("is-ok");
+    note.innerHTML = `${H.icon("check")}<span>В корзине — ${esc(plural(n, UNSORTED))} · <kbd class="hub-kbd">Ctrl</kbd><kbd class="hub-kbd">Z</kbd> — отменить</span>`;
+    okTimer = setTimeout(() => { okTimer = null; showIdle(); }, 2600);
+    bumpInboxCard();
+  });
+  input.addEventListener("keydown", e => {
+    if ((e.ctrlKey || e.metaKey) && e.code === "KeyZ" && !input.value && lastAdded) {
+      e.preventDefault();
+      undoCapture();
+      clearTimeout(okTimer); okTimer = null;
+      note.classList.remove("is-ok"); note.textContent = "Убрано из корзины";
+      okTimer = setTimeout(() => { okTimer = null; showIdle(); }, 2600);
+    } else if (e.key === "Escape" && view.name === "app") {
+      input.blur(); host.focus(view.app);
+    }
+  });
+  showIdle();
+}
+function undoCapture() {
+  if (!lastAdded) return;
+  const item = state.take(lastAdded);
+  lastAdded = null;
+  return item;
+}
+function focusCapture() {
+  if (view.name === "triage") { go("today"); return; }
+  const input = view.name === "today" ? $("#capture-main .hub-capture__input") : $("#capture-compact .hub-capture__input");
+  const delay = view.name === "today" && !H.reducedMotion() ? 30 : 0;
+  setTimeout(() => input.focus(), delay);
+}
+
+/* ───────── панель приложений ───────── */
+function renderRail() {
+  const n = state.visibleItems().length;
+  const cur = (name, app) => (view.name === name && (!app || view.app === app) ? ' aria-current="page"' : "");
+  $("#rail").innerHTML = `
+    <button class="hub-rail__item" type="button" data-go="today" title="Сегодня" aria-label="Сегодня"><i data-icon="house"></i></button>
+    <button class="hub-rail__item" type="button" data-go="triage" title="Корзина" aria-label="Корзина${n ? `, ${n}` : ""}"><i data-icon="inbox"></i>${n ? `<span class="hub-rail__badge">${n > 99 ? "99+" : n}</span>` : ""}</button>
+    <div class="hub-rail__sep"></div>
+    ${appsInOrder().map((a, i) => `<button class="hub-rail__item" type="button" data-open="${esc(a.id)}"
+        title="${esc(a.manifest.name || a.id)}${i < 9 ? ` · Alt+${i + 1}` : ""}" aria-label="${esc(a.manifest.name || a.id)}"${cur("app", a.id)}>${iconHTML(a.manifest.icon)}</button>`).join("")}
+    <div class="hub-rail__end"><button class="hub-rail__item" type="button" data-go="settings" title="Настройки" aria-label="Настройки"${cur("settings")}><i data-icon="settings"></i></button></div>`;
+  H.icons($("#rail"));
+}
+
+/* ───────── разбор корзины ───────── */
+const tri = { pos: 0, busy: false, stats: { moved: 0, snoozed: 0, deleted: 0 }, menu: null };
+function startTriage() {
+  view = { name: "triage", app: null };
+  tri.pos = 0; tri.busy = false; tri.stats = { moved: 0, snoozed: 0, deleted: 0 }; tri.menu = null;
+  showScreen("triage");
+  renderHello();
+  renderTriage();
+}
+function triageTargets() { return host.targets().slice(0, 9); }
+function originHTML(item) {
+  if (item.source) return `${iconHTML((host.apps.get(item.source) || { manifest: {} }).manifest.icon, "hub-icon--sm")}из «${esc(host.name(item.source))}»`;
+  if (item.device === "phone") return `${iconHTML("smartphone", "hub-icon--sm")}с телефона`;
+  return `${iconHTML("monitor", "hub-icon--sm")}с этого ПК`;
+}
+function renderTriage() {
+  const el = $("#triage");
+  const items = state.visibleItems();
+  if (!items.length) {
+    const s = tri.stats, parts = [];
+    if (s.moved) parts.push(`${s.moved} перенесено`);
+    if (s.snoozed) parts.push(`${s.snoozed} отложено`);
+    if (s.deleted) parts.push(`${s.deleted} удалено`);
+    const waiting = state.items.length;
+    el.innerHTML = `<div class="hub-glass" style="margin-top:8vh"><div class="hub-empty" style="padding:var(--space-12) var(--space-6)">
+      <i data-icon="inbox" class="hub-empty__icon"></i>
+      <h2 class="hub-empty__title">Корзина пуста</h2>
+      <p class="hub-empty__text">Всё разобрано${parts.length ? `: ${parts.join(", ")}` : ""}.${waiting ? ` Отложенные вернутся сами.` : ""}
+        Новая мысль — <kbd class="hub-kbd">Ctrl</kbd><kbd class="hub-kbd">Alt</kbd><kbd class="hub-kbd">Пробел</kbd> из любой программы.</p>
+      <div class="hub-empty__action"><button class="hub-btn hub-btn--primary" type="button" data-go="today">На «Сегодня» <kbd class="hub-kbd">Esc</kbd></button></div>
+    </div></div>`;
+    H.icons(el);
+    return;
+  }
+  tri.pos = Math.min(Math.max(tri.pos, 0), items.length - 1);
+  const item = items[tri.pos], targets = triageTargets();
+  el.innerHTML = `
+    <div class="hub-triage__head">
+      <h1 class="hub-triage__title">Разбор корзины</h1>
+      <div class="hub-meter" style="width:240px"><div class="hub-meter__head"><span>элемент</span><b>${tri.pos + 1} из ${items.length}</b></div>
+        <progress class="hub-progress" max="${items.length}" value="${tri.pos + 1}"></progress></div>
+    </div>
+    <article class="hub-glass hub-triage__item" id="triage-item" data-id="${esc(item.id)}">
+      <p class="hub-triage__text">${esc(item.text)}</p>
+      <div class="hub-triage__meta"><span class="shell-row">${originHTML(item)}</span><span>${esc(whenText(item.created))}</span>${(item.tags || []).map(t => `<span class="hub-tag">#${esc(t)}</span>`).join("")}</div>
+    </article>
+    <div>
+      <div class="hub-triage__label" style="margin-bottom:var(--space-3)">Куда перенести</div>
+      ${targets.length ? `<div class="hub-targets">${targets.map((t, i) => `<button class="hub-target" type="button" data-target="${i}">
+          ${iconHTML(t.icon)}<span class="hub-target__name">${esc(t.name)}</span><span class="hub-target__what">${esc(t.label)}</span><kbd class="hub-kbd">${i + 1}</kbd></button>`).join("")}</div>`
+        : `<p class="hub-muted" style="margin:0">Пока ни одно приложение не принимает элементы корзины.</p>`}
+    </div>
+    <div class="hub-triage__actions">
+      <button class="hub-btn" type="button" data-tri="snooze" aria-haspopup="listbox" aria-expanded="false"><i data-icon="alarm-clock"></i>Отложить <kbd class="hub-kbd">S</kbd></button>
+      <button class="hub-btn hub-btn--danger" type="button" data-tri="delete"><i data-icon="trash-2"></i>Удалить <kbd class="hub-kbd">Del</kbd></button>
+      <button class="hub-btn hub-btn--quiet" type="button" data-tri="skip">Пропустить <kbd class="hub-kbd">→</kbd></button>
+    </div>
+    <p class="hub-hint" style="justify-content:center">${targets.length > 1 ? `1–${targets.length} перенести · ` : targets.length ? "1 перенести · " : ""}S отложить · Del удалить · ← → листать · Esc выйти</p>`;
+  H.icons(el);
+}
+function currentItem() { const items = state.visibleItems(); return items[Math.min(tri.pos, items.length - 1)] || null; }
+
+async function leave(kind, targetEl) {
+  const el = $("#triage-item");
+  if (!el) return;
+  if (kind === "move" && targetEl) {
+    const a = el.getBoundingClientRect(), b = targetEl.getBoundingClientRect();
+    el.style.setProperty("--dx", `${(b.left + b.width / 2) - (a.left + a.width / 2)}px`);
+    el.style.setProperty("--dy", `${(b.top + b.height / 2) - (a.top + a.height / 2)}px`);
+  } else el.style.setProperty("--dy", "8px");
+  el.classList.add("is-leaving");
+  await wait(kind === "move" ? ms("--duration-slow") : ms("--duration-base"));
+}
+async function moveTo(i) {
+  const t = triageTargets()[i], item = currentItem();
+  if (!t || !item || tri.busy) return;
+  tri.busy = true;
+  const tile = document.querySelector(`[data-target="${i}"]`);
+  if (tile) tile.classList.add("is-chosen");
+  await leave("move", tile);
+  state.take(item.id);
+  const d = host.transfer(item, t);
+  tri.stats.moved++;
+  tri.busy = false;
+  renderTriage();
+  toast(`Перенесено в «${t.name}»`, { tone: "accent", icon: "check", action: "Отменить", timeout: 4000, onAction: () => {
+    if (state.cancelDelivery(d.id)) { state.restore(item); tri.stats.moved--; if (view.name === "triage") renderTriage(); }
+    else toast(`«${t.name}» уже приняло элемент — отменить там`, { icon: "info" });
+  } });
+}
+async function deleteCurrent() {
+  const item = currentItem();
+  if (!item || tri.busy) return;
+  tri.busy = true;
+  await leave("delete");
+  state.take(item.id);
+  tri.stats.deleted++;
+  tri.busy = false;
+  renderTriage();
+  toast("Удалено", { icon: "trash-2", action: "Отменить", timeout: 4000, onAction: () => {
+    state.restore(item); tri.stats.deleted--; if (view.name === "triage") renderTriage();
+  } });
+}
+async function snoozeCurrent(until) {
+  const item = currentItem();
+  if (!item || tri.busy) return;
+  closeSnoozeMenu();
+  tri.busy = true;
+  await leave("snooze");
+  const before = state.snooze(item.id, until);
+  tri.stats.snoozed++;
+  tri.busy = false;
+  renderTriage();
+  toast(`Отложено до ${whenText(until.toISOString()).replace(/^сегодня, /, "")}`, { icon: "alarm-clock", action: "Отменить", timeout: 4000, onAction: () => {
+    state.unsnooze(item.id, before); tri.stats.snoozed--; if (view.name === "triage") renderTriage();
+  } });
+}
+function step(delta) {
+  const n = state.visibleItems().length;
+  if (!n || tri.busy) return;
+  tri.pos = (tri.pos + delta + n) % n;
+  renderTriage();
+}
+
+/* меню «Отложить до» */
+function snoozeOptions(now = new Date()) {
+  const at = (days, h) => { const d = new Date(now); d.setDate(d.getDate() + days); d.setHours(h, 0, 0, 0); return d; };
+  const out = [];
+  const evening = at(0, 19);
+  if (evening - now > 30 * 60e3) out.push({ icon: "sunrise", label: "Сегодня вечером", meta: "19:00", at: evening });
+  else out.push({ icon: "sunrise", label: "Завтра вечером", meta: "19:00", at: at(1, 19) });
+  out.push({ icon: "sun", label: "Завтра утром", meta: "9:00", at: at(1, 9) });
+  const week = at(7, 9);
+  out.push({ icon: "calendar-days", label: "Через неделю", meta: fmtDayMonth.format(week), at: week });
+  out.push({ icon: "calendar", label: "Выбрать дату…", pick: true });
+  return out;
+}
+function openSnoozeMenu() {
+  if (!currentItem() || tri.busy) return;
+  const btn = document.querySelector('[data-tri="snooze"]');
+  closeSnoozeMenu();
+  tri.menu = { idx: 0, opts: snoozeOptions() };
+  const ul = document.createElement("ul");
+  ul.className = "hub-menu"; ul.id = "snooze-menu";
+  ul.setAttribute("role", "listbox"); ul.setAttribute("aria-label", "Отложить до");
+  ul.style.left = `${btn.offsetLeft}px`;
+  btn.parentElement.appendChild(ul);
+  btn.setAttribute("aria-expanded", "true");
+  drawSnoozeMenu();
+}
+function drawSnoozeMenu() {
+  const ul = $("#snooze-menu");
+  if (!ul || !tri.menu) return;
+  const { idx, opts } = tri.menu;
+  ul.innerHTML = `<li class="hub-menu__label">Отложить до</li>` + opts.map((o, i) =>
+    `${o.pick ? `<li class="hub-menu__sep" role="separator"></li>` : ""}<li class="hub-menu__item${i === idx ? " is-active" : ""}" role="option" aria-selected="${i === idx}" data-snooze="${i}">${iconHTML(o.icon)}${esc(o.label)}${o.meta ? `<span class="hub-menu__meta">${esc(o.meta)}</span>` : ""}</li>`).join("");
+  H.icons(ul);
+}
+function closeSnoozeMenu() {
+  const ul = $("#snooze-menu");
+  if (ul) ul.remove();
+  const btn = document.querySelector('[data-tri="snooze"]');
+  if (btn) btn.setAttribute("aria-expanded", "false");
+  tri.menu = null;
+}
+function chooseSnooze(i) {
+  const o = tri.menu && tri.menu.opts[i];
+  if (!o) return;
+  if (o.pick) { closeSnoozeMenu(); pickDate(); return; }
+  snoozeCurrent(o.at);
+}
+function pickDate() {
+  const dlg = document.createElement("dialog");
+  dlg.className = "hub-dialog";
+  dlg.setAttribute("aria-labelledby", "pick-title");
+  const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
+  const iso = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  dlg.innerHTML = `<form method="dialog">
+    <h2 class="hub-dialog__title" id="pick-title">Отложить до</h2>
+    <p class="hub-dialog__body">Элемент вернётся в корзину в этот день в 9:00.</p>
+    <div class="hub-field" style="margin-top:var(--space-4)"><label class="hub-label" for="pick-date">Дата</label>
+      <input class="hub-input" type="date" id="pick-date" required min="${iso(new Date())}" value="${iso(tomorrow)}"></div>
+    <div class="hub-dialog__actions">
+      <button class="hub-btn hub-btn--quiet" type="button" value="cancel">Отмена</button>
+      <button class="hub-btn hub-btn--primary" type="submit" value="ok">Отложить</button>
+    </div></form>`;
+  document.body.appendChild(dlg);
+  dlg.querySelector('[value="cancel"]').addEventListener("click", () => dlg.close("cancel"));
+  dlg.addEventListener("close", () => {
+    const v = dlg.querySelector("#pick-date").value, ok = dlg.returnValue === "ok";
+    dlg.remove();
+    if (!ok || !v) return;
+    const [y, m, d] = v.split("-").map(Number);
+    const at = new Date(y, m - 1, d, 9, 0, 0, 0);
+    if (at <= new Date()) { toast("Это время уже прошло — выберите дату позже", { icon: "info" }); return; }
+    snoozeCurrent(at);
+  });
+  dlg.showModal();
+}
+
+function triageKey(e) {
+  if (e.target.closest && e.target.closest("dialog")) return;
+  if (tri.menu) {
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      const n = tri.menu.opts.length;
+      tri.menu.idx = (tri.menu.idx + (e.key === "ArrowDown" ? 1 : -1) + n) % n;
+      drawSnoozeMenu();
+    } else if (e.key === "Enter") { e.preventDefault(); chooseSnooze(tri.menu.idx); }
+    else if (e.key === "Escape") { e.preventDefault(); closeSnoozeMenu(); }
+    return;
+  }
+  if (e.ctrlKey || e.altKey || e.metaKey) return;
+  if (e.key === "Escape") { e.preventDefault(); go("today"); return; }
+  if (!state.visibleItems().length) return;
+  if (/^Digit[1-9]$/.test(e.code) || /^Numpad[1-9]$/.test(e.code)) { e.preventDefault(); moveTo(Number(e.code.slice(-1)) - 1); }
+  else if (e.code === "KeyS") { e.preventDefault(); openSnoozeMenu(); }
+  else if (e.key === "Delete") { e.preventDefault(); deleteCurrent(); }
+  else if (e.key === "ArrowRight") { e.preventDefault(); step(1); }
+  else if (e.key === "ArrowLeft") { e.preventDefault(); step(-1); }
+}
+
+/* ───────── настройки ───────── */
+async function renderSettings() {
+  const el = $("#settings");
+  const info = await core.info().catch(() => ({}));
+  const cur = currentTheme();
+  const apps = appsInOrder();
+  const keys = [
+    [["Ctrl", "Alt", "Пробел"], "мысль в корзину из любой программы"],
+    [["Ctrl", "Пробел"], "к строке ввода (или /, на «Сегодня»)"],
+    [["Alt", "1…9"], "приложение по номеру"],
+    [["Enter"], "в строке ввода — сохранить; Ctrl Z — отменить"],
+    [["1…9", "S", "Del", "← →", "Esc"], "разбор корзины: перенести, отложить, удалить, листать, выйти"],
+  ];
+  el.innerHTML = `
+    <div><h1 class="hub-page-title">Настройки</h1>
+      <p class="hub-muted" style="margin:var(--space-1) 0 0">этап 1 · данные только на этом компьютере, без синхронизации</p></div>
+    <section class="shell-section"><h2 class="hub-section-title">Тема</h2>
+      <div class="hub-themes" role="radiogroup" aria-label="Тема">${themes.map(t => `
+        <button class="hub-theme" type="button" role="radio" aria-checked="${t.id === cur.id}" data-theme-id="${esc(t.id)}">
+          <div class="hub-theme__shot" data-theme="${esc(t.base)}" style="--hub-photo:${themePhoto(t)};color:var(--text);background:var(--bg)">
+            <div class="hub-backdrop" data-scene="open" style="position:absolute"><div class="hub-backdrop__photo"></div><div class="hub-backdrop__veil"></div></div>
+            <div style="position:relative;padding:var(--space-4);display:grid;gap:var(--space-2)">
+              <div class="hub-capture__bar" style="padding:var(--space-1) var(--space-3)"><i data-icon="lightbulb" class="hub-capture__icon"></i><span class="hub-muted" style="font-family:var(--font-heading);font-size:var(--font-size-sm);padding:var(--space-1) 0">Мысль в корзину…</span></div>
+              <div class="hub-glass" style="padding:var(--space-2) var(--space-3);font-size:var(--font-size-xs)"><span class="hub-muted">Корзина</span><br>${state.visibleItems().length ? esc(plural(state.visibleItems().length, UNSORTED)) : "пусто"}</div>
+            </div>
+          </div>
+          <span class="hub-theme__name">${esc(t.name)}${t.id === cur.id ? `<i data-icon="check"></i>` : ""}</span>
+          <span class="hub-theme__meta">${t.base === "light" ? "светлая" : t.base === "solid" ? "сплошной цвет" : "тёмная"}</span>
+        </button>`).join("")}
+      </div>
+    </section>
+    <section class="shell-section"><h2 class="hub-section-title">Приложения</h2>
+      <ul class="hub-list hub-list--divided hub-glass" style="padding:var(--space-1) var(--space-2)">${apps.map((a, i) => `
+        <li><button class="hub-row" type="button" data-open="${esc(a.id)}">
+          <span class="hub-row__lead">${iconHTML(a.manifest.icon)}</span>
+          <span class="hub-row__body"><span class="hub-row__title">${esc(a.manifest.name || a.id)}</span>
+            <span class="hub-row__meta">${esc([a.manifest.version ? `версия ${a.manifest.version}` : "", a.source === "user" ? "из папки приложений" : "встроено",
+              (a.manifest.accepts || []).length ? `принимает: ${(a.manifest.accepts || []).map(x => x.label).join(", ")}` : ""].filter(Boolean).join(" · "))}</span></span>
+          ${i < 9 ? `<span class="hub-row__trail"><kbd class="hub-kbd">Alt</kbd><kbd class="hub-kbd">${i + 1}</kbd></span>` : ""}
+        </button></li>`).join("") || `<li class="hub-muted" style="padding:var(--space-3)">Приложений нет.</li>`}
+      </ul>
+      <p class="hub-hint" style="margin-top:var(--space-3)">Своё приложение — папка с manifest.json и index.html в папке apps рядом с данными. Установка перетаскиванием — на этапе 3.</p>
+    </section>
+    <section class="shell-section"><h2 class="hub-section-title">Данные</h2>
+      <dl class="shell-kv">
+        <dt>Папка данных</dt><dd>${esc(info.dataDir || "—")}</dd>
+        <dt>Папка приложений</dt><dd>${esc(info.appsDir || "—")}</dd>
+        <dt>Версия хаба</dt><dd>${esc(info.version || "—")}</dd>
+      </dl>
+      <p class="hub-hint" style="margin-top:var(--space-3)">Каждая запись — отдельный файл JSON. Шифрование и синхронизация с Drive — на этапе 2.</p>
+      ${inTauri ? `<div class="hub-btn-row" style="margin-top:var(--space-4)"><button class="hub-btn" type="button" data-act="open-data"><i data-icon="folder"></i>Открыть папку</button></div>` : ""}
+    </section>
+    <section class="shell-section"><h2 class="hub-section-title">Клавиши</h2>
+      <dl class="shell-keys">${keys.map(([ks, what]) => `<dt>${ks.map(k => `<kbd class="hub-kbd">${esc(k)}</kbd>`).join(" ")}</dt><dd>${esc(what)}</dd>`).join("")}</dl>
+    </section>`;
+  H.icons(el);
+}
+
+/* ───────── клавиши ───────── */
+function hotkeyOf(e) {
+  if (e.ctrlKey && !e.altKey && !e.shiftKey && e.code === "Space") return "capture";
+  if (e.ctrlKey && !e.altKey && e.code === "KeyK") return "command";
+  if (e.ctrlKey && !e.altKey && e.code === "KeyL") return "lock";
+  if (e.altKey && !e.ctrlKey && /^Digit[1-9]$/.test(e.code)) return "app:" + e.code.slice(5);
+  return null;
+}
+function handleHotkey(k) {
+  if (k === "capture") focusCapture();
+  else if (k.startsWith("app:")) { const a = appsInOrder()[Number(k.slice(4)) - 1]; if (a) openApp(a.id); }
+  // command (Ctrl K) и lock (Ctrl L) — следующие этапы; клавиши уже зарезервированы за хабом
+}
+const isTyping = t => t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName));
+document.addEventListener("keydown", e => {
+  const k = hotkeyOf(e);
+  if (k) { e.preventDefault(); handleHotkey(k); return; }
+  if (view.name === "triage") { triageKey(e); return; }
+  if (view.name === "today" && e.key === "/" && !isTyping(e.target)) { e.preventDefault(); focusCapture(); return; }
+  if (view.name === "settings" && e.key === "Escape" && !isTyping(e.target)) { go("today"); }
+});
+
+/* ───────── клики ───────── */
+document.addEventListener("click", e => {
+  const t = e.target.closest("[data-go],[data-open],[data-card-action],[data-target],[data-tri],[data-snooze],[data-theme-id],[data-act]");
+  if (!t) { if (tri.menu && !e.target.closest("#snooze-menu")) closeSnoozeMenu(); return; }
+  const d = t.dataset;
+  if (d.go) go(d.go);
+  else if (d.open) openApp(d.open);
+  else if (d.cardAction) {
+    if (d.cardAction === "inbox") go("triage");
+    else { const c = state.cards[d.cardAction]; openApp(d.cardAction, c && c.action ? c.action : { open: "" }); }
+  }
+  else if (d.target) moveTo(Number(d.target));
+  else if (d.tri === "snooze") { tri.menu ? closeSnoozeMenu() : openSnoozeMenu(); }
+  else if (d.tri === "delete") deleteCurrent();
+  else if (d.tri === "skip") step(1);
+  else if (d.snooze) chooseSnooze(Number(d.snooze));
+  else if (d.themeId) { state.setSetting("theme", d.themeId); }
+  else if (d.act === "open-data") core.openDataDir().catch(err => toast(`Не открылась: ${err.message || err}`, { tone: "danger" }));
+});
+document.addEventListener("mouseover", e => {
+  const li = e.target.closest && e.target.closest("[data-snooze]");
+  if (li && tri.menu && tri.menu.idx !== Number(li.dataset.snooze)) { tri.menu.idx = Number(li.dataset.snooze); drawSnoozeMenu(); }
+});
+
+/* ───────── изменения данных ───────── */
+state.addEventListener("change", e => {
+  const what = e.detail;
+  if (what === "inbox") {
+    if (view.name === "today") renderToday();
+    if (view.name === "triage" && !tri.busy && !tri.menu) renderTriage();
+    if (view.name === "app" || view.name === "settings") renderRail();
+  } else if (what === "cards") {
+    if (view.name === "today") renderToday();
+  } else if (what === "settings") {
+    applyTheme();
+    if (view.name === "settings") renderSettings();
+  }
+});
+
+/* отложенные возвращаются, приветствие и дата меняются */
+let lastSnoozeCheck = Date.now();
+setInterval(() => {
+  const now = Date.now();
+  const back = state.items.some(i => i.snoozeUntil && Date.parse(i.snoozeUntil) > lastSnoozeCheck && Date.parse(i.snoozeUntil) <= now);
+  lastSnoozeCheck = now;
+  if (back) state.changed("inbox");
+  else if (view.name === "today") renderToday();
+  else renderHello();
+}, 30e3);
+
+/* ───────── запуск ───────── */
+async function start() {
+  await Promise.all([state.load(), loadThemes()]);
+  applyTheme();
+  host = new AppHost({
+    state,
+    container: $("#frames"),
+    getTheme: themePayload,
+    toast,
+    onHotkey: handleHotkey,
+    onCard: () => {},
+  });
+  try { host.setApps(await core.apps()); }
+  catch (e) { console.error(e); toast(`Список приложений не прочитался: ${e.message || e}`, { tone: "danger", icon: "circle-alert" }); }
+  // приложения с карточкой на «Сегодня» и получатели корзины запускаются сразу, в фоне
+  for (const a of host.list()) if (a.manifest.card || (a.manifest.accepts || []).length) host.ensure(a.id);
+  host.flushAll();
+  setupCapture($("#capture-main"));
+  setupCapture($("#capture-compact"));
+  core.onHotkey(k => handleHotkey(k));
+  go("today");
+  window.__hubShell = { state, host, go, openApp };   // для тестов и отладки из консоли
+}
+start().catch(e => {
+  console.error(e);
+  document.body.insertAdjacentHTML("beforeend", `<div class="hub-overlay"><div class="hub-dialog"><h2 class="hub-dialog__title">Хаб не запустился</h2><p class="hub-dialog__body">${esc(e.message || e)}</p></div></div>`);
+});

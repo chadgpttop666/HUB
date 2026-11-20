@@ -1,0 +1,41 @@
+/* shell.css — только раскладка оболочки. Цвета, шрифты, размеры, скругления и длительности — из токенов (hub/tokens.css). */
+
+[hidden] { display: none !important; }
+
+/* фото темы задаёт хаб: --hub-photo и --hub-photo-pos ставятся на <html> из theme.json */
+.hub-backdrop__photo { background-position: var(--hub-photo-pos, 50% 38%); }
+
+.shell-capture-wrap { margin-top: 6vh; }
+.shell-cards { width: min(1120px, 100%); margin: var(--space-4) auto 0; }
+.shell-hint-keys { font-size: inherit; }
+.hub-today__note { text-align: center; }
+
+/* карточка-заглушка, пока приложение не прислало свою */
+.shell-card-skeleton { display: grid; gap: var(--space-2); }
+
+/* разбор корзины */
+.shell-triage { margin-top: 3vh; }
+.shell-triage .hub-triage__actions { position: relative; }
+.shell-triage .hub-menu { position: absolute; top: calc(100% + var(--space-2)); width: 280px; }
+
+/* оболочка приложения: страница приложения — iframe на всю область */
+.shell-main { position: relative; padding: 0; overflow: hidden; }
+.shell-frames, .shell-frame { position: absolute; inset: 0; }
+.shell-frame { width: 100%; height: 100%; border: 0; background: transparent; border-radius: inherit; }
+.shell-page { position: absolute; inset: 0; overflow: auto; padding: var(--space-6) var(--space-8); }
+.shell-top-title { font-size: var(--font-size-sm); white-space: nowrap; }
+
+.hub-rail__item[data-icon-src] img { width: 20px; height: 20px; }
+
+/* настройки */
+.shell-section { margin-top: var(--space-8); }
+.shell-section:first-of-type { margin-top: var(--space-6); }
+.shell-theme-shot { --hub-photo: none; }
+.shell-kv { display: grid; grid-template-columns: max-content 1fr; gap: var(--space-2) var(--space-6); margin: 0; }
+.shell-kv dt { color: var(--text-muted); }
+.shell-kv dd { margin: 0; overflow-wrap: anywhere; }
+.shell-keys { display: grid; grid-template-columns: max-content 1fr; gap: var(--space-2) var(--space-6); align-items: center; margin: 0; }
+.shell-keys dd { margin: 0; color: var(--text-muted); }
+
+@media (max-width: 1100px) { .shell-hint-keys { display: none; } }
+.shell-row { display: inline-flex; align-items: center; gap: var(--space-1); }
