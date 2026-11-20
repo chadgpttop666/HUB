@@ -33,7 +33,14 @@ jobs:
       - name: Библиотеки Tauri для Linux
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libsoup-3.0-dev libjavascriptcoregtk-4.1-dev librsvg2-dev libxdo-dev webkit2gtk-driver xvfb dbus-x11
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libsoup-3.0-dev libjavascriptcoregtk-4.1-dev librsvg2-dev libxdo-dev xvfb dbus-x11
+          # WebDriver для WebKitGTK: в Ubuntu 26.04 пакет переименован
+          sudo apt-get install -y webkitgtk-webdriver || sudo apt-get install -y webkit2gtk-driver
+          if ! command -v WebKitWebDriver >/dev/null; then
+            found=$(dpkg -L webkitgtk-webdriver webkit2gtk-driver 2>/dev/null | grep -m1 '/WebKitWebDriver$' || true)
+            [ -n "$found" ] && sudo ln -sf "$found" /usr/local/bin/WebKitWebDriver
+          fi
+          command -v WebKitWebDriver
 
       - uses: dtolnay/rust-toolchain@stable
 
