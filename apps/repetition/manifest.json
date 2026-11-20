@@ -1,0 +1,13 @@
+{
+  "id": "repetition",
+  "name": "Повторение",
+  "version": "2.1.0",
+  "description": "Теории, интервальное повторение (FSRS), план и дневник",
+  "icon": "layers",
+  "entry": "index.html",
+  "card": true,
+  "accepts": [
+    { "type": "text", "label": "Заготовка теории" }
+  ],
+  "permissions": { "network": [] }
+}
