@@ -450,7 +450,14 @@ pub async fn drive_authorize(app: AppHandle, client_id: String, client_secret: S
     let blob = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(serde_json::to_vec(&cfg).map_err(|e| e.to_string())?);
     let bin = rclone::locate();
     let mut cmd = Command::new(&bin);
-    cmd.args(["authorize", "drive", &blob, "--auth-no-open-browser", "--config", ""]).stdout(Stdio::piped()).stderr(Stdio::piped()).stdin(Stdio::null());
+    // страница «Вход выполнен» в браузере — своя, вместо белой страницы rclone
+    let page = std::env::temp_dir().join("hub-auth-page.html");
+    let _ = fs::write(&page, include_str!("auth_page.html"));
+    cmd.args(["authorize", "drive", &blob, "--auth-no-open-browser", "--config", ""]);
+    if page.is_file() {
+        cmd.arg("--template").arg(&page);
+    }
+    cmd.stdout(Stdio::piped()).stderr(Stdio::piped()).stdin(Stdio::null());
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
@@ -475,6 +482,11 @@ pub async fn drive_authorize(app: AppHandle, client_id: String, client_secret: S
     let log = reader.join().unwrap_or_default();
     let text = format!("{}\n{}", String::from_utf8_lossy(&out.stdout), log);
     rclone::parse_authorize_token(&text).ok_or_else(|| {
+        if text.contains("--->") {
+            // вход прошёл, но ответ rclone в незнакомом виде — сохранить для разбора
+            let _ = fs::write(std::env::temp_dir().join("hub-auth-output.txt"), &text);
+            return "Вход в Google прошёл, но хаб не понял ответ rclone. Его копия — в hub-auth-output.txt во временной папке; пришлите её разработчику".to_string();
+        }
         let last = log.lines().filter(|l| l.contains("ERROR") || l.contains("Error")).last().unwrap_or("вход не завершён").to_string();
         format!("Не удалось войти в Google: {last}")
     })

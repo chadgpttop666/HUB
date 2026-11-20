@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ if .OK }}Вход выполнен{{ else }}Вход не удался{{ end }} — Хаб</title>
+<style>
+  /* Страницу показывает браузер, а не хаб: дизайн-система сюда не подключается, значения токенов темы «Лес» — вручную. */
+  html, body { height: 100%; margin: 0; }
+  body { display: grid; place-items: center; background: radial-gradient(120% 90% at 50% 20%, #3a3a26 0%, #16241b 45%, #0d1511 100%);
+         color: #f5efe4; font: 16px/1.5 "Segoe UI", system-ui, -apple-system, sans-serif; }
+  main { width: min(460px, calc(100vw - 32px)); padding: 32px; border-radius: 24px; background: rgba(14,22,18,0.84);
+         border: 1px solid rgba(245,239,228,0.16); box-shadow: 0 18px 48px rgba(0,0,0,0.38); }
+  h1 { margin: 0 0 8px; font-weight: 300; font-size: 28px; line-height: 36px; }
+  p { margin: 0; color: #d4ccbf; }
+  .mark { display: inline-grid; place-items: center; width: 40px; height: 40px; margin-bottom: 16px; border-radius: 50%;
+          background: rgba(240,180,106,0.18); color: #f0b46a; font-size: 22px; }
+  .err { margin-top: 16px; font-size: 13px; color: #ffb3a1; overflow-wrap: anywhere; }
+</style>
+</head>
+<body>
+<main>
+{{ if .OK }}
+  <div class="mark">✓</div>
+  <h1>Вход выполнен</h1>
+  <p>Google Drive подключён к хабу. Эту вкладку можно закрыть и вернуться в хаб.</p>
+{{ else }}
+  <div class="mark">!</div>
+  <h1>Вход не удался</h1>
+  <p>Вернитесь в хаб и попробуйте ещё раз.</p>
+  <p class="err">{{ .Name }}{{ if .Description }} — {{ .Description }}{{ end }}</p>
+{{ end }}
+</main>
+</body>
+</html>

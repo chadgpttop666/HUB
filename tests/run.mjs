@@ -169,11 +169,18 @@ await test("отложенное возвращается в корзину, к�
 await test("Alt+1 открывает «Повторение» в оболочке, Ctrl+Пробел из приложения — к строке ввода", async () => {
   await page.keyboard.press("Alt+1");
   await page.waitForSelector("#screen-shell:not([hidden])");
+  eq((await text("#titlebar-place")).trim(), "· Повторение", "заголовок окна");
+  assert(await page.locator(".hub-rail").isHidden(), "боковая панель по умолчанию спрятана");
+  assert(await page.locator(".hub-shell__top").isHidden(), "строка ввода по умолчанию спрятана");
+  await page.click('[data-panel="rail"]');
   await page.waitForSelector('.hub-rail__item[aria-current="page"][data-open="repetition"]');
+  await page.click('[data-panel="rail"]');
+  assert(await page.locator(".hub-rail").isHidden(), "панель снова спрятана");
   await page.waitForTimeout(400);
   await appFrame().locator("body").click({ position: { x: 5, y: 300 } });
   await page.keyboard.press("Control+Space");
   await waitFor(() => page.evaluate(() => document.activeElement && document.activeElement.matches("#capture-compact .hub-capture__input")), 3000, "фокус в строке ввода оболочки");
+  assert(await page.locator(".hub-shell__top").isVisible(), "спрятанная строка ввода показалась на время ввода");
   await shot("05-app");
 });
 
@@ -243,7 +250,7 @@ await test("«Повторение»: экспорт (скачивание из 
 });
 
 await test("тема: «Туман» перекрашивает хаб и приложение", async () => {
-  await page.click('#rail [data-go="settings"]');
+  await page.evaluate(() => window.__hubShell.go("settings"));
   await page.waitForSelector("#settings:not([hidden]) .hub-themes");
   await page.waitForTimeout(300);
   await shot("06-settings");
@@ -253,7 +260,7 @@ await test("тема: «Туман» перекрашивает хаб и при
   await page.keyboard.press("Alt+1");
   await page.waitForTimeout(300);
   await shot("07-app-mist");
-  await page.click('#rail [data-go="today"]');
+  await page.evaluate(() => window.__hubShell.go("today"));
   await shot("08-today-mist");
   await page.evaluate(() => window.__hubShell.state.setSetting("theme", "forest"));
 });

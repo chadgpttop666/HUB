@@ -14,6 +14,23 @@
 <body>
 <div class="hub-backdrop" data-scene="open" aria-hidden="true"><div class="hub-backdrop__photo"></div><div class="hub-backdrop__veil"></div></div>
 
+<!-- Заголовок окна: в цвет темы, вместо системной белой полосы -->
+<header class="shell-titlebar" id="titlebar" data-tauri-drag-region>
+  <span class="shell-titlebar__name" data-tauri-drag-region>Хаб<span id="titlebar-place"></span></span>
+  <span class="shell-titlebar__toggles" id="titlebar-toggles">
+    <button class="shell-titlebar__text" type="button" data-panel="rail" aria-pressed="false" title="Боковая панель приложений">Панель</button>
+    <button class="shell-titlebar__text" type="button" data-panel="top" aria-pressed="false" title="Строка ввода сверху · Ctrl+Пробел">Строка ввода</button>
+  </span>
+  <span class="shell-titlebar__fill" data-tauri-drag-region></span>
+  <span class="shell-titlebar__tools" id="titlebar-tools"><span id="titlebar-sync"></span>
+    <button class="shell-titlebar__btn" type="button" data-go="lock" aria-label="Заблокировать" title="Заблокировать · Ctrl+L"><i data-icon="lock"></i></button></span>
+  <span class="shell-titlebar__win" id="titlebar-win">
+    <button class="shell-titlebar__btn" type="button" data-win="min" aria-label="Свернуть" title="Свернуть"><i data-icon="minus"></i></button>
+    <button class="shell-titlebar__btn" type="button" data-win="max" aria-label="Развернуть" title="Развернуть"><svg class="hub-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="16" height="16" x="4" y="4" rx="2"/></svg></button>
+    <button class="shell-titlebar__btn shell-titlebar__btn--close" type="button" data-win="close" aria-label="Закрыть" title="Закрыть"><i data-icon="x"></i></button>
+  </span>
+</header>
+
 <!-- «Сегодня» -->
 <div class="hub-today" id="screen-today" hidden>
   <header class="hub-topbar">

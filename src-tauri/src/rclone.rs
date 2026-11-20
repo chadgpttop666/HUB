@@ -206,13 +206,40 @@ pub fn crypt_passwords(key: &DataKey) -> (String, String) {
     (key.derive("rclone crypt password"), key.derive("rclone crypt salt"))
 }
 
-/// Из вывода `rclone authorize`: JSON токена между стрелками «Paste the following…» и «End paste».
+/// Из вывода `rclone authorize`: что стоит между стрелками «Paste the following…» и «End paste».
+/// Старые версии печатают там JSON токена, новые (1.5x+ при вызове с base64-настройками) —
+/// base64 от `{"token":"<JSON токена>"}`. Понимаем оба вида; возвращаем JSON токена.
 pub fn parse_authorize_token(out: &str) -> Option<String> {
+    use base64::Engine;
     let start = out.find("--->")? + 4;
     let end = out[start..].find("<---")? + start;
-    let t = out[start..end].trim();
-    serde_json::from_str::<serde_json::Value>(t).ok()?;
-    Some(t.to_string())
+    let t: String = out[start..end].split_whitespace().collect();
+    let is_token = |v: &serde_json::Value| v.get("access_token").is_some() || v.get("refresh_token").is_some();
+    if let Ok(v) = serde_json::from_str::<serde_json::Value>(&t) {
+        if is_token(&v) {
+            return Some(t);
+        }
+        if let Some(inner) = v.get("token").and_then(|x| x.as_str()) {
+            return Some(inner.to_string());
+        }
+    }
+    let engines = [
+        base64::engine::general_purpose::URL_SAFE_NO_PAD,
+        base64::engine::general_purpose::URL_SAFE,
+        base64::engine::general_purpose::STANDARD,
+        base64::engine::general_purpose::STANDARD_NO_PAD,
+    ];
+    for e in engines {
+        let Ok(bytes) = e.decode(t.as_bytes()) else { continue };
+        let Ok(v) = serde_json::from_slice::<serde_json::Value>(&bytes) else { continue };
+        if let Some(inner) = v.get("token").and_then(|x| x.as_str()) {
+            return Some(inner.to_string());
+        }
+        if is_token(&v) {
+            return Some(String::from_utf8_lossy(&bytes).to_string());
+        }
+    }
+    None
 }
 
 #[cfg(test)]
@@ -224,6 +251,14 @@ mod tests {
         let out = "NOTICE: Got code\nPaste the following into your remote machine --->\n{\"access_token\":\"x\",\"expiry\":\"2026\"}\n<---End paste\n";
         assert_eq!(parse_authorize_token(out).unwrap(), "{\"access_token\":\"x\",\"expiry\":\"2026\"}");
         assert!(parse_authorize_token("ничего").is_none());
+        // новый вид: base64 от {"token": "<JSON>"}
+        use base64::Engine;
+        let tok = r#"{"access_token":"ya29","token_type":"Bearer","refresh_token":"1//x","expiry":"2026-11-20T18:00:00Z"}"#;
+        let blob = serde_json::json!({ "token": tok }).to_string();
+        for enc in [base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(&blob), base64::engine::general_purpose::STANDARD.encode(&blob)] {
+            let out = format!("NOTICE: Got code\nPaste the following into your remote machine --->\n{enc}\n<---End paste\n");
+            assert_eq!(parse_authorize_token(&out).as_deref(), Some(tok));
+        }
     }
 
     #[test]

@@ -4,6 +4,7 @@ import { HubState, tagsOf, setDevice, DEVICE } from "./state.js";
 import { AppHost } from "./host.js";
 import { runSetup, runLock } from "./lock.js";
 import { renderSyncSettings, setSyncStatus, syncPill, syncStatus } from "./syncui.js";
+import { watchSecrets } from "./secret.js";
 
 const H = window.HubUI;
 const $ = sel => document.querySelector(sel);
@@ -83,6 +84,7 @@ let fromHistory = false;
 function remember() {
   html.dataset.view = view.name;
   renderNavbar();
+  renderTitlebar();
   if (fromHistory) return;
   const s = { v: view.name, app: view.app || null };
   const cur = history.state;
@@ -96,6 +98,15 @@ window.addEventListener("popstate", e => {
   try { if (s.v === "app" && s.app) openApp(s.app); else go(s.v === "app" ? "today" : s.v); }
   finally { fromHistory = false; }
 });
+/* заголовок окна: где мы, кнопки панелей, окно */
+function renderTitlebar() {
+  const place = view.name === "app" ? host.name(view.app) : view.name === "settings" ? "Настройки" : view.name === "triage" ? "Разбор корзины" : view.name === "apps" ? "Приложения" : "";
+  $("#titlebar-place").textContent = place ? ` · ${place}` : "";
+  const local = state.local || {};
+  html.dataset.rail = local.rail ? "on" : "off";
+  html.dataset.top = local.top ? "on" : "off";
+  document.querySelectorAll("[data-panel]").forEach(b => b.setAttribute("aria-pressed", String(!!local[b.dataset.panel])));
+}
 function renderNavbar() {
   const nav = $("#navbar");
   if (!nav || !unlocked) { if (nav) nav.innerHTML = ""; return; }
@@ -170,7 +181,7 @@ function renderHello() {
 }
 function renderSyncPills() {
   const conflicts = (state.conflicts || []).length;
-  for (const [sel, compact] of [["#today-sync", isPhone()], ["#shell-sync", true], ["#appbar-sync", true]]) {
+  for (const [sel, compact] of [["#today-sync", isPhone()], ["#shell-sync", true], ["#appbar-sync", true], ["#titlebar-sync", true]]) {
     const el = $(sel);
     if (!el) continue;
     el.innerHTML = syncPill(conflicts, compact);
@@ -289,6 +300,12 @@ function undoCapture() {
 }
 function focusCapture() {
   if (view.name === "triage") { go("today"); return; }
+  if (view.name !== "today" && !(state.local && state.local.top)) {
+    // строка ввода спрятана — показать на время ввода
+    html.dataset.topPeek = "1";
+    const input = $("#capture-compact .hub-capture__input");
+    input.addEventListener("blur", () => setTimeout(() => { if (document.activeElement !== input) delete html.dataset.topPeek; }, 150), { once: true });
+  }
   const input = view.name === "today" ? $("#capture-main .hub-capture__input") : $("#capture-compact .hub-capture__input");
   const delay = view.name === "today" && !H.reducedMotion() ? 30 : 0;
   setTimeout(() => input.focus(), delay);
@@ -647,6 +664,13 @@ document.addEventListener("click", e => {
   else if (d.themeId) { state.setSetting("theme", d.themeId); }
   else if (d.act === "open-data") core.openDataDir().catch(err => toast(`Не открылась: ${err.message || err}`, { tone: "danger" }));
 });
+/* кнопки заголовка: панели и окно */
+document.addEventListener("click", e => {
+  const p = e.target.closest("[data-panel]");
+  if (p && unlocked) { state.setLocal(p.dataset.panel, !(state.local && state.local[p.dataset.panel])); renderTitlebar(); return; }
+  const w = e.target.closest("[data-win]");
+  if (w) core.windowAction(w.dataset.win);
+});
 document.addEventListener("mouseover", e => {
   const li = e.target.closest && e.target.closest("[data-snooze]");
   if (li && tri.menu && tri.menu.idx !== Number(li.dataset.snooze)) { tri.menu.idx = Number(li.dataset.snooze); drawSnoozeMenu(); }
@@ -731,12 +755,15 @@ core.onDataChanged(async ({ namespaces = [] } = {}) => {
 /* ───────── запуск ───────── */
 let platform = "pc", wired = false;
 async function start() {
+  watchSecrets();
   await loadThemes();
   applyTheme();
   const st = await core.status();
   platform = st.platform || "pc";
   html.dataset.platform = platform;
   html.dataset.view = "none";
+  if (core.nativeWindow) html.dataset.nativeWindow = "";
+  H.icons($("#titlebar"));
   window.__hubShell = { state, core, go, openApp, lockNow, get host() { return host; }, get unlocked() { return unlocked; } };   // для тестов и отладки
   if (!st.setupDone) await runSetup(st);
   else if (!st.unlocked) await runLock();

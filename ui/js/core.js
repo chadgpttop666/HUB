@@ -60,6 +60,14 @@ const tauriCore = {
   },
   onSync(cb) { T.event.listen("hub://sync", e => cb(e.payload)); },
   onDataChanged(cb) { T.event.listen("hub://data-changed", e => cb(e.payload)); },
+  /* своё окно без системной рамки: свернуть, развернуть, закрыть */
+  get nativeWindow() { return !!(T.window && !/Android/i.test(navigator.userAgent)); },
+  windowAction(kind) {
+    const w = T.window.getCurrentWindow();
+    if (kind === "min") return w.minimize();
+    if (kind === "max") return w.toggleMaximize();
+    if (kind === "close") return w.close();
+  },
 };
 
 /* Заглушка для браузера: пароль хранится открыто в localStorage — только для разработки и тестов */
@@ -147,6 +155,8 @@ const devCore = {
   async pickFolder() { return null; },
   onSync() {},
   onDataChanged() {},
+  nativeWindow: false,
+  windowAction() {},
 };
 
 export const core = inTauri ? tauriCore : devCore;

@@ -87,3 +87,57 @@
   .shell-setup { padding: var(--space-6) var(--space-4); }
   .shell-kv, .shell-keys { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* поле пароля со своей кнопкой «показать» (встроенная кнопка WebView2 скрыта) */
+input::-ms-reveal, input::-ms-clear { display: none; }
+.shell-secret { position: relative; display: block; flex: 1; min-width: 0; }
+.shell-secret > input { width: 100%; padding-right: calc(var(--control-sm) + var(--space-3)); }
+.shell-reveal { position: absolute; right: var(--space-1); top: 50%; translate: 0 -50%; color: var(--text-muted); }
+.shell-secret--line > input { text-align: inherit; }
+
+/* ───────── заголовок окна (ПК) ─────────
+   Системная рамка выключена (decorations: false), заголовок рисует хаб — прозрачный, поверх фото темы. */
+:root { --shell-titlebar: 36px; }
+.shell-titlebar { position: fixed; top: 0; left: 0; right: 0; height: var(--shell-titlebar); z-index: var(--z-shell);
+  display: flex; align-items: center; gap: var(--space-2); padding: 0 0 0 var(--space-4); user-select: none;
+  font-family: var(--font-body); font-size: var(--font-size-sm); color: var(--text-muted); }
+.shell-titlebar__name { font-family: var(--font-heading); font-weight: var(--weight-light); color: var(--text); white-space: nowrap; }
+.shell-titlebar__name span { color: var(--text-muted); font-family: var(--font-body); font-weight: var(--weight-regular); }
+.shell-titlebar__fill { flex: 1; align-self: stretch; }
+.shell-titlebar__toggles { display: flex; gap: var(--space-1); margin-left: var(--space-3); }
+.shell-titlebar__text { height: 26px; padding: 0 var(--space-3); border: 1px solid transparent; border-radius: var(--radius-pill); background: transparent;
+  color: var(--text-muted); font: inherit; cursor: pointer; transition: background-color var(--duration-fast) var(--ease-out), color var(--duration-fast) var(--ease-out); }
+.shell-titlebar__text:hover { color: var(--text); background: var(--surface-sunken); }
+.shell-titlebar__text[aria-pressed="true"] { color: var(--text); background: var(--accent-soft); }
+.shell-titlebar__tools, .shell-titlebar__win { display: flex; align-items: center; align-self: stretch; }
+.shell-titlebar__tools { gap: var(--space-1); margin-right: var(--space-2); }
+.shell-titlebar__btn { display: grid; place-items: center; width: 44px; height: 100%; padding: 0; border: 0; background: transparent; color: var(--text-muted); cursor: pointer;
+  transition: background-color var(--duration-fast) var(--ease-out), color var(--duration-fast) var(--ease-out); }
+.shell-titlebar__tools .shell-titlebar__btn { width: 32px; height: 28px; border-radius: var(--radius-sm); }
+.shell-titlebar__btn .hub-icon { width: 16px; height: 16px; }
+.shell-titlebar__btn:hover { background: var(--surface-hover); color: var(--text); }
+.shell-titlebar__btn--close:hover { background: var(--danger-soft); color: var(--danger); }
+.shell-titlebar button:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+html:not([data-view="app"]):not([data-view="settings"]) .shell-titlebar__toggles,
+html:not([data-view="app"]):not([data-view="settings"]) .shell-titlebar__tools,
+html[data-view="none"] .shell-titlebar__toggles, html[data-view="none"] .shell-titlebar__tools { display: none; }
+html:not([data-native-window]) .shell-titlebar__win { display: none; }
+.shell-titlebar .hub-sync { font-size: var(--font-size-xs); }
+
+/* всё содержимое — под заголовком */
+.hub-today, .hub-shell, .shell-lock { top: var(--shell-titlebar); }
+.hub-shell { inset: var(--shell-titlebar) 0 0 0; }
+
+/* панели, которые можно спрятать: боковая и строка ввода сверху */
+html[data-rail="off"] .hub-shell .hub-rail { display: none; }
+html[data-rail="off"] .hub-shell { grid-template-columns: minmax(0, 1fr); }
+html[data-top="off"]:not([data-top-peek]) .hub-shell .hub-shell__top { display: none; }
+html[data-top="off"]:not([data-top-peek]) .hub-shell { grid-template-rows: minmax(0, 1fr); }
+html[data-rail="off"][data-top="off"] .hub-shell { padding: 0 var(--space-3) var(--space-3); gap: var(--space-3); }
+
+@media (max-width: 600px) {
+  .shell-titlebar { display: none; }
+  :root { --shell-titlebar: 0px; }
+}
+/* замок и статус — в заголовке окна; в шапке оболочки они бы повторялись */
+html:not([data-platform="phone"]) .hub-shell__top .hub-topbar__right { display: none; }
