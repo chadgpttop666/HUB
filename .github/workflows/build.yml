@@ -136,6 +136,9 @@ jobs:
           java-version: 17
 
       - uses: android-actions/setup-android@v3
+        with:
+          # по умолчанию действие ставит пакет «tools», которого в репозитории Google больше нет
+          packages: platform-tools
 
       - name: NDK
         run: |
