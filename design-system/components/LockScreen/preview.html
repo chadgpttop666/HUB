@@ -1,0 +1,175 @@
+<!-- @dsCard group="Экраны" height=964 width=1440 subtitle="Заставка · пароль · неверный · Caps Lock · раскладка · переход" -->
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Вход</title>
+<link rel="stylesheet" href="../../preview/kit.css">
+
+</head>
+<body>
+
+<div class="pv-states">
+  <span class="pv-states__title">Вход</span>
+  <div class="hub-segmented" role="group" aria-label="Состояние"><button type="button" aria-pressed="true" data-i="0">Заставка</button><button type="button" aria-pressed="false" data-i="1">Пароль</button><button type="button" aria-pressed="false" data-i="2">Неверный</button><button type="button" aria-pressed="false" data-i="3">Caps Lock</button><button type="button" aria-pressed="false" data-i="4">Раскладка</button><button type="button" aria-pressed="false" data-i="5">Переход</button></div>
+  <span class="pv-states__note" id="pvNote"></span>
+</div>
+<div id="pvScreen"></div>
+<template data-note="любая клавиша — к паролю"><div class="pv-screen" data-scene="lock"><div class="hub-backdrop" data-scene="lock"><div class="hub-backdrop__photo"></div><div class="hub-backdrop__veil"></div></div>
+<main class="hub-lock" aria-label="Вход в хаб" style="">
+  <div class="hub-lock__clock">13:20</div>
+  <div class="hub-lock__date">пятница, 20 ноября · день 61</div>
+  <h1 class="hub-lock__greet"><span>Добрый день, Максим</span></h1>
+  <form class="hub-lock__form" onsubmit="return false">
+    <div class="hub-lock__row">
+      <input class="hub-input hub-input--line hub-input--secret pv-focus" type="password" placeholder="Пароль" value="" aria-label="Пароль">
+      <button class="hub-btn hub-btn--quiet hub-btn--icon hub-lock__go" type="submit" aria-label="Войти"><i data-icon="arrow-right"></i></button>
+    </div>
+    <p class="hub-lock__msg" data-tone="" aria-live="polite"></p>
+  </form>
+</main>
+<p class="hub-lock__hint">Нажмите любую клавишу</p>
+</div></template><template data-note="поле в фокусе, точки разрежены"><div class="pv-screen" data-scene="pass"><div class="hub-backdrop" data-scene="pass"><div class="hub-backdrop__photo"></div><div class="hub-backdrop__veil"></div></div>
+<main class="hub-lock" aria-label="Вход в хаб" style="">
+  <div class="hub-lock__clock">13:20</div>
+  <div class="hub-lock__date">пятница, 20 ноября · день 61</div>
+  <h1 class="hub-lock__greet"><span>Добрый день, Максим</span></h1>
+  <form class="hub-lock__form" onsubmit="return false">
+    <div class="hub-lock__row">
+      <input class="hub-input hub-input--line hub-input--secret pv-focus" type="password" placeholder="Пароль" value="лес" aria-label="Пароль">
+      <button class="hub-btn hub-btn--quiet hub-btn--icon hub-lock__go" type="submit" aria-label="Войти"><i data-icon="arrow-right"></i></button>
+    </div>
+    <p class="hub-lock__msg" data-tone="" aria-live="polite"></p>
+  </form>
+</main>
+<p class="hub-lock__hint"><kbd class="hub-kbd">Enter</kbd> войти · <kbd class="hub-kbd">Esc</kbd> назад</p>
+</div></template><template data-note="поле вздрагивает 420 мс, текст выделен для повтора"><div class="pv-screen" data-scene="pass"><div class="hub-backdrop" data-scene="pass"><div class="hub-backdrop__photo"></div><div class="hub-backdrop__veil"></div></div>
+<main class="hub-lock" aria-label="Вход в хаб" style="">
+  <div class="hub-lock__clock">13:20</div>
+  <div class="hub-lock__date">пятница, 20 ноября · день 61</div>
+  <h1 class="hub-lock__greet"><span>Добрый день, Максим</span></h1>
+  <form class="hub-lock__form" onsubmit="return false">
+    <div class="hub-lock__row">
+      <input class="hub-input hub-input--line hub-input--secret pv-focus" type="password" placeholder="Пароль" value="лес12" aria-label="Пароль" aria-invalid="true">
+      <button class="hub-btn hub-btn--quiet hub-btn--icon hub-lock__go" type="submit" aria-label="Войти"><i data-icon="arrow-right"></i></button>
+    </div>
+    <p class="hub-lock__msg" data-tone="error" aria-live="polite"><i data-icon="circle-alert"></i>Неверный пароль</p><button class="hub-btn hub-btn--quiet hub-btn--sm" type="button" style="margin-top:var(--space-2)">Войти ключом восстановления</button>
+  </form>
+</main>
+<p class="hub-lock__hint"><kbd class="hub-kbd">Enter</kbd> войти · <kbd class="hub-kbd">Esc</kbd> назад</p>
+</div></template><template data-note="предупреждение ещё до ввода"><div class="pv-screen" data-scene="pass"><div class="hub-backdrop" data-scene="pass"><div class="hub-backdrop__photo"></div><div class="hub-backdrop__veil"></div></div>
+<main class="hub-lock" aria-label="Вход в хаб" style="">
+  <div class="hub-lock__clock">13:20</div>
+  <div class="hub-lock__date">пятница, 20 ноября · день 61</div>
+  <h1 class="hub-lock__greet"><span>Добрый день, Максим</span></h1>
+  <form class="hub-lock__form" onsubmit="return false">
+    <div class="hub-lock__row">
+      <input class="hub-input hub-input--line hub-input--secret pv-focus" type="password" placeholder="Пароль" value="" aria-label="Пароль">
+      <button class="hub-btn hub-btn--quiet hub-btn--icon hub-lock__go" type="submit" aria-label="Войти"><i data-icon="arrow-right"></i></button>
+    </div>
+    <p class="hub-lock__msg" data-tone="warning" aria-live="polite"><i data-icon="arrow-big-up"></i>Включён Caps Lock</p>
+  </form>
+</main>
+<p class="hub-lock__hint"><kbd class="hub-kbd">Enter</kbd> войти · <kbd class="hub-kbd">Esc</kbd> назад</p>
+</div></template><template data-note="пароль набран как «ktc»"><div class="pv-screen" data-scene="pass"><div class="hub-backdrop" data-scene="pass"><div class="hub-backdrop__photo"></div><div class="hub-backdrop__veil"></div></div>
+<main class="hub-lock" aria-label="Вход в хаб" style="">
+  <div class="hub-lock__clock">13:20</div>
+  <div class="hub-lock__date">пятница, 20 ноября · день 61</div>
+  <h1 class="hub-lock__greet"><span>Добрый день, Максим</span></h1>
+  <form class="hub-lock__form" onsubmit="return false">
+    <div class="hub-lock__row"><span class="hub-tag hub-tag--warning hub-lock__layout" title="Раскладка"><i data-icon="languages"></i>EN</span>
+      <input class="hub-input hub-input--line hub-input--secret pv-focus" type="password" placeholder="Пароль" value="ktc" aria-label="Пароль" aria-invalid="true">
+      <button class="hub-btn hub-btn--quiet hub-btn--icon hub-lock__go" type="submit" aria-label="Войти"><i data-icon="arrow-right"></i></button>
+    </div>
+    <p class="hub-lock__msg" data-tone="error" aria-live="polite"><i data-icon="languages"></i>Неверный пароль: похоже, включена английская раскладка</p>
+  </form>
+</main>
+<p class="hub-lock__hint"><kbd class="hub-kbd">Enter</kbd> войти · <kbd class="hub-kbd">Esc</kbd> назад</p>
+</div></template><template data-note="заставка → пароль → «Сегодня»"><div class="pv-film"><div class="pv-film__frame"><div class="pv-film__shot"><div class="pv-screen" data-scene="lock"><div class="hub-backdrop" data-scene="lock"><div class="hub-backdrop__photo"></div><div class="hub-backdrop__veil"></div></div>
+<main class="hub-lock" aria-label="Вход в хаб" style="">
+  <div class="hub-lock__clock">13:20</div>
+  <div class="hub-lock__date">пятница, 20 ноября · день 61</div>
+  <h1 class="hub-lock__greet"><span>Добрый день, Максим</span></h1>
+  <form class="hub-lock__form" onsubmit="return false">
+    <div class="hub-lock__row">
+      <input class="hub-input hub-input--line hub-input--secret pv-focus" type="password" placeholder="Пароль" value="" aria-label="Пароль">
+      <button class="hub-btn hub-btn--quiet hub-btn--icon hub-lock__go" type="submit" aria-label="Войти"><i data-icon="arrow-right"></i></button>
+    </div>
+    <p class="hub-lock__msg" data-tone="" aria-live="polite"></p>
+  </form>
+</main>
+<p class="hub-lock__hint">Нажмите любую клавишу</p>
+</div></div><div class="pv-film__t">Заставка</div><div class="pv-film__d">Фото чёткое. Подсказка «дышит» раз в 4 с. Любая клавиша или клик — дальше; символ сразу попадает в поле.</div></div><i data-icon="arrow-right" class="pv-film__arrow"></i><div class="pv-film__frame"><div class="pv-film__shot"><div class="pv-screen" data-scene="pass"><div class="hub-backdrop" data-scene="pass"><div class="hub-backdrop__photo"></div><div class="hub-backdrop__veil"></div></div>
+<main class="hub-lock" aria-label="Вход в хаб" style="">
+  <div class="hub-lock__clock">13:20</div>
+  <div class="hub-lock__date">пятница, 20 ноября · день 61</div>
+  <h1 class="hub-lock__greet"><span>Добрый день, Максим</span></h1>
+  <form class="hub-lock__form" onsubmit="return false">
+    <div class="hub-lock__row">
+      <input class="hub-input hub-input--line hub-input--secret pv-focus" type="password" placeholder="Пароль" value="ле" aria-label="Пароль">
+      <button class="hub-btn hub-btn--quiet hub-btn--icon hub-lock__go" type="submit" aria-label="Войти"><i data-icon="arrow-right"></i></button>
+    </div>
+    <p class="hub-lock__msg" data-tone="" aria-live="polite"></p>
+  </form>
+</main>
+<p class="hub-lock__hint"><kbd class="hub-kbd">Enter</kbd> войти · <kbd class="hub-kbd">Esc</kbd> назад</p>
+</div></div><div class="pv-film__t">Пароль · 450 мс</div><div class="pv-film__d">Фото размывается до blur-lock, часы уменьшаются на 18%, поле проявляется подъёмом на 10px. Через 30 с без ввода — назад к заставке.</div></div><i data-icon="arrow-right" class="pv-film__arrow"></i><div class="pv-film__frame"><div class="pv-film__shot"><div class="pv-screen" data-scene="open"><div class="hub-backdrop" data-scene="open"><div class="hub-backdrop__photo"></div><div class="hub-backdrop__veil"></div></div>
+<main class="hub-lock" style="opacity:.45;transform:translateY(-16px)"><div class="hub-lock__clock" style="transform:scale(.82) translateY(10px)">13:21</div><div class="hub-lock__date">пятница, 20 ноября · день 61</div><h1 class="hub-lock__greet"><span>Добрый день, Максим</span></h1></main>
+<div class="hub-today" style="opacity:.2">
+<header class="hub-topbar">
+  <div><span class="hub-topbar__hello">Добрый день, Максим</span> · пятница, 20 ноября · день 61</div>
+  <div class="hub-topbar__right"><span class="hub-sync" data-state="ok"><i data-icon="cloud-check"></i><span>синхронизировано</span></span><span class="hub-row__trail" style="font-size:inherit"><kbd class="hub-kbd">Ctrl</kbd><kbd class="hub-kbd">K</kbd> команды</span>
+    <button class="hub-btn hub-btn--sm hub-btn--glass" type="button"><i data-icon="lock"></i>Заблокировать</button>
+  </div>
+</header>
+<div style="margin-top:6vh"><form class="hub-capture " style="" onsubmit="return false">
+  <div class="hub-capture__bar pv-focus">
+    <i data-icon="lightbulb" class="hub-capture__icon"></i>
+    <input class="hub-capture__input" placeholder="Мысль в корзину…" aria-label="Мысль в корзину">
+    <button class="hub-capture__send" type="submit" disabled>В корзину</button>
+  </div>
+  <p class="hub-capture__note">Enter — сохранить, разобрать можно потом</p>
+</form></div>
+<section class="hub-cards" style="width:min(1120px,100%);margin:var(--space-4) auto 0"><article class="hub-card"><div class="hub-card__app"><i data-icon="layers"></i><span>Повторение</span></div><div class="hub-card__main">12 карточек к сроку</div><p class="hub-card__note">2 темы просели: логика, право</p><div class="hub-card__action"><button class="hub-btn hub-btn--sm" type="button">Начать</button></div></article><article class="hub-card"><div class="hub-card__app"><i data-icon="list-checks"></i><span>План дня</span></div><div class="hub-card__main">Осталось 3 из 4</div><ul class="hub-card__list"><li><label class="hub-check hub-check--done"><input type="checkbox" checked><span>балкон</span></label></li><li><label class="hub-check hub-check--done"><input type="checkbox"><span>карточки</span></label></li><li><label class="hub-check hub-check--done"><input type="checkbox"><span>учебные блоки · 0 из 4</span></label></li><li><label class="hub-check hub-check--done"><input type="checkbox"><span>спорт · день A</span></label></li></ul></article><article class="hub-card"><div class="hub-card__app"><i data-icon="inbox"></i><span>Корзина</span></div><div class="hub-card__main">5 неразобранных</div><p class="hub-card__note">последнее: «идея для эссе про привычки и…»</p><div class="hub-card__action"><button class="hub-btn hub-btn--sm" type="button">Разобрать</button></div></article><article class="hub-card"><div class="hub-card__app"><i data-icon="calendar"></i><span>Календарь</span></div><div class="hub-card__main">Сегодня событий нет</div><p class="hub-card__note">завтра — консультация в 16:00</p></article></section>
+</div></div></div><div class="pv-film__t">Enter · 0–800 мс</div><div class="pv-film__d">Колонка входа уходит вверх на 40px и гаснет за 450 мс; фото доразмывается до blur-backdrop, вуаль сгущается за 800 мс.</div></div><i data-icon="arrow-right" class="pv-film__arrow"></i><div class="pv-film__frame"><div class="pv-film__shot"><div class="pv-screen" data-scene="open"><div class="hub-backdrop" data-scene="open"><div class="hub-backdrop__photo"></div><div class="hub-backdrop__veil"></div></div>
+<div class="hub-today">
+<header class="hub-topbar">
+  <div><span class="hub-topbar__hello">Добрый день, Максим</span> · пятница, 20 ноября · день 61</div>
+  <div class="hub-topbar__right"><span class="hub-sync" data-state="ok"><i data-icon="cloud-check"></i><span>синхронизировано</span></span><span class="hub-row__trail" style="font-size:inherit"><kbd class="hub-kbd">Ctrl</kbd><kbd class="hub-kbd">K</kbd> команды</span>
+    <button class="hub-btn hub-btn--sm hub-btn--glass" type="button"><i data-icon="lock"></i>Заблокировать</button>
+  </div>
+</header>
+<div style="margin-top:6vh"><form class="hub-capture " style="" onsubmit="return false">
+  <div class="hub-capture__bar pv-focus">
+    <i data-icon="lightbulb" class="hub-capture__icon"></i>
+    <input class="hub-capture__input" placeholder="Мысль в корзину…" aria-label="Мысль в корзину">
+    <button class="hub-capture__send" type="submit" disabled>В корзину</button>
+  </div>
+  <p class="hub-capture__note">Enter — сохранить, разобрать можно потом</p>
+</form></div>
+
+<section class="hub-cards" style="width:min(1120px,100%);margin:var(--space-4) auto 0;"><article class="hub-card"><div class="hub-card__app"><i data-icon="layers"></i><span>Повторение</span></div><div class="hub-card__main">12 карточек к сроку</div><p class="hub-card__note">2 темы просели: логика, право</p><div class="hub-card__action"><button class="hub-btn hub-btn--sm" type="button">Начать</button></div></article><article class="hub-card"><div class="hub-card__app"><i data-icon="list-checks"></i><span>План дня</span></div><div class="hub-card__main">Осталось 3 из 4</div><ul class="hub-card__list"><li><label class="hub-check hub-check--done"><input type="checkbox" checked><span>балкон</span></label></li><li><label class="hub-check hub-check--done"><input type="checkbox"><span>карточки</span></label></li><li><label class="hub-check hub-check--done"><input type="checkbox"><span>учебные блоки · 0 из 4</span></label></li><li><label class="hub-check hub-check--done"><input type="checkbox"><span>спорт · день A</span></label></li></ul></article><article class="hub-card"><div class="hub-card__app"><i data-icon="inbox"></i><span>Корзина</span></div><div class="hub-card__main">5 неразобранных</div><p class="hub-card__note">последнее: «идея для эссе про привычки и…»</p><div class="hub-card__action"><button class="hub-btn hub-btn--sm" type="button">Разобрать</button></div></article><article class="hub-card"><div class="hub-card__app"><i data-icon="calendar"></i><span>Календарь</span></div><div class="hub-card__main">Сегодня событий нет</div><p class="hub-card__note">завтра — консультация в 16:00</p></article></section>
+</div></div></div><div class="pv-film__t">«Сегодня» · 280–1080 мс</div><div class="pv-film__d">Стекло проявляется с задержкой 280 мс поверх уже размытого фото. Курсор встаёт в строку ввода, как только она видна.</div></div></div></template>
+<script>
+(function () {
+  if (!document.querySelector('link[href*="preview/kit.css"]')) {
+    var l = document.createElement('link'); l.rel = 'stylesheet'; l.href = '../../preview/kit.css'; document.head.appendChild(l);
+  }
+  if (window.HubUI) HubUI.init();
+  var tpls = document.querySelectorAll('template[data-note]');
+  var host = document.getElementById('pvScreen'), note = document.getElementById('pvNote');
+  var btns = document.querySelectorAll('.pv-states [data-i]');
+  function show(i) {
+    host.innerHTML = tpls[i].innerHTML; note.textContent = tpls[i].getAttribute('data-note');
+    btns.forEach(function (b) { b.setAttribute('aria-pressed', String(Number(b.dataset.i) === i)); });
+    HubUI.init(host);
+    if (window.pvAfter) window.pvAfter(host, i);
+  }
+  btns.forEach(function (b) { b.addEventListener('click', function () { show(Number(b.dataset.i)); }); });
+
+  show(0);
+
+})();
+</script>
+</body>
+</html>

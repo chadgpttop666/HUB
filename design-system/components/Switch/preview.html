@@ -1,0 +1,29 @@
+<!-- @dsCard group="Ввод" height=170 -->
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Переключатель</title>
+<link rel="stylesheet" href="../../preview/kit.css">
+
+</head>
+<body>
+<div class="hub-backdrop" data-scene="open"><div class="hub-backdrop__photo"></div><div class="hub-backdrop__veil"></div></div>
+<div class="pv" style="gap:var(--space-4) var(--space-8)">
+  <div class="pv-col"><label class="hub-switch"><input type="checkbox" role="switch"><span>Открывать хаб при входе в систему</span></label>
+    <label class="hub-switch"><input type="checkbox" role="switch" checked><span>Синхронизировать в фоне</span></label>
+    <label class="hub-switch"><input type="checkbox" role="switch" class="pv-focus" checked><span>Фокус с клавиатуры</span></label></div>
+  <div class="pv-col"><label class="hub-switch"><input type="checkbox" role="switch" disabled><span>Недоступен (нет сети)</span></label>
+    <label class="hub-switch"><input type="checkbox" role="switch" checked disabled><span>Включён, недоступен</span></label></div>
+</div>
+<script>
+(function () {
+  if (!document.querySelector('link[href*="preview/kit.css"]')) {
+    var l = document.createElement('link'); l.rel = 'stylesheet'; l.href = '../../preview/kit.css'; document.head.appendChild(l);
+  }
+  if (window.HubUI) HubUI.init();
+
+})();
+</script>
+</body>
+</html>

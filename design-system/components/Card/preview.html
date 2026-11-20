@@ -1,0 +1,35 @@
+<!-- @dsCard group="Контейнеры" height=470 width=1180 subtitle="Шаблон для «Сегодня»: название · главная строка · пояснение · одна кнопка или короткий список" -->
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Карточка приложения</title>
+<link rel="stylesheet" href="../../preview/kit.css">
+
+</head>
+<body>
+<div class="hub-backdrop" data-scene="open"><div class="hub-backdrop__photo"></div><div class="hub-backdrop__veil"></div></div>
+<div class="pv pv--col" style="gap:var(--space-4)">
+<section class="hub-cards" style="width:100%;grid-template-columns:repeat(4,1fr)">
+  <article class="hub-card"><div class="hub-card__app"><i data-icon="layers"></i><span>Повторение</span></div><div class="hub-card__main">12 карточек к сроку</div><p class="hub-card__note">2 темы просели: логика, право</p><div class="hub-card__action"><button class="hub-btn hub-btn--sm" type="button">Начать</button></div></article>
+  <article class="hub-card"><div class="hub-card__app"><i data-icon="book-open"></i><span>Чтение</span></div><div class="hub-card__main">«Опыт о человеческом разумении», книга II, глава 21 «О способности» и примечания переводчика</div><p class="hub-card__note">осталось 18 страниц до конца главы, ещё 3 главы до конца книги и послесловие</p><div class="hub-card__action"><button class="hub-btn hub-btn--sm" type="button">Читать</button></div></article>
+  <article class="hub-card"><div class="hub-card__app"><i data-icon="list-checks"></i><span>План дня</span></div><div class="hub-card__main">Осталось 3 из 4</div><ul class="hub-card__list"><li><label class="hub-check hub-check--done"><input type="checkbox" checked><span>балкон</span></label></li><li><label class="hub-check hub-check--done"><input type="checkbox"><span>карточки</span></label></li><li><label class="hub-check hub-check--done"><input type="checkbox"><span>учебные блоки · 0 из 4</span></label></li><li><label class="hub-check hub-check--done"><input type="checkbox"><span>спорт · день A</span></label></li></ul><div class="hub-card__more">ещё 2</div></article>
+  <article class="hub-card"><div class="hub-card__app"><i data-icon="calendar"></i><span>Календарь</span></div><div class="hub-card__main">Сегодня событий нет</div><p class="hub-card__note">завтра — консультация в 16:00</p></article>
+</section>
+<section class="hub-cards" style="width:100%;grid-template-columns:repeat(4,1fr)">
+  <article class="hub-card hub-card--done"><div class="hub-card__app"><i data-icon="layers"></i><span>Повторение</span></div><div class="hub-card__main">Всё повторено</div><p class="hub-card__note">завтра — 14 карточек</p></article>
+  <article class="hub-card pv-hover"><div class="hub-card__app"><i data-icon="inbox"></i><span>Корзина</span></div><div class="hub-card__main">5 неразобранных</div><p class="hub-card__note">последнее: «идея для эссе про привычки и…»</p><div class="hub-card__action"><button class="hub-btn hub-btn--sm" type="button">Разобрать</button></div></article>
+  <article class="hub-card"><div class="hub-card__app"><i data-icon="notebook-pen"></i><span>Дневник</span></div><div class="hub-card__main">День 61</div><p class="hub-card__note">запись ещё пустая</p><div class="hub-card__action"><button class="hub-btn hub-btn--sm" type="button">Написать</button></div></article>
+  <article class="hub-card"><div class="hub-card__app"><i data-icon="timer"></i><span>Учебные блоки</span></div><div class="hub-skeleton hub-skeleton--title" style="margin-top:var(--space-3)"></div><div class="hub-skeleton hub-skeleton--text" style="margin-top:var(--space-3)"></div><div class="hub-skeleton" style="width:40%"></div></article>
+</section></div>
+<script>
+(function () {
+  if (!document.querySelector('link[href*="preview/kit.css"]')) {
+    var l = document.createElement('link'); l.rel = 'stylesheet'; l.href = '../../preview/kit.css'; document.head.appendChild(l);
+  }
+  if (window.HubUI) HubUI.init();
+
+})();
+</script>
+</body>
+</html>

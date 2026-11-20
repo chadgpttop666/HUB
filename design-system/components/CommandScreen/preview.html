@@ -1,0 +1,94 @@
+<!-- @dsCard group="Экраны · вторая очередь" height=964 width=1440 subtitle="Ctrl K: приложения, команды и записи · ничего не найдено" -->
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Командная строка</title>
+<link rel="stylesheet" href="../../preview/kit.css">
+
+</head>
+<body>
+
+<div class="pv-states">
+  <span class="pv-states__title">Командная строка</span>
+  <div class="hub-segmented" role="group" aria-label="Состояние"><button type="button" aria-pressed="true" data-i="0">Открыта</button><button type="button" aria-pressed="false" data-i="1">Поиск</button><button type="button" aria-pressed="false" data-i="2">Ничего не найдено</button></div>
+  <span class="pv-states__note" id="pvNote"></span>
+</div>
+<div id="pvScreen"></div>
+<template data-note="пустой запрос — недавнее и команды"><div class="pv-screen" data-scene="open"><div class="hub-backdrop" data-scene="open"><div class="hub-backdrop__photo"></div><div class="hub-backdrop__veil"></div></div><div class="hub-today" style="">
+<header class="hub-topbar">
+  <div><span class="hub-topbar__hello">Добрый день, Максим</span> · пятница, 20 ноября · день 61</div>
+  <div class="hub-topbar__right"><span class="hub-sync" data-state="ok"><i data-icon="cloud-check"></i><span>синхронизировано</span></span><span class="hub-row__trail" style="font-size:inherit"><kbd class="hub-kbd">Ctrl</kbd><kbd class="hub-kbd">K</kbd> команды</span>
+    <button class="hub-btn hub-btn--sm hub-btn--glass" type="button"><i data-icon="lock"></i>Заблокировать</button>
+  </div>
+</header>
+<div style="margin-top:6vh"><form class="hub-capture " style="" onsubmit="return false">
+  <div class="hub-capture__bar pv-focus">
+    <i data-icon="lightbulb" class="hub-capture__icon"></i>
+    <input class="hub-capture__input" placeholder="Мысль в корзину…" aria-label="Мысль в корзину">
+    <button class="hub-capture__send" type="submit" disabled>В корзину</button>
+  </div>
+  <p class="hub-capture__note">Enter — сохранить, разобрать можно потом</p>
+</form></div>
+<section class="hub-cards" style="width:min(1120px,100%);margin:var(--space-4) auto 0"><article class="hub-card"><div class="hub-card__app"><i data-icon="layers"></i><span>Повторение</span></div><div class="hub-card__main">12 карточек к сроку</div><p class="hub-card__note">2 темы просели: логика, право</p><div class="hub-card__action"><button class="hub-btn hub-btn--sm" type="button">Начать</button></div></article><article class="hub-card"><div class="hub-card__app"><i data-icon="list-checks"></i><span>План дня</span></div><div class="hub-card__main">Осталось 3 из 4</div><ul class="hub-card__list"><li><label class="hub-check hub-check--done"><input type="checkbox" checked><span>балкон</span></label></li><li><label class="hub-check hub-check--done"><input type="checkbox"><span>карточки</span></label></li><li><label class="hub-check hub-check--done"><input type="checkbox"><span>учебные блоки · 0 из 4</span></label></li><li><label class="hub-check hub-check--done"><input type="checkbox"><span>спорт · день A</span></label></li></ul></article><article class="hub-card"><div class="hub-card__app"><i data-icon="inbox"></i><span>Корзина</span></div><div class="hub-card__main">5 неразобранных</div><p class="hub-card__note">последнее: «идея для эссе про привычки и…»</p><div class="hub-card__action"><button class="hub-btn hub-btn--sm" type="button">Разобрать</button></div></article><article class="hub-card"><div class="hub-card__app"><i data-icon="calendar"></i><span>Календарь</span></div><div class="hub-card__main">Сегодня событий нет</div><p class="hub-card__note">завтра — консультация в 16:00</p></article></section>
+</div><div class="hub-overlay" style="position:absolute;align-items:start;padding-top:12vh"><div class="hub-dialog hub-command" role="dialog" aria-label="Команды"><label class="hub-command__search"><i data-icon="search"></i><input placeholder="Приложение, команда или запись…" aria-label="Поиск"><kbd class="hub-kbd">Esc</kbd></label>
+<div class="hub-command__list" role="listbox"><div class="hub-menu__label">Недавнее</div><div class="hub-menu__item is-active" role="option"><i data-icon="layers"></i><span>Повторение</span><span class="hub-menu__meta">приложение</span></div><div class="hub-menu__item" role="option"><i data-icon="inbox"></i><span>Разобрать корзину</span><span class="hub-menu__meta">5 элементов</span></div><div class="hub-menu__label">Команды</div><div class="hub-menu__item" role="option"><i data-icon="lightbulb"></i><span>Новая мысль</span><span class="hub-menu__meta"><kbd class="hub-kbd">Ctrl</kbd><kbd class="hub-kbd">Пробел</kbd></span></div><div class="hub-menu__item" role="option"><i data-icon="refresh-cw"></i><span>Синхронизировать сейчас</span></div><div class="hub-menu__item" role="option"><i data-icon="palette"></i><span>Сменить тему…</span></div><div class="hub-menu__item" role="option"><i data-icon="package"></i><span>Установить приложение…</span></div><div class="hub-menu__item" role="option"><i data-icon="lock"></i><span>Заблокировать</span><span class="hub-menu__meta"><kbd class="hub-kbd">Ctrl</kbd><kbd class="hub-kbd">L</kbd></span></div></div><div class="hub-command__foot"><span><kbd class="hub-kbd">↑</kbd><kbd class="hub-kbd">↓</kbd> выбрать</span><span><kbd class="hub-kbd">Enter</kbd> открыть</span><span><kbd class="hub-kbd">Tab</kbd> к следующей группе</span><span><kbd class="hub-kbd">Esc</kbd> закрыть</span></div></div></div></div></template><template data-note="совпадение выделено, первое — подсвечено"><div class="pv-screen" data-scene="open"><div class="hub-backdrop" data-scene="open"><div class="hub-backdrop__photo"></div><div class="hub-backdrop__veil"></div></div><div class="hub-today" style="">
+<header class="hub-topbar">
+  <div><span class="hub-topbar__hello">Добрый день, Максим</span> · пятница, 20 ноября · день 61</div>
+  <div class="hub-topbar__right"><span class="hub-sync" data-state="ok"><i data-icon="cloud-check"></i><span>синхронизировано</span></span><span class="hub-row__trail" style="font-size:inherit"><kbd class="hub-kbd">Ctrl</kbd><kbd class="hub-kbd">K</kbd> команды</span>
+    <button class="hub-btn hub-btn--sm hub-btn--glass" type="button"><i data-icon="lock"></i>Заблокировать</button>
+  </div>
+</header>
+<div style="margin-top:6vh"><form class="hub-capture " style="" onsubmit="return false">
+  <div class="hub-capture__bar pv-focus">
+    <i data-icon="lightbulb" class="hub-capture__icon"></i>
+    <input class="hub-capture__input" placeholder="Мысль в корзину…" aria-label="Мысль в корзину">
+    <button class="hub-capture__send" type="submit" disabled>В корзину</button>
+  </div>
+  <p class="hub-capture__note">Enter — сохранить, разобрать можно потом</p>
+</form></div>
+<section class="hub-cards" style="width:min(1120px,100%);margin:var(--space-4) auto 0"><article class="hub-card"><div class="hub-card__app"><i data-icon="layers"></i><span>Повторение</span></div><div class="hub-card__main">12 карточек к сроку</div><p class="hub-card__note">2 темы просели: логика, право</p><div class="hub-card__action"><button class="hub-btn hub-btn--sm" type="button">Начать</button></div></article><article class="hub-card"><div class="hub-card__app"><i data-icon="list-checks"></i><span>План дня</span></div><div class="hub-card__main">Осталось 3 из 4</div><ul class="hub-card__list"><li><label class="hub-check hub-check--done"><input type="checkbox" checked><span>балкон</span></label></li><li><label class="hub-check hub-check--done"><input type="checkbox"><span>карточки</span></label></li><li><label class="hub-check hub-check--done"><input type="checkbox"><span>учебные блоки · 0 из 4</span></label></li><li><label class="hub-check hub-check--done"><input type="checkbox"><span>спорт · день A</span></label></li></ul></article><article class="hub-card"><div class="hub-card__app"><i data-icon="inbox"></i><span>Корзина</span></div><div class="hub-card__main">5 неразобранных</div><p class="hub-card__note">последнее: «идея для эссе про привычки и…»</p><div class="hub-card__action"><button class="hub-btn hub-btn--sm" type="button">Разобрать</button></div></article><article class="hub-card"><div class="hub-card__app"><i data-icon="calendar"></i><span>Календарь</span></div><div class="hub-card__main">Сегодня событий нет</div><p class="hub-card__note">завтра — консультация в 16:00</p></article></section>
+</div><div class="hub-overlay" style="position:absolute;align-items:start;padding-top:12vh"><div class="hub-dialog hub-command" role="dialog" aria-label="Команды"><label class="hub-command__search"><i data-icon="search"></i><input placeholder="Приложение, команда или запись…" aria-label="Поиск" value="лев"><kbd class="hub-kbd">Esc</kbd></label>
+<div class="hub-command__list" role="listbox"><div class="hub-menu__label">Записи</div><div class="hub-menu__item is-active" role="option"><i data-icon="book-open"></i><span>«<mark>Лев</mark>иафан», глава 13</span><span class="hub-menu__meta">Чтение</span></div><div class="hub-menu__item" role="option"><i data-icon="layers"></i><span>Карточка: «<mark>Лев</mark>иафан» и общественный договор</span><span class="hub-menu__meta">Повторение</span></div><div class="hub-menu__item" role="option"><i data-icon="inbox"></i><span><mark>Лев</mark> Толстой о привычках — найти цитату</span><span class="hub-menu__meta">Корзина</span></div><div class="hub-menu__label">Команды</div><div class="hub-menu__item" role="option"><i data-icon="lightbulb"></i><span>Положить «лев» в корзину как мысль</span><span class="hub-menu__meta"><kbd class="hub-kbd">Ctrl</kbd><kbd class="hub-kbd">Enter</kbd></span></div></div><div class="hub-command__foot"><span><kbd class="hub-kbd">↑</kbd><kbd class="hub-kbd">↓</kbd> выбрать</span><span><kbd class="hub-kbd">Enter</kbd> открыть</span><span><kbd class="hub-kbd">Tab</kbd> к следующей группе</span><span><kbd class="hub-kbd">Esc</kbd> закрыть</span></div></div></div></div></template><template data-note="подсказка раскладки и «в корзину»"><div class="pv-screen" data-scene="open"><div class="hub-backdrop" data-scene="open"><div class="hub-backdrop__photo"></div><div class="hub-backdrop__veil"></div></div><div class="hub-today" style="">
+<header class="hub-topbar">
+  <div><span class="hub-topbar__hello">Добрый день, Максим</span> · пятница, 20 ноября · день 61</div>
+  <div class="hub-topbar__right"><span class="hub-sync" data-state="ok"><i data-icon="cloud-check"></i><span>синхронизировано</span></span><span class="hub-row__trail" style="font-size:inherit"><kbd class="hub-kbd">Ctrl</kbd><kbd class="hub-kbd">K</kbd> команды</span>
+    <button class="hub-btn hub-btn--sm hub-btn--glass" type="button"><i data-icon="lock"></i>Заблокировать</button>
+  </div>
+</header>
+<div style="margin-top:6vh"><form class="hub-capture " style="" onsubmit="return false">
+  <div class="hub-capture__bar pv-focus">
+    <i data-icon="lightbulb" class="hub-capture__icon"></i>
+    <input class="hub-capture__input" placeholder="Мысль в корзину…" aria-label="Мысль в корзину">
+    <button class="hub-capture__send" type="submit" disabled>В корзину</button>
+  </div>
+  <p class="hub-capture__note">Enter — сохранить, разобрать можно потом</p>
+</form></div>
+<section class="hub-cards" style="width:min(1120px,100%);margin:var(--space-4) auto 0"><article class="hub-card"><div class="hub-card__app"><i data-icon="layers"></i><span>Повторение</span></div><div class="hub-card__main">12 карточек к сроку</div><p class="hub-card__note">2 темы просели: логика, право</p><div class="hub-card__action"><button class="hub-btn hub-btn--sm" type="button">Начать</button></div></article><article class="hub-card"><div class="hub-card__app"><i data-icon="list-checks"></i><span>План дня</span></div><div class="hub-card__main">Осталось 3 из 4</div><ul class="hub-card__list"><li><label class="hub-check hub-check--done"><input type="checkbox" checked><span>балкон</span></label></li><li><label class="hub-check hub-check--done"><input type="checkbox"><span>карточки</span></label></li><li><label class="hub-check hub-check--done"><input type="checkbox"><span>учебные блоки · 0 из 4</span></label></li><li><label class="hub-check hub-check--done"><input type="checkbox"><span>спорт · день A</span></label></li></ul></article><article class="hub-card"><div class="hub-card__app"><i data-icon="inbox"></i><span>Корзина</span></div><div class="hub-card__main">5 неразобранных</div><p class="hub-card__note">последнее: «идея для эссе про привычки и…»</p><div class="hub-card__action"><button class="hub-btn hub-btn--sm" type="button">Разобрать</button></div></article><article class="hub-card"><div class="hub-card__app"><i data-icon="calendar"></i><span>Календарь</span></div><div class="hub-card__main">Сегодня событий нет</div><p class="hub-card__note">завтра — консультация в 16:00</p></article></section>
+</div><div class="hub-overlay" style="position:absolute;align-items:start;padding-top:12vh"><div class="hub-dialog hub-command" role="dialog" aria-label="Команды"><label class="hub-command__search"><i data-icon="search"></i><input placeholder="Приложение, команда или запись…" aria-label="Поиск" value="ktdbfafy"><kbd class="hub-kbd">Esc</kbd></label>
+<div class="hub-command__list" role="listbox"><div class="hub-empty"><i data-icon="search" class="hub-empty__icon"></i><h2 class="hub-empty__title" style="font-size:var(--font-size-2xl)">Ничего не нашлось</h2>
+<p class="hub-empty__text">Похоже, включена английская раскладка: «левиафан».</p>
+<div class="hub-btn-row" style="justify-content:center;margin-top:var(--space-3)"><button class="hub-btn hub-btn--primary" type="button">Искать «левиафан» <kbd class="hub-kbd">Enter</kbd></button><button class="hub-btn hub-btn--quiet" type="button">В корзину как мысль <kbd class="hub-kbd">Ctrl</kbd><kbd class="hub-kbd">Enter</kbd></button></div></div></div><div class="hub-command__foot"><span><kbd class="hub-kbd">↑</kbd><kbd class="hub-kbd">↓</kbd> выбрать</span><span><kbd class="hub-kbd">Enter</kbd> открыть</span><span><kbd class="hub-kbd">Tab</kbd> к следующей группе</span><span><kbd class="hub-kbd">Esc</kbd> закрыть</span></div></div></div></div></template>
+<script>
+(function () {
+  if (!document.querySelector('link[href*="preview/kit.css"]')) {
+    var l = document.createElement('link'); l.rel = 'stylesheet'; l.href = '../../preview/kit.css'; document.head.appendChild(l);
+  }
+  if (window.HubUI) HubUI.init();
+  var tpls = document.querySelectorAll('template[data-note]');
+  var host = document.getElementById('pvScreen'), note = document.getElementById('pvNote');
+  var btns = document.querySelectorAll('.pv-states [data-i]');
+  function show(i) {
+    host.innerHTML = tpls[i].innerHTML; note.textContent = tpls[i].getAttribute('data-note');
+    btns.forEach(function (b) { b.setAttribute('aria-pressed', String(Number(b.dataset.i) === i)); });
+    HubUI.init(host);
+    if (window.pvAfter) window.pvAfter(host, i);
+  }
+  btns.forEach(function (b) { b.addEventListener('click', function () { show(Number(b.dataset.i)); }); });
+
+  show(0);
+
+})();
+</script>
+</body>
+</html>

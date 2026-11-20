@@ -1,0 +1,27 @@
+<!-- @dsCard group="Ввод" height=200 -->
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Теги</title>
+<link rel="stylesheet" href="../../preview/kit.css">
+
+</head>
+<body>
+<div class="hub-backdrop" data-scene="open"><div class="hub-backdrop__photo"></div><div class="hub-backdrop__veil"></div></div>
+<div class="pv pv--col" style="gap:var(--space-4)">
+  <div class="pv-row"><span class="pv-cap" style="width:120px">метки</span><span class="hub-tag">#учёба</span><span class="hub-tag"><i data-icon="smartphone"></i>с телефона</span><span class="hub-tag">философия<button class="hub-tag__remove" type="button" aria-label="Убрать метку"><i data-icon="x"></i></button></span></div>
+  <div class="pv-row"><span class="pv-cap" style="width:120px">состояния</span><span class="hub-tag hub-tag--accent"><i data-icon="layers"></i>к сроку</span><span class="hub-tag hub-tag--success"><i data-icon="circle-check"></i>установлено</span><span class="hub-tag hub-tag--warning"><i data-icon="triangle-alert"></i>просела</span><span class="hub-tag hub-tag--danger"><i data-icon="circle-x"></i>ошибка</span></div>
+  <div class="pv-row"><span class="pv-cap" style="width:120px">фильтр</span><button class="hub-tag" type="button" aria-pressed="true">Все</button><button class="hub-tag" type="button" aria-pressed="false">Логика</button><button class="hub-tag pv-focus" type="button" aria-pressed="false">Право (фокус)</button><button class="hub-tag" type="button" disabled>Экономика</button></div>
+</div>
+<script>
+(function () {
+  if (!document.querySelector('link[href*="preview/kit.css"]')) {
+    var l = document.createElement('link'); l.rel = 'stylesheet'; l.href = '../../preview/kit.css'; document.head.appendChild(l);
+  }
+  if (window.HubUI) HubUI.init();
+
+})();
+</script>
+</body>
+</html>

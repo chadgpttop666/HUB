@@ -1,0 +1,267 @@
+/* Хаб — generated from tokens.json */
+:root, [data-theme="dark"] {
+  --bg: #0d1511; /* Фон окна: виден, пока грузится фото, и в теме без фото. Под фото не используется как поверхность. */
+  --scrim-top: rgba(6,12,9,0.74); /* Вуаль над размытым фото после входа, верх экрана (шапка). Сила считается по фото — см. раздел «Темы». */
+  --scrim-mid: rgba(6,12,9,0.54); /* Вуаль, середина экрана (строка ввода, карточки). */
+  --scrim-bottom: rgba(6,12,9,0.30); /* Вуаль, низ экрана (подсказки, нижняя панель телефона). */
+  --scrim-lock: rgba(6,12,9,0.38); /* Мягкое пятно вуали за центральной колонкой экрана входа (часы, дата, приветствие). */
+  --surface: rgba(10,18,14,0.42); /* Стекло: карточки, строка ввода, панели. Всегда вместе с размытием blur-glass и линией line-soft. */
+  --surface-hover: rgba(10,18,14,0.54); /* Стекло под курсором и у элемента с фокусом внутри (строка ввода в фокусе). */
+  --surface-strong: rgba(14,22,18,0.84); /* Плотное стекло: диалог, меню, всплывающее уведомление, мини-окно ввода поверх других программ. */
+  --surface-sunken: rgba(245,239,228,0.07); /* Утопленная подложка внутри стекла: поле ввода, шапка таблицы, дорожка прогресса, строка под курсором. */
+  --text: #f5efe4; /* Основной текст на surface, surface-strong и на вуали scrim-*. Не ниже 4.5:1 во всех темах. */
+  --text-muted: #d4ccbf; /* Вторичный текст: дата, пояснения, подписи карточек, подсказки. На surface, surface-strong и вуали — не ниже 4.5:1. */
+  --text-faint: #a9a196; /* Только плейсхолдеры и недоступные элементы. Не для смыслового текста: на стекле около 3:1. */
+  --line: rgba(245,239,228,0.62); /* Границы элементов управления и подчёркивания (поле пароля, обычная кнопка, чекбокс). Не ниже 3:1 к фону. */
+  --line-soft: rgba(245,239,228,0.16); /* Край стекла и разделители строк. Декоративная: элементы ею не выделяются. */
+  --accent: #f0b46a; /* Рассветный акцент: фокус, курсор, отмеченный чекбокс, основная кнопка, «добавлено». На surface — не ниже 4.5:1 как текст. */
+  --accent-hover: #f6c78d; /* Основная кнопка под курсором. */
+  --on-accent: #24180b; /* Текст и значок на заливке accent (основная кнопка, отмеченный чекбокс). */
+  --accent-soft: rgba(240,180,106,0.18); /* Подложка выбранного: строка списка, выбранный тег, получатель при разборе корзины. */
+  --focus: var(--accent); /* Кольцо фокуса с клавиатуры: сплошное 2px с отступом 2px. Не ниже 3:1 на любой поверхности. */
+  --selection: rgba(240,180,106,0.34); /* Выделение текста мышью. */
+  --danger: #ffb3a1; /* Ошибка и опасное действие: неверный пароль, «Удалить». Всегда со значком или словом. На surface и вуали — 4.5:1. */
+  --danger-soft: rgba(255,179,161,0.16); /* Подложка ошибки и опасной кнопки под курсором. */
+  --success: #8fd0e0; /* Успех: синхронизировано, установлено. Холодный бирюзовый, чтобы не путать с danger по оттенку. Всегда со значком. */
+  --success-soft: rgba(143,208,224,0.16); /* Подложка успеха в уведомлении и теге. */
+  --warning: #f2d27a; /* Предупреждение: Caps Lock, нет сети, конфликт синхронизации. Всегда со значком. */
+  --warning-soft: rgba(242,210,122,0.16); /* Подложка предупреждения. */
+  --shadow-float: 0 18px 48px rgba(0,0,0,0.38); /* Только у того, что парит над всем: диалог, меню, уведомление, мини-окно. Карточки без тени. */
+}
+[data-theme="light"] {
+  --bg: #ece8e0;
+  --scrim-top: rgba(247,243,236,0.12);
+  --scrim-mid: rgba(247,243,236,0.18);
+  --scrim-bottom: rgba(247,243,236,0.50);
+  --scrim-lock: rgba(247,243,236,0.32);
+  --surface: rgba(250,248,243,0.58);
+  --surface-hover: rgba(250,248,243,0.74);
+  --surface-strong: rgba(251,249,245,0.92);
+  --surface-sunken: rgba(24,34,28,0.06);
+  --text: #18221c;
+  --text-muted: #45514a;
+  --text-faint: #6c766f;
+  --line: rgba(24,34,28,0.56);
+  --line-soft: rgba(24,34,28,0.12);
+  --accent: #934a14;
+  --accent-hover: #7c3d0f;
+  --on-accent: #fff8ef;
+  --accent-soft: rgba(147,74,20,0.13);
+  --focus: var(--accent);
+  --selection: rgba(147,74,20,0.22);
+  --danger: #a3221b;
+  --danger-soft: rgba(179,38,30,0.10);
+  --success: #1d6a85;
+  --success-soft: rgba(29,106,133,0.11);
+  --warning: #6e5000;
+  --warning-soft: rgba(125,90,0,0.11);
+  --shadow-float: 0 18px 48px rgba(40,44,36,0.16);
+}
+[data-theme="solid"] {
+  --bg: #141c18;
+  --scrim-top: rgba(20,28,24,0);
+  --scrim-mid: rgba(20,28,24,0);
+  --scrim-bottom: rgba(20,28,24,0);
+  --scrim-lock: rgba(20,28,24,0);
+  --surface: #1d2722;
+  --surface-hover: #232e28;
+  --surface-strong: #26322b;
+  --surface-sunken: rgba(245,239,228,0.05);
+  --text: #f5efe4;
+  --text-muted: #d4ccbf;
+  --text-faint: #a9a196;
+  --line: rgba(245,239,228,0.62);
+  --line-soft: rgba(245,239,228,0.10);
+  --accent: #f0b46a;
+  --accent-hover: #f6c78d;
+  --on-accent: #24180b;
+  --accent-soft: rgba(240,180,106,0.18);
+  --focus: var(--accent);
+  --selection: rgba(240,180,106,0.34);
+  --danger: #ffb3a1;
+  --danger-soft: rgba(255,179,161,0.16);
+  --success: #8fd0e0;
+  --success-soft: rgba(143,208,224,0.16);
+  --warning: #f2d27a;
+  --warning-soft: rgba(242,210,122,0.16);
+  --shadow-float: 0 18px 48px rgba(0,0,0,0.30);
+}
+:root {
+  --space-1: 4px; /* Зазор значка и текста в теге, между строками подписи. */
+  --space-2: 8px; /* Зазор значка и текста в кнопке, между тегами. */
+  --space-3: 12px; /* Внутренний отступ поля по бокам; между строками плана. */
+  --space-4: 16px; /* Отступ кнопки по бокам; зазор между карточками; отступ карточки сверху. */
+  --space-5: 20px; /* Отступ карточки по бокам; поля экрана на телефоне. */
+  --space-6: 24px; /* Отступ диалога и пустого состояния. */
+  --space-8: 32px; /* Между крупными блоками экрана. */
+  --space-10: 40px; /* От подсказки на экране входа до нижнего края. */
+  --space-12: 48px; /* От шапки до строки ввода на «Сегодня». */
+  --space-16: 64px; /* Ширина боковой панели приложений. */
+  --control-sm: 32px; /* Высота маленькой кнопки и поля (в карточках, таблицах). */
+  --control-md: 36px; /* Высота кнопки и поля по умолчанию. */
+  --control-lg: 44px; /* Высота крупного поля и кнопок на телефоне; минимальная зона касания. */
+  --radius-xs: 5px; /* Чекбокс, клавиша kbd. */
+  --radius-sm: 8px; /* Поле ввода, выпадающий список, меню, строка списка. */
+  --radius-md: 12px; /* Кнопка внутри строки ввода, плитка получателя, подсказка графика. */
+  --radius: 16px; /* Скругление по умолчанию (имя из диздока): стекло, карточки, строка ввода. */
+  --radius-xl: 24px; /* Диалог, мини-окно ввода, нижний лист на телефоне. */
+  --radius-pill: 999px; /* Обычные кнопки, теги, уведомление, кнопка «Заблокировать». */
+  --font-size-xs: 12px; /* = t-caption. */
+  --font-size-sm: 13px; /* = t-label, t-small. */
+  --font-size-base: 14px; /* Размер по умолчанию (имя из диздока) = t-body. */
+  --font-size-md: 15px; /* = t-date. */
+  --font-size-lg: 16px; /* = t-body-l. */
+  --font-size-xl: 18px; /* = t-heading. */
+  --font-size-2xl: 22px; /* = t-title, t-capture. */
+  --font-size-3xl: 28px; /* = t-display. */
+  --font-size-4xl: 40px; /* = t-greeting. */
+  --font-size-5xl: 56px; /* = t-timer. */
+  --font-size-clock: 128px; /* = t-clock. */
+  --weight-thin: 200; /* Часы и таймер (только Jost). */
+  --weight-light: 300; /* Приветствие, строка ввода, заголовки экранов (Jost). */
+  --weight-regular: 400; /* Основной текст; главная строка карточки. */
+  --weight-medium: 500; /* Кнопки, вкладки, теги, подписи. */
+  --leading-none: 1; /* Часы, таймер, кнопки. */
+  --leading-tight: 1.25; /* Крупный текст Jost в несколько строк. */
+  --leading-normal: 1.45; /* Основной текст Manrope. */
+  --tracking-clock: 0.02em; /* Часы на экране входа. */
+  --tracking-wide: 0.04em; /* Строка даты, подсказки на экране входа. */
+  --tracking-secret: 0.32em; /* Точки введённого пароля. */
+  --blur-glass: 12px; /* Размытие под стеклом (backdrop-filter) карточек и строки ввода. */
+  --blur-backdrop: 22px; /* Размытие фото темы после входа. */
+  --blur-lock: 8px; /* Размытие фото при вводе пароля. */
+  --blur-overlay: 6px; /* Размытие под диалогом (::backdrop). */
+  --duration-fast: 120ms; /* Наведение, нажатие, смена цвета рамки. */
+  --duration-base: 220ms; /* Появление меню, уведомления, переключатель, вкладки. */
+  --duration-slow: 450ms; /* Появление поля пароля, перенос элемента корзины. */
+  --duration-scene: 800ms; /* Смена сцены: заставка → пароль → «Сегодня», размытие фото. */
+  --duration-breathe: 4000ms; /* «Дыхание» подсказки на заставке. Отключается при «уменьшить движение». */
+  --ease-out: cubic-bezier(0.2, 0.7, 0.1, 1); /* Появление и всё по умолчанию: быстро начинается, мягко садится. */
+  --ease-in-out: cubic-bezier(0.45, 0, 0.25, 1); /* Переходы между двумя состояниями (переключатель, вкладки). */
+  --ease-in: cubic-bezier(0.4, 0, 1, 1); /* Уход элемента: закрытие, улёт в корзину. */
+  --opacity-disabled: 0.45; /* Недоступный элемент целиком. */
+  --z-shell: 10; /* Боковая панель и шапка оболочки. */
+  --z-menu: 40; /* Меню, выпадающий список, подсказка графика. */
+  --z-dialog: 50; /* Диалог и командная строка. */
+  --z-toast: 60; /* Всплывающее уведомление. */
+  --font-heading: "Jost", "Futura", "Century Gothic", system-ui, sans-serif;
+  --font-body: "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --text-t-clock: 200 128px/1 var(--font-heading); /* Часы на экране входа. Цифры моноширинные (tabular-nums). Узкое окно — 96px, телефон — 72px. */
+  --text-t-timer: 200 56px/1 var(--font-heading); /* Цифры таймера учебного блока и крупные числа статистики. */
+  --text-t-greeting: 300 40px/48px var(--font-heading); /* Приветствие на экране входа; на телефоне 28px. */
+  --text-t-display: 300 28px/36px var(--font-heading); /* Заголовок экрана приложения, элемент корзины при разборе, пустые состояния. */
+  --text-t-capture: 300 22px/30px var(--font-heading); /* Текст в строке быстрого ввода. */
+  --text-t-title: 400 22px/28px var(--font-heading); /* Главная строка карточки приложения на «Сегодня». */
+  --text-t-heading: 400 18px/24px var(--font-heading); /* Заголовок раздела в приложении и заголовок диалога. */
+  --text-t-body-l: 400 16px/24px var(--font-body); /* Длинное чтение внутри приложений. */
+  --text-t-date: 400 15px/22px var(--font-body); /* Строка даты под часами на экране входа, цвет text-muted. */
+  --text-t-body: 400 14px/20px var(--font-body); /* Текст интерфейса по умолчанию: пункты списков, поля, таблицы. */
+  --text-t-label: 500 13px/18px var(--font-body); /* Кнопки, вкладки, теги, подписи полей. */
+  --text-t-small: 400 13px/18px var(--font-body); /* Пояснения в карточках, подсказки под полями, шапка. */
+  --text-t-caption: 500 12px/16px var(--font-body); /* Подписи осей графика, клавиши, шапка таблицы. Не меньше 12px нигде. */
+}
+.t-clock {
+  font-family: var(--font-heading);
+  font-size: 128px;
+  line-height: 1;
+  font-weight: 200;
+  letter-spacing: 0.02em;
+}
+.t-timer {
+  font-family: var(--font-heading);
+  font-size: 56px;
+  line-height: 1;
+  font-weight: 200;
+  letter-spacing: 0.01em;
+}
+.t-greeting {
+  font-family: var(--font-heading);
+  font-size: 40px;
+  line-height: 48px;
+  font-weight: 300;
+  letter-spacing: 0.01em;
+}
+.t-display {
+  font-family: var(--font-heading);
+  font-size: 28px;
+  line-height: 36px;
+  font-weight: 300;
+  letter-spacing: 0;
+}
+.t-capture {
+  font-family: var(--font-heading);
+  font-size: 22px;
+  line-height: 30px;
+  font-weight: 300;
+  letter-spacing: 0;
+}
+.t-title {
+  font-family: var(--font-heading);
+  font-size: 22px;
+  line-height: 28px;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+.t-heading {
+  font-family: var(--font-heading);
+  font-size: 18px;
+  line-height: 24px;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+.t-body-l {
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+.t-date {
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 22px;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+}
+.t-body {
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+.t-label {
+  font-family: var(--font-body);
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+.t-small {
+  font-family: var(--font-body);
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+.t-caption {
+  font-family: var(--font-body);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+@font-face {
+  font-family: "Jost";
+  src: url("fonts/Jost-Variable.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Manrope";
+  src: url("fonts/Manrope-Variable.woff2") format("woff2");
+  font-weight: 200 800;
+  font-style: normal;
+  font-display: swap;
+}

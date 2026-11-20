@@ -1,0 +1,29 @@
+<!-- @dsCard group="Состояния" height=230 -->
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Загрузка</title>
+<link rel="stylesheet" href="../../preview/kit.css">
+
+</head>
+<body>
+<div class="hub-backdrop" data-scene="open"><div class="hub-backdrop__photo"></div><div class="hub-backdrop__veil"></div></div>
+<div class="pv" style="gap:var(--space-6)">
+<div class="pv-col"><span class="pv-cap">кружок</span><div class="pv-row"><span class="hub-spinner" role="status" aria-label="Загрузка"></span><span class="hub-spinner hub-spinner--lg" role="status" aria-label="Загрузка"></span></div>
+  <span class="hub-loading"><span class="hub-spinner"></span>Загружаю темы…</span>
+  <button class="hub-btn hub-btn--primary" aria-busy="true">Устанавливаю</button></div>
+<div class="pv-col" style="width:300px"><span class="pv-cap">скелет вместо содержимого</span><article class="hub-card" style="min-height:140px"><div class="hub-card__app"><i data-icon="calendar"></i><span>Календарь</span></div><div class="hub-skeleton hub-skeleton--title" style="margin-top:var(--space-3)"></div><div class="hub-skeleton hub-skeleton--text" style="margin-top:var(--space-3)"></div><div class="hub-skeleton" style="width:50%"></div></article></div>
+<div class="pv-col" style="width:300px"><span class="pv-cap">неизвестно, сколько ждать</span><progress class="hub-progress" aria-label="Синхронизация"></progress><span class="hub-hint">Первая синхронизация папки Obsidian…</span></div>
+</div>
+<script>
+(function () {
+  if (!document.querySelector('link[href*="preview/kit.css"]')) {
+    var l = document.createElement('link'); l.rel = 'stylesheet'; l.href = '../../preview/kit.css'; document.head.appendChild(l);
+  }
+  if (window.HubUI) HubUI.init();
+
+})();
+</script>
+</body>
+</html>

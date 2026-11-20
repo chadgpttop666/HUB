@@ -1,0 +1,27 @@
+<!-- @dsCard group="Основа" height=330 subtitle="Три сцены фона: заставка, пароль, после входа" -->
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Фон и стекло</title>
+<link rel="stylesheet" href="../../preview/kit.css">
+
+</head>
+<body>
+<div class="hub-backdrop" data-scene="open"><div class="hub-backdrop__photo"></div><div class="hub-backdrop__veil"></div></div>
+<div class="pv" style="gap:var(--space-4);flex-wrap:nowrap">
+  <div class="pv-col"><span class="pv-cap">lock — фото чёткое</span><div style="position:relative;width:288px;height:250px;overflow:hidden;border-radius:var(--radius);transform:translateZ(0)"><div class="hub-backdrop" data-scene="lock"><div class="hub-backdrop__photo" style="filter:none"></div><div class="hub-backdrop__veil"></div></div><div style="position:relative;display:grid;place-items:center;height:100%;font-family:var(--font-heading);font-weight:var(--weight-thin);font-size:var(--font-size-5xl)">13:20</div></div></div>
+  <div class="pv-col"><span class="pv-cap">pass — размытие blur-lock</span><div style="position:relative;width:288px;height:250px;overflow:hidden;border-radius:var(--radius);transform:translateZ(0)"><div class="hub-backdrop" data-scene="pass"><div class="hub-backdrop__photo"></div><div class="hub-backdrop__veil"></div></div><div style="position:relative;display:grid;place-items:center;height:100%"><input class="hub-input hub-input--line hub-input--secret pv-focus" style="width:200px" type="password" value="лес" aria-label="Пароль"></div></div></div>
+  <div class="pv-col"><span class="pv-cap">open — blur-backdrop, вуаль и стекло</span><div style="position:relative;width:288px;height:250px;overflow:hidden;border-radius:var(--radius);transform:translateZ(0)"><div class="hub-backdrop" data-scene="open"><div class="hub-backdrop__photo"></div><div class="hub-backdrop__veil"></div></div><div style="position:relative;padding:var(--space-4);display:grid;gap:var(--space-3)"><div class="hub-glass" style="padding:var(--space-4)">hub-glass</div><div class="hub-glass hub-glass--strong" style="padding:var(--space-4)">hub-glass--strong</div></div></div></div>
+</div>
+<script>
+(function () {
+  if (!document.querySelector('link[href*="preview/kit.css"]')) {
+    var l = document.createElement('link'); l.rel = 'stylesheet'; l.href = '../../preview/kit.css'; document.head.appendChild(l);
+  }
+  if (window.HubUI) HubUI.init();
+
+})();
+</script>
+</body>
+</html>

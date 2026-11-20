@@ -1,0 +1,125 @@
+<!-- @dsCard group="Экраны" height=964 width=1440 subtitle="Заставка → пароль → «Сегодня» → мысль в корзину, вживую" -->
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Живой поток</title>
+<link rel="stylesheet" href="../../preview/kit.css">
+<style>.pv-screen{cursor:default}</style>
+</head>
+<body>
+
+<div class="pv-states"><span class="pv-states__title">Живой поток</span><span class="pv-states__note">кликните по экрану, затем любая клавиша · пароль: лес · Enter кладёт мысль в корзину · «Заблокировать» — обратно</span></div>
+<div class="pv-screen" id="flow" data-scene="lock" tabindex="-1"><div class="hub-backdrop" id="bd" data-scene="lock"><div class="hub-backdrop__photo"></div><div class="hub-backdrop__veil"></div></div>
+<main class="hub-lock" id="lock" aria-label="Вход в хаб">
+  <div class="hub-lock__clock" id="clock">13:20</div>
+  <div class="hub-lock__date" id="date">пятница, 20 ноября · день 61</div>
+  <h1 class="hub-lock__greet"><span id="greet">Добрый день, Максим</span></h1>
+  <form class="hub-lock__form" id="pwForm" autocomplete="off" novalidate>
+    <div class="hub-lock__row" id="field">
+      <span class="hub-tag hub-tag--warning hub-lock__layout" id="lay" hidden><i data-icon="languages"></i>EN</span>
+      <input class="hub-input hub-input--line hub-input--secret" id="pw" type="password" placeholder="Пароль" aria-label="Пароль" spellcheck="false">
+      <button class="hub-btn hub-btn--quiet hub-btn--icon hub-lock__go" type="submit" aria-label="Войти"><i data-icon="arrow-right"></i></button>
+    </div>
+    <p class="hub-lock__msg" id="msg" aria-live="polite"></p>
+  </form>
+</main>
+<p class="hub-lock__hint" id="hint">Нажмите любую клавишу</p>
+<div class="hub-today" id="today">
+<header class="hub-topbar"><div><span class="hub-topbar__hello" id="hello">Добрый день, Максим</span> · <span id="hdate">пятница, 20 ноября · день 61</span></div>
+<div class="hub-topbar__right"><span class="hub-sync" data-state="ok"><i data-icon="cloud-check"></i><span>синхронизировано</span></span><button class="hub-btn hub-btn--sm hub-btn--glass" id="lockBtn" type="button"><i data-icon="lock"></i>Заблокировать</button></div></header>
+<form class="hub-capture" id="capForm" style="margin-top:6vh" autocomplete="off" novalidate>
+  <div class="hub-capture__bar"><i data-icon="lightbulb" class="hub-capture__icon"></i><input class="hub-capture__input" id="cap" placeholder="Мысль в корзину…" aria-label="Мысль в корзину"><button class="hub-capture__send" id="send" type="submit" disabled>В корзину</button></div>
+  <p class="hub-capture__note" id="capNote" aria-live="polite">Enter — сохранить, разобрать можно потом</p>
+</form>
+<section class="hub-cards" style="width:min(1120px,100%);margin:var(--space-4) auto 0">
+  <article class="hub-card"><div class="hub-card__app"><i data-icon="layers"></i><span>Повторение</span></div><div class="hub-card__main">12 карточек к сроку</div><p class="hub-card__note">2 темы просели: логика, право</p><div class="hub-card__action"><button class="hub-btn hub-btn--sm" type="button">Начать</button></div></article>
+  <article class="hub-card"><div class="hub-card__app"><i data-icon="list-checks"></i><span>План дня</span></div><div class="hub-card__main">Осталось 3 из 4</div><ul class="hub-card__list"><li><label class="hub-check hub-check--done"><input type="checkbox" checked><span>балкон</span></label></li><li><label class="hub-check hub-check--done"><input type="checkbox"><span>карточки</span></label></li><li><label class="hub-check hub-check--done"><input type="checkbox"><span>учебные блоки · 0 из 4</span></label></li><li><label class="hub-check hub-check--done"><input type="checkbox"><span>спорт · день A</span></label></li></ul></article>
+  <article class="hub-card" id="inboxCard"><div class="hub-card__app"><i data-icon="inbox"></i><span>Корзина</span></div><div class="hub-card__main" id="inboxCount">5 неразобранных</div><p class="hub-card__note" id="inboxLast">последнее: «идея для эссе про привычки и…»</p><div class="hub-card__action"><button class="hub-btn hub-btn--sm" type="button" data-app="Разбор корзины">Разобрать</button></div></article>
+  <article class="hub-card"><div class="hub-card__app"><i data-icon="calendar"></i><span>Календарь</span></div><div class="hub-card__main">Сегодня событий нет</div><p class="hub-card__note">завтра — консультация в 16:00</p></article>
+</section>
+</div>
+</div>
+<script>
+(function () {
+  if (!document.querySelector('link[href*="preview/kit.css"]')) {
+    var l = document.createElement('link'); l.rel = 'stylesheet'; l.href = '../../preview/kit.css'; document.head.appendChild(l);
+  }
+  if (window.HubUI) HubUI.init();
+
+  var PASSWORD = 'лес', IDLE = 30000, NOTE = 'Enter — сохранить, разобрать можно потом';
+  var $ = function (id) { return document.getElementById(id); };
+  var root = $('flow'), bd = $('bd'), pw = $('pw'), msg = $('msg'), hint = $('hint'), cap = $('cap'), note = $('capNote'), send = $('send');
+  var state = 'lock', idle = null, noteT = null, inbox = 5;
+  var RU = 'йцукенгшщзхъфывапролджэячсмитьбю.', EN = "qwertyuiop[]asdfghjkl;'zxcvbnm,./";
+  function toRu(s) { return s.split('').map(function (c) { var i = EN.indexOf(c.toLowerCase()); return i >= 0 ? RU[i] : c; }).join(''); }
+  function tick() {
+    var now = new Date();
+    $('clock').textContent = now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+    var d = new Intl.DateTimeFormat('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' }).format(now);
+    var day = Math.round((new Date(now.getFullYear(), now.getMonth(), now.getDate()) - new Date(2026, 8, 21)) / 864e5) + 1;
+    var line = day > 0 ? d + ' · день ' + day : d, g = HubUI.greeting(now) + ', Максим';
+    $('date').textContent = line; $('hdate').textContent = line; $('greet').textContent = g; $('hello').textContent = g;
+  }
+  function setMsg(t, tone, icon) { msg.setAttribute('data-tone', tone || ''); msg.innerHTML = (icon ? HubUI.icon(icon) : ''); msg.appendChild(document.createTextNode(t || '')); }
+  function set(next) {
+    state = next; root.setAttribute('data-scene', next); bd.setAttribute('data-scene', next); clearTimeout(idle);
+    if (next === 'pass') { hint.innerHTML = '<kbd class="hub-kbd">Enter</kbd> войти · <kbd class="hub-kbd">Esc</kbd> назад'; setTimeout(function () { pw.focus(); }, 60); armIdle(); }
+    if (next === 'lock') { pw.value = ''; cap.value = ''; setMsg(''); $('lay').hidden = true; pw.removeAttribute('aria-invalid'); hint.textContent = 'Нажмите любую клавишу'; pw.blur(); cap.blur(); root.focus(); }
+    if (next === 'open') { pw.blur(); pw.value = ''; setMsg(''); note.textContent = NOTE; note.classList.remove('is-ok'); setTimeout(function () { cap.focus(); }, HubUI.reducedMotion() ? 0 : 650); }
+  }
+  function armIdle() { clearTimeout(idle); idle = setTimeout(function () { if (state === 'pass' && !pw.value) set('lock'); }, IDLE); }
+  function layout(e) {
+    if (pw.getAttribute('aria-invalid') === 'true') return;
+    var en = /[a-z]/i.test(pw.value); $('lay').hidden = !en;
+    if (e && e.getModifierState && e.getModifierState('CapsLock')) { setMsg('Включён Caps Lock', 'warning', 'arrow-big-up'); return; }
+    setMsg('');
+  }
+  document.addEventListener('keydown', function (e) {
+    if (['Shift', 'Control', 'Alt', 'Meta', 'CapsLock', 'Tab'].indexOf(e.key) >= 0) return;
+    if (state === 'lock') { if (e.ctrlKey || e.metaKey || e.altKey) return; e.preventDefault(); set('pass'); if (e.key.length === 1 && e.key !== ' ') { pw.value = e.key; setTimeout(function () { layout(e); }, 0); } return; }
+    if (state === 'pass') { if (e.key === 'Escape') { e.preventDefault(); set('lock'); return; } if (document.activeElement !== pw && e.key.length === 1) pw.focus(); armIdle(); return; }
+    if (state === 'open') {
+      var typing = document.activeElement && document.activeElement.tagName === 'INPUT' && document.activeElement.type !== 'checkbox';
+      if ((e.ctrlKey && e.code === 'Space') || (e.key === '/' && !typing)) { e.preventDefault(); cap.focus(); }
+      if (e.key === 'Escape' && document.activeElement === cap) { cap.value = ''; send.disabled = true; note.textContent = NOTE; }
+    }
+  });
+  pw.addEventListener('keyup', layout);
+  pw.addEventListener('input', function () { pw.removeAttribute('aria-invalid'); layout(); armIdle(); });
+  $('lock').addEventListener('click', function () { if (state === 'lock') set('pass'); });
+  $('pwForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var v = pw.value.trim().toLowerCase();
+    if (!v) { setMsg('Введите пароль', 'error', 'circle-alert'); pw.focus(); return; }
+    if (v === PASSWORD) { set('open'); return; }
+    var f = $('field'); f.classList.remove('hub-shake'); void f.offsetWidth; f.classList.add('hub-shake');
+    pw.setAttribute('aria-invalid', 'true');
+    if (toRu(v) === PASSWORD) setMsg('Неверный пароль: похоже, включена английская раскладка', 'error', 'languages');
+    else setMsg('Неверный пароль', 'error', 'circle-alert');
+    pw.select();
+  });
+  cap.addEventListener('input', function () { send.disabled = !cap.value.trim(); var m = cap.value.match(/#([\wа-яё-]+)/i); note.classList.remove('is-ok'); note.innerHTML = cap.value ? 'Enter — в корзину · Esc — очистить' + (m ? ' <span class="hub-tag">' + HubUI.icon('tag') + m[1] + '</span>' : '') : NOTE; });
+  $('capForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var t = cap.value.trim();
+    if (!t) { note.textContent = 'Напишите мысль и нажмите Enter'; cap.focus(); return; }
+    inbox += 1;
+    var n = HubUI.plural(inbox, ['неразобранная', 'неразобранные', 'неразобранных']);
+    $('inboxCount').textContent = n;
+    $('inboxLast').textContent = 'последнее: «' + (t.length > 34 ? t.slice(0, 34).trim() + '…' : t) + '»';
+    var c = $('inboxCard'); c.classList.remove('is-bumped'); void c.offsetWidth; c.classList.add('is-bumped');
+    cap.value = ''; send.disabled = true;
+    note.classList.add('is-ok'); note.innerHTML = HubUI.icon('check') + 'В корзине — ' + n + ' · Ctrl+Z — отменить';
+    clearTimeout(noteT); noteT = setTimeout(function () { note.classList.remove('is-ok'); note.textContent = NOTE; }, 2600);
+  });
+  $('lockBtn').addEventListener('click', function () { set('lock'); });
+  document.querySelectorAll('#today .hub-card__action .hub-btn').forEach(function (b) {
+    b.addEventListener('click', function () { HubUI.toast('Здесь откроется ' + (b.dataset.app ? '«' + b.dataset.app + '»' : 'приложение'), { icon: 'info' }); });
+  });
+  tick(); setInterval(tick, 5000);
+
+})();
+</script>
+</body>
+</html>

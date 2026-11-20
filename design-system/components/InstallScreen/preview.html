@@ -1,0 +1,115 @@
+<!-- @dsCard group="Экраны · вторая очередь" height=964 width=1440 subtitle="Перетащил архив → права → установлено · ошибка" -->
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Установка приложения</title>
+<link rel="stylesheet" href="../../preview/kit.css">
+
+</head>
+<body>
+
+<div class="pv-states">
+  <span class="pv-states__title">Установка приложения</span>
+  <div class="hub-segmented" role="group" aria-label="Состояние"><button type="button" aria-pressed="true" data-i="0">Перетаскивание</button><button type="button" aria-pressed="false" data-i="1">Права</button><button type="button" aria-pressed="false" data-i="2">Установлено</button><button type="button" aria-pressed="false" data-i="3">Ошибка</button></div>
+  <span class="pv-states__note" id="pvNote"></span>
+</div>
+<div id="pvScreen"></div>
+<template data-note="архив над окном хаба"><div class="pv-screen" data-scene="open"><div class="hub-backdrop" data-scene="open"><div class="hub-backdrop__photo"></div><div class="hub-backdrop__veil"></div></div><div class="hub-today" style="">
+<header class="hub-topbar">
+  <div><span class="hub-topbar__hello">Добрый день, Максим</span> · пятница, 20 ноября · день 61</div>
+  <div class="hub-topbar__right"><span class="hub-sync" data-state="ok"><i data-icon="cloud-check"></i><span>синхронизировано</span></span><span class="hub-row__trail" style="font-size:inherit"><kbd class="hub-kbd">Ctrl</kbd><kbd class="hub-kbd">K</kbd> команды</span>
+    <button class="hub-btn hub-btn--sm hub-btn--glass" type="button"><i data-icon="lock"></i>Заблокировать</button>
+  </div>
+</header>
+<div style="margin-top:6vh"><form class="hub-capture " style="" onsubmit="return false">
+  <div class="hub-capture__bar pv-focus">
+    <i data-icon="lightbulb" class="hub-capture__icon"></i>
+    <input class="hub-capture__input" placeholder="Мысль в корзину…" aria-label="Мысль в корзину">
+    <button class="hub-capture__send" type="submit" disabled>В корзину</button>
+  </div>
+  <p class="hub-capture__note">Enter — сохранить, разобрать можно потом</p>
+</form></div>
+<section class="hub-cards" style="width:min(1120px,100%);margin:var(--space-4) auto 0"><article class="hub-card"><div class="hub-card__app"><i data-icon="layers"></i><span>Повторение</span></div><div class="hub-card__main">12 карточек к сроку</div><p class="hub-card__note">2 темы просели: логика, право</p><div class="hub-card__action"><button class="hub-btn hub-btn--sm" type="button">Начать</button></div></article><article class="hub-card"><div class="hub-card__app"><i data-icon="list-checks"></i><span>План дня</span></div><div class="hub-card__main">Осталось 3 из 4</div><ul class="hub-card__list"><li><label class="hub-check hub-check--done"><input type="checkbox" checked><span>балкон</span></label></li><li><label class="hub-check hub-check--done"><input type="checkbox"><span>карточки</span></label></li><li><label class="hub-check hub-check--done"><input type="checkbox"><span>учебные блоки · 0 из 4</span></label></li><li><label class="hub-check hub-check--done"><input type="checkbox"><span>спорт · день A</span></label></li></ul></article><article class="hub-card"><div class="hub-card__app"><i data-icon="inbox"></i><span>Корзина</span></div><div class="hub-card__main">5 неразобранных</div><p class="hub-card__note">последнее: «идея для эссе про привычки и…»</p><div class="hub-card__action"><button class="hub-btn hub-btn--sm" type="button">Разобрать</button></div></article><article class="hub-card"><div class="hub-card__app"><i data-icon="calendar"></i><span>Календарь</span></div><div class="hub-card__main">Сегодня событий нет</div><p class="hub-card__note">завтра — консультация в 16:00</p></article></section>
+</div><div class="hub-drop"><i data-icon="package"></i><h2 class="hub-drop__title">Отпустите, чтобы установить</h2><p class="hub-drop__text">calendar.zip — приложение для хаба</p></div></div></template><template data-note="имя, версия и что просит приложение"><div class="pv-screen" data-scene="open"><div class="hub-backdrop" data-scene="open"><div class="hub-backdrop__photo"></div><div class="hub-backdrop__veil"></div></div><div class="hub-today" style="">
+<header class="hub-topbar">
+  <div><span class="hub-topbar__hello">Добрый день, Максим</span> · пятница, 20 ноября · день 61</div>
+  <div class="hub-topbar__right"><span class="hub-sync" data-state="ok"><i data-icon="cloud-check"></i><span>синхронизировано</span></span><span class="hub-row__trail" style="font-size:inherit"><kbd class="hub-kbd">Ctrl</kbd><kbd class="hub-kbd">K</kbd> команды</span>
+    <button class="hub-btn hub-btn--sm hub-btn--glass" type="button"><i data-icon="lock"></i>Заблокировать</button>
+  </div>
+</header>
+<div style="margin-top:6vh"><form class="hub-capture " style="" onsubmit="return false">
+  <div class="hub-capture__bar pv-focus">
+    <i data-icon="lightbulb" class="hub-capture__icon"></i>
+    <input class="hub-capture__input" placeholder="Мысль в корзину…" aria-label="Мысль в корзину">
+    <button class="hub-capture__send" type="submit" disabled>В корзину</button>
+  </div>
+  <p class="hub-capture__note">Enter — сохранить, разобрать можно потом</p>
+</form></div>
+<section class="hub-cards" style="width:min(1120px,100%);margin:var(--space-4) auto 0"><article class="hub-card"><div class="hub-card__app"><i data-icon="layers"></i><span>Повторение</span></div><div class="hub-card__main">12 карточек к сроку</div><p class="hub-card__note">2 темы просели: логика, право</p><div class="hub-card__action"><button class="hub-btn hub-btn--sm" type="button">Начать</button></div></article><article class="hub-card"><div class="hub-card__app"><i data-icon="list-checks"></i><span>План дня</span></div><div class="hub-card__main">Осталось 3 из 4</div><ul class="hub-card__list"><li><label class="hub-check hub-check--done"><input type="checkbox" checked><span>балкон</span></label></li><li><label class="hub-check hub-check--done"><input type="checkbox"><span>карточки</span></label></li><li><label class="hub-check hub-check--done"><input type="checkbox"><span>учебные блоки · 0 из 4</span></label></li><li><label class="hub-check hub-check--done"><input type="checkbox"><span>спорт · день A</span></label></li></ul></article><article class="hub-card"><div class="hub-card__app"><i data-icon="inbox"></i><span>Корзина</span></div><div class="hub-card__main">5 неразобранных</div><p class="hub-card__note">последнее: «идея для эссе про привычки и…»</p><div class="hub-card__action"><button class="hub-btn hub-btn--sm" type="button">Разобрать</button></div></article><article class="hub-card"><div class="hub-card__app"><i data-icon="calendar"></i><span>Календарь</span></div><div class="hub-card__main">Сегодня событий нет</div><p class="hub-card__note">завтра — консультация в 16:00</p></article></section>
+</div><div class="hub-overlay" style="position:absolute"><div class="hub-dialog" role="dialog" style="width:520px"><div style="display:flex;gap:var(--space-4);align-items:center"><span class="hub-app-icon hub-app-icon--lg"><i data-icon="calendar"></i></span><div><h2 class="hub-dialog__title" style="margin:0">Календарь</h2><p class="hub-muted" style="margin:var(--space-1) 0 0;font-size:var(--font-size-sm)">версия 0.1.0 · из calendar.zip · 48 КБ</p></div></div>
+<p style="margin:var(--space-5) 0 var(--space-2);color:var(--text-muted)">Приложение просит:</p>
+<ul class="hub-list hub-list--divided"><li><div class="hub-row"><span class="hub-row__lead"><i data-icon="database"></i></span><span class="hub-row__body"><span class="hub-row__title">Хранить свои данные</span><span class="hub-row__meta">только свои; данные других приложений ему не видны</span></span><span class="hub-row__trail"></span></div></li><li><div class="hub-row"><span class="hub-row__lead"><i data-icon="inbox"></i></span><span class="hub-row__body"><span class="hub-row__title">Принимать из корзины</span><span class="hub-row__meta">«Событие с датой»</span></span><span class="hub-row__trail"></span></div></li><li><div class="hub-row"><span class="hub-row__lead"><i data-icon="bell"></i></span><span class="hub-row__body"><span class="hub-row__title">Показывать уведомления</span><span class="hub-row__meta">о событиях за 15 минут</span></span><span class="hub-row__trail"></span></div></li><li><div class="hub-row"><span class="hub-row__lead"><i data-icon="globe"></i></span><span class="hub-row__body"><span class="hub-row__title">Доступ в сеть</span><span class="hub-row__meta">calendar.google.com</span></span><span class="hub-row__trail"><span class="hub-tag hub-tag--warning"><i data-icon="globe"></i>сеть</span></span></div></li></ul>
+<p class="hub-hint" style="margin-top:var(--space-3)"><i data-icon="shield-check"></i>К Google Drive, файлам на диске и ключам доступа не будет.</p>
+<div class="hub-dialog__actions"><button class="hub-btn hub-btn--quiet" type="button">Отмена</button><button class="hub-btn hub-btn--primary" type="button">Установить <kbd class="hub-kbd">Enter</kbd></button></div></div></div></div></template><template data-note="куда оно встало"><div class="pv-screen" data-scene="open"><div class="hub-backdrop" data-scene="open"><div class="hub-backdrop__photo"></div><div class="hub-backdrop__veil"></div></div><div class="hub-today" style="">
+<header class="hub-topbar">
+  <div><span class="hub-topbar__hello">Добрый день, Максим</span> · пятница, 20 ноября · день 61</div>
+  <div class="hub-topbar__right"><span class="hub-sync" data-state="ok"><i data-icon="cloud-check"></i><span>синхронизировано</span></span><span class="hub-row__trail" style="font-size:inherit"><kbd class="hub-kbd">Ctrl</kbd><kbd class="hub-kbd">K</kbd> команды</span>
+    <button class="hub-btn hub-btn--sm hub-btn--glass" type="button"><i data-icon="lock"></i>Заблокировать</button>
+  </div>
+</header>
+<div style="margin-top:6vh"><form class="hub-capture " style="" onsubmit="return false">
+  <div class="hub-capture__bar pv-focus">
+    <i data-icon="lightbulb" class="hub-capture__icon"></i>
+    <input class="hub-capture__input" placeholder="Мысль в корзину…" aria-label="Мысль в корзину">
+    <button class="hub-capture__send" type="submit" disabled>В корзину</button>
+  </div>
+  <p class="hub-capture__note">Enter — сохранить, разобрать можно потом</p>
+</form></div>
+<section class="hub-cards" style="width:min(1120px,100%);margin:var(--space-4) auto 0"><article class="hub-card"><div class="hub-card__app"><i data-icon="layers"></i><span>Повторение</span></div><div class="hub-card__main">12 карточек к сроку</div><p class="hub-card__note">2 темы просели: логика, право</p><div class="hub-card__action"><button class="hub-btn hub-btn--sm" type="button">Начать</button></div></article><article class="hub-card"><div class="hub-card__app"><i data-icon="list-checks"></i><span>План дня</span></div><div class="hub-card__main">Осталось 3 из 4</div><ul class="hub-card__list"><li><label class="hub-check hub-check--done"><input type="checkbox" checked><span>балкон</span></label></li><li><label class="hub-check hub-check--done"><input type="checkbox"><span>карточки</span></label></li><li><label class="hub-check hub-check--done"><input type="checkbox"><span>учебные блоки · 0 из 4</span></label></li><li><label class="hub-check hub-check--done"><input type="checkbox"><span>спорт · день A</span></label></li></ul></article><article class="hub-card"><div class="hub-card__app"><i data-icon="inbox"></i><span>Корзина</span></div><div class="hub-card__main">5 неразобранных</div><p class="hub-card__note">последнее: «идея для эссе про привычки и…»</p><div class="hub-card__action"><button class="hub-btn hub-btn--sm" type="button">Разобрать</button></div></article><article class="hub-card"><div class="hub-card__app"><i data-icon="calendar"></i><span>Календарь</span></div><div class="hub-card__main">Сегодня событий нет</div><p class="hub-card__note">завтра — консультация в 16:00</p></article></section>
+</div><div class="hub-overlay" style="position:absolute"><div class="hub-dialog" role="dialog" style="width:520px"><div style="display:flex;gap:var(--space-4);align-items:flex-start"><i data-icon="circle-check" class="hub-icon--lg" style="color:var(--success);margin-top:4px"></i><div>
+<h2 class="hub-dialog__title">Календарь установлен</h2><p class="hub-dialog__body">Он появился в меню приложений и в разборе корзины — «Событие с датой». На телефон приедет со следующей синхронизацией.</p></div></div>
+<div class="hub-dialog__actions"><button class="hub-btn hub-btn--quiet" type="button">Готово</button><button class="hub-btn hub-btn--primary" type="button">Открыть</button></div></div></div></div></template><template data-note="что именно не так и что делать"><div class="pv-screen" data-scene="open"><div class="hub-backdrop" data-scene="open"><div class="hub-backdrop__photo"></div><div class="hub-backdrop__veil"></div></div><div class="hub-today" style="">
+<header class="hub-topbar">
+  <div><span class="hub-topbar__hello">Добрый день, Максим</span> · пятница, 20 ноября · день 61</div>
+  <div class="hub-topbar__right"><span class="hub-sync" data-state="ok"><i data-icon="cloud-check"></i><span>синхронизировано</span></span><span class="hub-row__trail" style="font-size:inherit"><kbd class="hub-kbd">Ctrl</kbd><kbd class="hub-kbd">K</kbd> команды</span>
+    <button class="hub-btn hub-btn--sm hub-btn--glass" type="button"><i data-icon="lock"></i>Заблокировать</button>
+  </div>
+</header>
+<div style="margin-top:6vh"><form class="hub-capture " style="" onsubmit="return false">
+  <div class="hub-capture__bar pv-focus">
+    <i data-icon="lightbulb" class="hub-capture__icon"></i>
+    <input class="hub-capture__input" placeholder="Мысль в корзину…" aria-label="Мысль в корзину">
+    <button class="hub-capture__send" type="submit" disabled>В корзину</button>
+  </div>
+  <p class="hub-capture__note">Enter — сохранить, разобрать можно потом</p>
+</form></div>
+<section class="hub-cards" style="width:min(1120px,100%);margin:var(--space-4) auto 0"><article class="hub-card"><div class="hub-card__app"><i data-icon="layers"></i><span>Повторение</span></div><div class="hub-card__main">12 карточек к сроку</div><p class="hub-card__note">2 темы просели: логика, право</p><div class="hub-card__action"><button class="hub-btn hub-btn--sm" type="button">Начать</button></div></article><article class="hub-card"><div class="hub-card__app"><i data-icon="list-checks"></i><span>План дня</span></div><div class="hub-card__main">Осталось 3 из 4</div><ul class="hub-card__list"><li><label class="hub-check hub-check--done"><input type="checkbox" checked><span>балкон</span></label></li><li><label class="hub-check hub-check--done"><input type="checkbox"><span>карточки</span></label></li><li><label class="hub-check hub-check--done"><input type="checkbox"><span>учебные блоки · 0 из 4</span></label></li><li><label class="hub-check hub-check--done"><input type="checkbox"><span>спорт · день A</span></label></li></ul></article><article class="hub-card"><div class="hub-card__app"><i data-icon="inbox"></i><span>Корзина</span></div><div class="hub-card__main">5 неразобранных</div><p class="hub-card__note">последнее: «идея для эссе про привычки и…»</p><div class="hub-card__action"><button class="hub-btn hub-btn--sm" type="button">Разобрать</button></div></article><article class="hub-card"><div class="hub-card__app"><i data-icon="calendar"></i><span>Календарь</span></div><div class="hub-card__main">Сегодня событий нет</div><p class="hub-card__note">завтра — консультация в 16:00</p></article></section>
+</div><div class="hub-overlay" style="position:absolute"><div class="hub-dialog" role="dialog" style="width:520px"><div style="display:flex;gap:var(--space-4);align-items:flex-start"><i data-icon="circle-x" class="hub-icon--lg" style="color:var(--danger);margin-top:4px"></i><div>
+<h2 class="hub-dialog__title">Не удалось установить «notes.zip»</h2><p class="hub-dialog__body">Хаб ничего не установил. Что не так:</p>
+<div style="display:grid;gap:var(--space-2);margin-top:var(--space-3)"><p class="hub-hint hub-hint--error"><i data-icon="circle-alert"></i>В manifest.json нет поля «name».</p><p class="hub-hint hub-hint--error"><i data-icon="circle-alert"></i>index.html загружает скрипт из интернета (cdn.example.com/app.js), а доступ в сеть не заявлен.</p></div>
+<p class="hub-hint" style="margin-top:var(--space-3)">Исправьте по APP_SPEC.md и перетащите архив снова.</p></div></div>
+<div class="hub-dialog__actions"><button class="hub-btn hub-btn--quiet" type="button"><i data-icon="file-text"></i>Показать манифест</button><button class="hub-btn" type="button">Закрыть</button></div></div></div></div></template>
+<script>
+(function () {
+  if (!document.querySelector('link[href*="preview/kit.css"]')) {
+    var l = document.createElement('link'); l.rel = 'stylesheet'; l.href = '../../preview/kit.css'; document.head.appendChild(l);
+  }
+  if (window.HubUI) HubUI.init();
+  var tpls = document.querySelectorAll('template[data-note]');
+  var host = document.getElementById('pvScreen'), note = document.getElementById('pvNote');
+  var btns = document.querySelectorAll('.pv-states [data-i]');
+  function show(i) {
+    host.innerHTML = tpls[i].innerHTML; note.textContent = tpls[i].getAttribute('data-note');
+    btns.forEach(function (b) { b.setAttribute('aria-pressed', String(Number(b.dataset.i) === i)); });
+    HubUI.init(host);
+    if (window.pvAfter) window.pvAfter(host, i);
+  }
+  btns.forEach(function (b) { b.addEventListener('click', function () { show(Number(b.dataset.i)); }); });
+
+  show(0);
+
+})();
+</script>
+</body>
+</html>

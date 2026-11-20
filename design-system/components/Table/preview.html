@@ -1,0 +1,33 @@
+<!-- @dsCard group="Данные" height=330 -->
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Таблица</title>
+<link rel="stylesheet" href="../../preview/kit.css">
+
+</head>
+<body>
+<div class="hub-backdrop" data-scene="open"><div class="hub-backdrop__photo"></div><div class="hub-backdrop__veil"></div></div>
+<div class="pv"><div class="hub-glass" style="width:760px;padding:var(--space-4) var(--space-5)">
+<table class="hub-table">
+  <caption>Темы повторения</caption>
+  <thead><tr><th aria-sort="ascending"><button type="button">Тема</button></th><th class="is-num"><button type="button">Карточек</button></th><th class="is-num"><button type="button">К сроку</button></th><th class="is-num"><button type="button">Удержание</button></th><th>Состояние</th></tr></thead>
+  <tbody>
+    <tr><td>Логика</td><td class="is-num">24</td><td class="is-num">7</td><td class="is-num">61%</td><td><span class="hub-tag hub-tag--warning"><i data-icon="triangle-alert"></i>просела</span></td></tr>
+    <tr aria-selected="true"><td>Право</td><td class="is-num">31</td><td class="is-num">5</td><td class="is-num">68%</td><td><span class="hub-tag hub-tag--warning"><i data-icon="triangle-alert"></i>просела</span></td></tr>
+    <tr><td>Социология</td><td class="is-num">18</td><td class="is-num">0</td><td class="is-num">90%</td><td class="is-muted">в порядке</td></tr>
+    <tr><td>Экономика</td><td class="is-num">40</td><td class="is-num">0</td><td class="is-num">84%</td><td class="is-muted">в порядке</td></tr>
+  </tbody>
+</table></div></div>
+<script>
+(function () {
+  if (!document.querySelector('link[href*="preview/kit.css"]')) {
+    var l = document.createElement('link'); l.rel = 'stylesheet'; l.href = '../../preview/kit.css'; document.head.appendChild(l);
+  }
+  if (window.HubUI) HubUI.init();
+
+})();
+</script>
+</body>
+</html>

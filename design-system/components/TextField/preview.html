@@ -1,0 +1,36 @@
+<!-- @dsCard group="Ввод" height=330 width=1200 subtitle="Строка, многострочное, поиск, число, поле-линия" -->
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Поля ввода</title>
+<link rel="stylesheet" href="../../preview/kit.css">
+
+</head>
+<body>
+<div class="hub-backdrop" data-scene="open"><div class="hub-backdrop__photo"></div><div class="hub-backdrop__veil"></div></div>
+<div class="pv" style="gap:var(--space-5) var(--space-6)">
+  <div class="pv-col pv-w"><label class="hub-field"><span class="hub-label">Строка</span><input class="hub-input" placeholder="Название темы"></label>
+    <label class="hub-field"><span class="hub-label">Наведение</span><input class="hub-input pv-hover" value="Логика"></label>
+    <label class="hub-field"><span class="hub-label">Фокус</span><input class="hub-input pv-focus" value="Право"></label></div>
+  <div class="pv-col pv-w"><label class="hub-field"><span class="hub-label">Ошибка</span><input class="hub-input" aria-invalid="true" value="12:75"><span class="hub-hint hub-hint--error"><i data-icon="circle-alert"></i>Время в формате ЧЧ:ММ, например 16:00</span></label>
+    <label class="hub-field"><span class="hub-label">Недоступно</span><input class="hub-input" disabled value="Синхронизируется…"></label>
+    <label class="hub-field"><span class="hub-label">С подсказкой</span><input class="hub-input" value="Максим"><span class="hub-hint">Так хаб будет здороваться</span></label></div>
+  <div class="pv-col pv-w"><label class="hub-field"><span class="hub-label">Многострочное</span><textarea class="hub-textarea" placeholder="Ответ на карточку">Договор у Гоббса отчуждает права суверену целиком; у Локка власть доверенная и может быть отозвана.</textarea></label>
+    <div class="hub-field"><span class="hub-label">Поиск</span><label class="hub-search"><i data-icon="search"></i><input type="search" placeholder="Приложения, команды, записи" aria-label="Поиск"><kbd class="hub-kbd">Ctrl K</kbd></label></div>
+    <div class="hub-field"><span class="hub-label">Поиск в фокусе</span><label class="hub-search pv-focus"><i data-icon="search"></i><input type="search" value="левиафан" aria-label="Поиск"><button class="hub-search__clear" type="button" aria-label="Очистить"><i data-icon="x"></i></button></label></div></div>
+  <div class="pv-col" style="width:220px"><div class="hub-field"><span class="hub-label">Число</span><div class="hub-number"><button type="button" data-step="-1" aria-label="Меньше"><i data-icon="minus"></i></button><input type="number" value="25" min="5" max="90" step="5" aria-label="Минут в блоке"><button type="button" data-step="1" aria-label="Больше"><i data-icon="plus"></i></button></div><span class="hub-hint">Минут в учебном блоке</span></div>
+    <div class="hub-field"><span class="hub-label">Число на пределе</span><div class="hub-number"><button type="button" data-step="-1" aria-label="Меньше"><i data-icon="minus"></i></button><input type="number" value="5" min="5" max="90" step="5" aria-label="Минут"><button type="button" data-step="1" aria-label="Больше"><i data-icon="plus"></i></button></div></div>
+    <div class="hub-field" style="margin-top:var(--space-4)"><span class="hub-label">Поле-линия (на фото)</span><input class="hub-input hub-input--line hub-input--secret pv-focus" type="password" value="лес" aria-label="Пароль"></div></div>
+</div>
+<script>
+(function () {
+  if (!document.querySelector('link[href*="preview/kit.css"]')) {
+    var l = document.createElement('link'); l.rel = 'stylesheet'; l.href = '../../preview/kit.css'; document.head.appendChild(l);
+  }
+  if (window.HubUI) HubUI.init();
+
+})();
+</script>
+</body>
+</html>

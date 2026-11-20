@@ -1,0 +1,1481 @@
+{
+  "manifestVersion": 3,
+  "name": "Хаб",
+  "namespace": "HubUI",
+  "files": [
+    "01-themes.md",
+    "02-motion.md",
+    "03-apps.md",
+    "assets/Icons/README.md",
+    "assets/Photos/README.md",
+    "components/AppShell/README.md",
+    "components/Backdrop/README.md",
+    "components/BarChart/README.md",
+    "components/BottomNav/README.md",
+    "components/Button/README.md",
+    "components/CaptureBar/README.md",
+    "components/CaptureScreen/README.md",
+    "components/Card/README.md",
+    "components/Checkbox/README.md",
+    "components/CommandScreen/README.md",
+    "components/Dialog/README.md",
+    "components/DirectionA/README.md",
+    "components/DirectionB/README.md",
+    "components/DirectionC/README.md",
+    "components/EmptyState/README.md",
+    "components/ExampleApp/README.md",
+    "components/Icons/README.md",
+    "components/InstallScreen/README.md",
+    "components/ListRow/README.md",
+    "components/LiveFlow/README.md",
+    "components/Loading/README.md",
+    "components/LockScreen/README.md",
+    "components/Menu/README.md",
+    "components/PhoneCapture/README.md",
+    "components/PhoneLock/README.md",
+    "components/PhoneToday/README.md",
+    "components/PhoneTriage/README.md",
+    "components/PhoneWidget/README.md",
+    "components/Progress/README.md",
+    "components/Select/README.md",
+    "components/SetupScreen/README.md",
+    "components/Sheet/README.md",
+    "components/Stepper/README.md",
+    "components/Switch/README.md",
+    "components/SyncScreen/README.md",
+    "components/SyncStatus/README.md",
+    "components/Table/README.md",
+    "components/Tabs/README.md",
+    "components/Tag/README.md",
+    "components/TextField/README.md",
+    "components/Themes/README.md",
+    "components/ThemesScreen/README.md",
+    "components/Timer/README.md",
+    "components/Toast/README.md",
+    "components/TodayScreen/README.md",
+    "components/TriageScreen/README.md",
+    "components/bundle.css",
+    "components/bundle.js",
+    "fonts/Jost-Variable.woff2",
+    "fonts/Manrope-Variable.woff2",
+    "licenses/Lucide-ISC.txt",
+    "licenses/OFL-Jost.txt",
+    "licenses/OFL-Manrope.txt",
+    "preview/kit.css",
+    "themes/forest/theme.json",
+    "themes/mist/theme.json",
+    "themes/solid/theme.json",
+    "tokens.css"
+  ],
+  "libraries": [],
+  "components": [
+    {
+      "name": "AppShell",
+      "group": "Экраны",
+      "summary": "Как выглядит любое приложение, открытое внутри хаба: слева панель приложений, сверху строка ввода и статус, остальное — область приложения."
+    },
+    {
+      "name": "Backdrop",
+      "group": "Основа",
+      "summary": "Фото темы на весь экран, вуаль и полупрозрачное стекло — основа всех экранов; рисует их только сам хаб."
+    },
+    {
+      "name": "BarChart",
+      "group": "Данные",
+      "summary": "Одна величина по дням или неделям для статистики приложений; одна серия, без легенды — заголовок называет, что посчитано."
+    },
+    {
+      "name": "BottomNav",
+      "group": "Оболочка хаба",
+      "summary": "Разделы хаба на телефоне: «Сегодня», «Корзина», «Приложения», «Настройки»."
+    },
+    {
+      "name": "Button",
+      "group": "Действия",
+      "summary": "Действие одним нажатием; по умолчанию — обычная (контур), основная — не больше одной на экран."
+    },
+    {
+      "name": "CaptureBar",
+      "group": "Оболочка хаба",
+      "summary": "Главный элемент хаба: мысль падает в корзину за пару секунд — набрал, Enter, дальше."
+    },
+    {
+      "name": "CaptureScreen",
+      "group": "Экраны",
+      "summary": "Строка ввода в работе: на «Сегодня» и в мини-окне поверх других программ. Устройство самой строки — компонент «Строка быстрого ввода»."
+    },
+    {
+      "name": "Card",
+      "group": "Контейнеры",
+      "summary": "Карточку на «Сегодня» даёт приложение; форма у всех одна и та же, наполнение — четыре поля."
+    },
+    {
+      "name": "Checkbox",
+      "group": "Ввод",
+      "summary": "Отметка «сделано / выбрано»; вся строка с текстом — одна цель для нажатия."
+    },
+    {
+      "name": "CommandScreen",
+      "group": "Экраны · вторая очередь",
+      "summary": "Ctrl K из любого места: найти приложение, выполнить команду или открыть запись — не трогая мышь."
+    },
+    {
+      "name": "Dialog",
+      "group": "Окна и сообщения",
+      "summary": "Окно поверх экрана для одного решения: подтвердить необратимое или ввести одно-два значения."
+    },
+    {
+      "name": "DirectionA",
+      "group": "Направления",
+      "summary": "Доработанный прототип: всё по центру, строка ввода первой, карточки приложений сеткой под ней. Выбрано (пока): на нём собраны все экраны ПК; телефон повторяет…"
+    },
+    {
+      "name": "DirectionB",
+      "group": "Направления",
+      "summary": "Всё в одной колонке слева, как страница личного дневника: дата, приветствие, строка ввода, список дел по приложениям строками, без карточек. Правая половина от…"
+    },
+    {
+      "name": "DirectionC",
+      "group": "Направления",
+      "summary": "Строка ввода стоит посередине экрана, как линия горизонта на фото; часы и дата — маленьким блоком слева сверху; карточки — одна полка у нижнего края."
+    },
+    {
+      "name": "EmptyState",
+      "group": "Состояния",
+      "summary": "Что показать, когда показывать нечего: всё сделано, ничего не найдено, приложение ещё без данных."
+    },
+    {
+      "name": "ExampleApp",
+      "group": "Экраны",
+      "summary": "Проверка набора: экран приложения повторения собран только из классов hub.css, типографских стилей t-* и токенов — ни одного своего цвета или шрифта."
+    },
+    {
+      "name": "Icons",
+      "group": "Основа",
+      "summary": "Один линейный набор — Lucide (лицензия ISC): у каждой иконки сетка 24, линия 1.6, скругленные концы, цвет — currentColor."
+    },
+    {
+      "name": "InstallScreen",
+      "group": "Экраны · вторая очередь",
+      "summary": "Перетащил папку или zip в хаб → посмотрел, что приложение просит → «Установить»."
+    },
+    {
+      "name": "ListRow",
+      "group": "Контейнеры",
+      "summary": "Одна запись в списке: слева значок или чекбокс, в середине название и пояснение, справа число, тег, клавиша или стрелка."
+    },
+    {
+      "name": "LiveFlow",
+      "group": "Экраны",
+      "summary": "Рабочий прототип, пересобранный на hub.css: заставка → пароль → «Сегодня» → мысль в корзину. Кликните по экрану, затем любая клавиша; пароль — «лес»."
+    },
+    {
+      "name": "Loading",
+      "group": "Состояния",
+      "summary": "Как показать ожидание: кружок — для действия, скелет — для содержимого, полоса — для долгого процесса."
+    },
+    {
+      "name": "LockScreen",
+      "group": "Экраны",
+      "summary": "Первое, что видно при включении компьютера: фото темы, время, дата и приветствие; любая клавиша проявляет поле пароля."
+    },
+    {
+      "name": "Menu",
+      "group": "Окна и сообщения",
+      "summary": "Список действий или вариантов, который открывается от кнопки или поля и закрывается после выбора."
+    },
+    {
+      "name": "PhoneCapture",
+      "group": "Телефон",
+      "summary": "На телефоне мысль попадает в корзину тремя путями: строка на «Сегодня», виджет на рабочем столе и «Поделиться» из любой программы."
+    },
+    {
+      "name": "PhoneLock",
+      "group": "Телефон",
+      "summary": "Тот же вход, что на ПК, под палец: заставка → касание → пароль с открытой клавиатурой."
+    },
+    {
+      "name": "PhoneToday",
+      "group": "Телефон",
+      "summary": "«Сегодня» на телефоне — те же строка ввода и карточки, только столбиком и с нижней панелью разделов."
+    },
+    {
+      "name": "PhoneTriage",
+      "group": "Телефон",
+      "summary": "Разбор под большой палец: один элемент карточкой, решение — жестом."
+    },
+    {
+      "name": "PhoneWidget",
+      "group": "Телефон",
+      "summary": "Самый короткий путь мысли в корзину на телефоне: касание виджета → текст → «Отправить»."
+    },
+    {
+      "name": "Progress",
+      "group": "Данные",
+      "summary": "Сколько сделано из известного целого: полоса для непрерывного, шаги — для счётных частей вроде учебных блоков."
+    },
+    {
+      "name": "Select",
+      "group": "Ввод",
+      "summary": "Выбор одного варианта из известного списка: тема, папка, режим синхронизации."
+    },
+    {
+      "name": "SetupScreen",
+      "group": "Экраны · вторая очередь",
+      "summary": "Один раз, при первом запуске: четыре шага на плотном стекле поверх размытого фото, по одному решению на экран."
+    },
+    {
+      "name": "Sheet",
+      "group": "Окна и сообщения",
+      "summary": "Выбор или короткий ввод на телефоне, не уводящий с экрана: куда перенести, когда напомнить, «Поделиться» в корзину."
+    },
+    {
+      "name": "Stepper",
+      "group": "Окна и сообщения",
+      "summary": "Где человек в коротком пошаговом процессе: первая настройка, подключение телефона."
+    },
+    {
+      "name": "Switch",
+      "group": "Ввод",
+      "summary": "Включает или выключает настройку сразу, без кнопки «Сохранить»."
+    },
+    {
+      "name": "SyncScreen",
+      "group": "Экраны · вторая очередь",
+      "summary": "Где видно и решается всё про Google Drive: папки, конфликты, первая синхронизация и защита от массового удаления."
+    },
+    {
+      "name": "SyncStatus",
+      "group": "Оболочка хаба",
+      "summary": "Одна строка в шапке, по которой видно, всё ли уехало на Drive; громким становится только конфликт."
+    },
+    {
+      "name": "Table",
+      "group": "Данные",
+      "summary": "Данные, которые сравнивают по столбцам: темы повторения, история блоков, список файлов синхронизации."
+    },
+    {
+      "name": "Tabs",
+      "group": "Контейнеры",
+      "summary": "Вкладки делят экран приложения на разделы; сегменты переключают вид одного и того же (период, сортировку)."
+    },
+    {
+      "name": "Tag",
+      "group": "Ввод",
+      "summary": "Короткая метка у записи (#учёба, «с телефона») или переключаемый фильтр."
+    },
+    {
+      "name": "TextField",
+      "group": "Ввод",
+      "summary": "Всё, куда пишут: строка hub-input, многострочное hub-textarea, поиск hub-search, число hub-number и поле-линия hub-input--line для экрана входа."
+    },
+    {
+      "name": "Themes",
+      "group": "Основа",
+      "summary": "Тема — это фото плюс набор значений токенов; разметка и hub.css одни на все темы."
+    },
+    {
+      "name": "ThemesScreen",
+      "group": "Экраны · вторая очередь",
+      "summary": "Галерея тем и настройка одной темы; новая тема собирается из любого фото по правилу из раздела «Темы»."
+    },
+    {
+      "name": "Timer",
+      "group": "Данные",
+      "summary": "Обратный отсчёт с кольцом: учебные блоки, ограничение времени на карточку."
+    },
+    {
+      "name": "Toast",
+      "group": "Окна и сообщения",
+      "summary": "Короткое сообщение внизу по центру о том, что уже произошло; само исчезает через 4 секунды."
+    },
+    {
+      "name": "TodayScreen",
+      "group": "Экраны",
+      "summary": "Главный экран после входа: строка «Мысль в корзину…» с курсором и под ней — карточки приложений; через него проходят за секунды, а не живут в нём."
+    },
+    {
+      "name": "TriageScreen",
+      "group": "Экраны",
+      "summary": "Один элемент крупно и под ним — приложения, которые могут его принять; разбирают с клавиатуры, по элементу за пару секунд."
+    }
+  ],
+  "assetGroups": [
+    {
+      "name": "Photos",
+      "tile": "l",
+      "order": [
+        "forest.jpg",
+        "mist.jpg"
+      ],
+      "files": [
+        {
+          "path": "assets/Photos/forest.jpg",
+          "id": "76c67e824c2a7d7ad257c8706131d77d"
+        },
+        {
+          "path": "assets/Photos/mist.jpg",
+          "id": "bdd97e561f7aa6e0df7b4715617395a5"
+        }
+      ]
+    },
+    {
+      "name": "Icons",
+      "tile": "xs",
+      "order": [
+        "lightbulb.svg",
+        "inbox.svg",
+        "lock.svg",
+        "lock-open.svg",
+        "arrow-right.svg",
+        "arrow-left.svg",
+        "check.svg",
+        "x.svg",
+        "plus.svg",
+        "minus.svg",
+        "search.svg",
+        "command.svg",
+        "settings.svg",
+        "palette.svg",
+        "cloud-check.svg",
+        "refresh-cw.svg",
+        "cloud-off.svg",
+        "triangle-alert.svg",
+        "calendar.svg",
+        "calendar-days.svg",
+        "layers.svg",
+        "list-checks.svg",
+        "list-todo.svg",
+        "trash-2.svg",
+        "clock.svg",
+        "alarm-clock.svg",
+        "timer.svg",
+        "play.svg",
+        "pause.svg",
+        "rotate-ccw.svg",
+        "chevron-down.svg",
+        "chevron-right.svg",
+        "chevron-left.svg",
+        "chevron-up.svg",
+        "ellipsis.svg",
+        "info.svg",
+        "circle-check.svg",
+        "circle-alert.svg",
+        "circle-x.svg",
+        "eye.svg",
+        "eye-off.svg",
+        "keyboard.svg",
+        "sun.svg",
+        "moon.svg",
+        "sunrise.svg",
+        "image.svg",
+        "folder.svg",
+        "folder-sync.svg",
+        "package.svg",
+        "download.svg",
+        "upload.svg",
+        "pencil.svg",
+        "chart-column.svg",
+        "house.svg",
+        "notebook-pen.svg",
+        "corner-down-left.svg",
+        "brain.svg",
+        "book-open.svg",
+        "book-open-text.svg",
+        "hourglass.svg",
+        "panel-left.svg",
+        "git-compare-arrows.svg",
+        "dumbbell.svg",
+        "arrow-big-up.svg",
+        "languages.svg",
+        "undo-2.svg",
+        "monitor.svg",
+        "smartphone.svg",
+        "archive.svg",
+        "tag.svg",
+        "leaf.svg",
+        "trees.svg",
+        "repeat.svg",
+        "forward.svg",
+        "send-horizontal.svg",
+        "wifi.svg",
+        "signal.svg",
+        "battery-medium.svg",
+        "fingerprint.svg",
+        "share-2.svg",
+        "layout-grid.svg",
+        "file-archive.svg",
+        "shield-check.svg",
+        "hard-drive.svg",
+        "key-round.svg",
+        "printer.svg",
+        "copy.svg",
+        "folder-plus.svg",
+        "globe.svg",
+        "bell.svg",
+        "database.svg",
+        "type.svg",
+        "image-plus.svg",
+        "ellipsis-vertical.svg",
+        "arrow-up.svg",
+        "arrow-down.svg",
+        "check-check.svg",
+        "monitor-smartphone.svg",
+        "file-text.svg",
+        "cloud.svg",
+        "cloud-upload.svg",
+        "external-link.svg",
+        "sliders-horizontal.svg"
+      ],
+      "files": [
+        {
+          "path": "assets/Icons/lightbulb.svg",
+          "id": "06e342bfe3964d3ecdde2f16090b6ff7"
+        },
+        {
+          "path": "assets/Icons/inbox.svg",
+          "id": "31edcd9aa65c692feed23c61ceb88394"
+        },
+        {
+          "path": "assets/Icons/lock.svg",
+          "id": "839e47a6d8ab23848dc76a1daf8be89d"
+        },
+        {
+          "path": "assets/Icons/lock-open.svg",
+          "id": "3e7c4ddd1b6a9bda5335f0b82da64542"
+        },
+        {
+          "path": "assets/Icons/arrow-right.svg",
+          "id": "e9c5005d1b9fb30f78728aead9887a17"
+        },
+        {
+          "path": "assets/Icons/arrow-left.svg",
+          "id": "ced2771862b711ff91b0a9953051408e"
+        },
+        {
+          "path": "assets/Icons/check.svg",
+          "id": "efb0bb5bced9e58c01de7bbd99b896af"
+        },
+        {
+          "path": "assets/Icons/x.svg",
+          "id": "57ea19562b8ea8abf9fff2f7a82336fd"
+        },
+        {
+          "path": "assets/Icons/plus.svg",
+          "id": "d56bf2b193c425ad2dcda1fcf1ebe9f4"
+        },
+        {
+          "path": "assets/Icons/minus.svg",
+          "id": "b2abf08ffafd90d08e16fcf4035ff9ef"
+        },
+        {
+          "path": "assets/Icons/search.svg",
+          "id": "df1272ec1227d400b372e4afd79cf3c9"
+        },
+        {
+          "path": "assets/Icons/command.svg",
+          "id": "50f448c25251d3b7ea43664d8d640a0d"
+        },
+        {
+          "path": "assets/Icons/settings.svg",
+          "id": "11796f4ee3012dcbde24c19f2b4f7a7b"
+        },
+        {
+          "path": "assets/Icons/palette.svg",
+          "id": "c0f77554c42cf6ed7d4e3f2d50c74b80"
+        },
+        {
+          "path": "assets/Icons/cloud-check.svg",
+          "id": "540c81faf70e7c84bd15c4c71ff600df"
+        },
+        {
+          "path": "assets/Icons/refresh-cw.svg",
+          "id": "a43b832cf7ce36771401f604139f9ee0"
+        },
+        {
+          "path": "assets/Icons/cloud-off.svg",
+          "id": "76eef2bd6ce70b509996b40a540a98fd"
+        },
+        {
+          "path": "assets/Icons/triangle-alert.svg",
+          "id": "ab8370b1065fa7449d594b74491daebc"
+        },
+        {
+          "path": "assets/Icons/calendar.svg",
+          "id": "33299958e4af14af1d08b01795593e90"
+        },
+        {
+          "path": "assets/Icons/calendar-days.svg",
+          "id": "82ba0ddb2c35367101828ab42a778a26"
+        },
+        {
+          "path": "assets/Icons/layers.svg",
+          "id": "c7cae8be7fb75e1e6091c4f187025a9c"
+        },
+        {
+          "path": "assets/Icons/list-checks.svg",
+          "id": "5d65f0d1fad76bcc5233874d235a1003"
+        },
+        {
+          "path": "assets/Icons/list-todo.svg",
+          "id": "c9764522ae8b96f35f2cd3138864c43e"
+        },
+        {
+          "path": "assets/Icons/trash-2.svg",
+          "id": "6e47eb539be794855185a82907797005"
+        },
+        {
+          "path": "assets/Icons/clock.svg",
+          "id": "1c9a060d93caf9a6ab5ea24af434c84e"
+        },
+        {
+          "path": "assets/Icons/alarm-clock.svg",
+          "id": "41e93965b40ad3a212f9a717ae4dc773"
+        },
+        {
+          "path": "assets/Icons/timer.svg",
+          "id": "54e4dffbb028704c6aeab00d4ef57d0e"
+        },
+        {
+          "path": "assets/Icons/play.svg",
+          "id": "4aa9dfb87b28e578cfe9b68ec7d93773"
+        },
+        {
+          "path": "assets/Icons/pause.svg",
+          "id": "4f8f6287a90e8843120175f8239c1f03"
+        },
+        {
+          "path": "assets/Icons/rotate-ccw.svg",
+          "id": "ebf70d44c5bf890fd298bdc6355d232f"
+        },
+        {
+          "path": "assets/Icons/chevron-down.svg",
+          "id": "8a93c69a6647fb0489cda081009457b3"
+        },
+        {
+          "path": "assets/Icons/chevron-right.svg",
+          "id": "0c9a3e9e736baa12e65dc5b59c9d166c"
+        },
+        {
+          "path": "assets/Icons/chevron-left.svg",
+          "id": "8397582f2ce88f90b83c22c2a850ed82"
+        },
+        {
+          "path": "assets/Icons/chevron-up.svg",
+          "id": "d392ef1339f0e360e187c53cbea7bc4d"
+        },
+        {
+          "path": "assets/Icons/ellipsis.svg",
+          "id": "23843efaf7eca73b57b783a9e93b4c20"
+        },
+        {
+          "path": "assets/Icons/info.svg",
+          "id": "e75881920410ca847254a72121ee4529"
+        },
+        {
+          "path": "assets/Icons/circle-check.svg",
+          "id": "a118d564e1a74fab7c5400a1c505b557"
+        },
+        {
+          "path": "assets/Icons/circle-alert.svg",
+          "id": "b2a601266ecca0d6406f2f1f0e076a8f"
+        },
+        {
+          "path": "assets/Icons/circle-x.svg",
+          "id": "6fe3f50f94a4beed280db755693ec96f"
+        },
+        {
+          "path": "assets/Icons/eye.svg",
+          "id": "7e48f35fd1e6f13f59311b027013eb2a"
+        },
+        {
+          "path": "assets/Icons/eye-off.svg",
+          "id": "03ea337ddbf04b25ad9b6ebc2a429d8c"
+        },
+        {
+          "path": "assets/Icons/keyboard.svg",
+          "id": "c2c122374bd9b39237c1175e0588fa76"
+        },
+        {
+          "path": "assets/Icons/sun.svg",
+          "id": "e3b5eb7b046ef6531c0263c923c36c1c"
+        },
+        {
+          "path": "assets/Icons/moon.svg",
+          "id": "9ec42c18cc55aa7801c8455e01306522"
+        },
+        {
+          "path": "assets/Icons/sunrise.svg",
+          "id": "2432a1fb433674a17104cec86fd8482d"
+        },
+        {
+          "path": "assets/Icons/image.svg",
+          "id": "4a1582c0e967ff9be26f29089f7e0678"
+        },
+        {
+          "path": "assets/Icons/folder.svg",
+          "id": "b0ad47e3e07dd044aa795ae49aa976dc"
+        },
+        {
+          "path": "assets/Icons/folder-sync.svg",
+          "id": "f75d5678b36e8e67f12b0fe60b9f21dd"
+        },
+        {
+          "path": "assets/Icons/package.svg",
+          "id": "4ae5170104a92196554084ab8fc8a8e4"
+        },
+        {
+          "path": "assets/Icons/download.svg",
+          "id": "1eccb16c83bba13a266c3156170a59bf"
+        },
+        {
+          "path": "assets/Icons/upload.svg",
+          "id": "bdc29a4f550df2792963d412032b7c54"
+        },
+        {
+          "path": "assets/Icons/pencil.svg",
+          "id": "adf68fc172215df6e16ec5e119fede61"
+        },
+        {
+          "path": "assets/Icons/chart-column.svg",
+          "id": "b2242e172a7c83349e2f753ebb089423"
+        },
+        {
+          "path": "assets/Icons/house.svg",
+          "id": "fdb9efd801dbb120524eaab35acc54fa"
+        },
+        {
+          "path": "assets/Icons/notebook-pen.svg",
+          "id": "9568520b03df440703c144cdc0b85c59"
+        },
+        {
+          "path": "assets/Icons/corner-down-left.svg",
+          "id": "ea527e7d52dd2dc6d9edbcbf0463b07d"
+        },
+        {
+          "path": "assets/Icons/brain.svg",
+          "id": "35250b65b5ba9ac37be64b94c77ef99b"
+        },
+        {
+          "path": "assets/Icons/book-open.svg",
+          "id": "40c2b6e345f46476facc3849aa20599c"
+        },
+        {
+          "path": "assets/Icons/book-open-text.svg",
+          "id": "3d61d4accfbe7afb36777356a86d4de0"
+        },
+        {
+          "path": "assets/Icons/hourglass.svg",
+          "id": "4524600fb60cce639fef5b98df6244fd"
+        },
+        {
+          "path": "assets/Icons/panel-left.svg",
+          "id": "597aa3a44ea73af0597e9f5744c0b108"
+        },
+        {
+          "path": "assets/Icons/git-compare-arrows.svg",
+          "id": "a5b6b102da274cfa7e091305cd5fb8ed"
+        },
+        {
+          "path": "assets/Icons/dumbbell.svg",
+          "id": "3cce323eab2857be972720ba0645aa1f"
+        },
+        {
+          "path": "assets/Icons/arrow-big-up.svg",
+          "id": "f04c1bd6de16045f54cc8a4c1e90ee20"
+        },
+        {
+          "path": "assets/Icons/languages.svg",
+          "id": "5f41df6764a20bbfbf56e42a83f4c1e0"
+        },
+        {
+          "path": "assets/Icons/undo-2.svg",
+          "id": "9e5e8a6adc9243de9bdbb22810226c13"
+        },
+        {
+          "path": "assets/Icons/monitor.svg",
+          "id": "92d639fdd40cfc1aec9e937ab6b81aaf"
+        },
+        {
+          "path": "assets/Icons/smartphone.svg",
+          "id": "a4fd5d1a567cbfcc466cdb3eb800289d"
+        },
+        {
+          "path": "assets/Icons/archive.svg",
+          "id": "f2a8e95eb2c90f99437fa04e39eaab2c"
+        },
+        {
+          "path": "assets/Icons/tag.svg",
+          "id": "c0f1e0d8508c6558222418ff45df06b4"
+        },
+        {
+          "path": "assets/Icons/leaf.svg",
+          "id": "3de3a5e4a35ccd77da083e25b94f871f"
+        },
+        {
+          "path": "assets/Icons/trees.svg",
+          "id": "7d6d2f0dc21ba7ee2093a0689b35ff1b"
+        },
+        {
+          "path": "assets/Icons/repeat.svg",
+          "id": "78d7d69d9b543394906f63f3518f35a3"
+        },
+        {
+          "path": "assets/Icons/forward.svg",
+          "id": "f7f8270e76feabaa82f6bb6d94d56221"
+        },
+        {
+          "path": "assets/Icons/send-horizontal.svg",
+          "id": "54be663abdbe99c36fc40494ddb34e9c"
+        },
+        {
+          "path": "assets/Icons/wifi.svg",
+          "id": "9ba575d336a94238ccf9f68ce38c8470"
+        },
+        {
+          "path": "assets/Icons/signal.svg",
+          "id": "dbfce2d8c6394c6900019a6af592c2af"
+        },
+        {
+          "path": "assets/Icons/battery-medium.svg",
+          "id": "0b863f1cda9d95fce7ee35935e586b66"
+        },
+        {
+          "path": "assets/Icons/fingerprint.svg",
+          "id": "5518d6b650fc885f2a6447b05f8c5064"
+        },
+        {
+          "path": "assets/Icons/share-2.svg",
+          "id": "fdf98d4a8ecdcd2d66fc9907553c72b7"
+        },
+        {
+          "path": "assets/Icons/layout-grid.svg",
+          "id": "0503baa2a855564de4755769f5f35735"
+        },
+        {
+          "path": "assets/Icons/file-archive.svg",
+          "id": "08dafecd4e5b0dd3815cc5d1abe62889"
+        },
+        {
+          "path": "assets/Icons/shield-check.svg",
+          "id": "a11c4483f883cbe2f46c2018f96a0f6d"
+        },
+        {
+          "path": "assets/Icons/hard-drive.svg",
+          "id": "6eb6604d84575848a4c4b8df2bdefe19"
+        },
+        {
+          "path": "assets/Icons/key-round.svg",
+          "id": "16956433f471e5094d5d566c2d43fe45"
+        },
+        {
+          "path": "assets/Icons/printer.svg",
+          "id": "5203eed942a6d6e340f19aa8815e0f90"
+        },
+        {
+          "path": "assets/Icons/copy.svg",
+          "id": "ffd2b48427eac6e29ece066dfea9666e"
+        },
+        {
+          "path": "assets/Icons/folder-plus.svg",
+          "id": "cdbe6eaa627c49c4731c62c810692ba2"
+        },
+        {
+          "path": "assets/Icons/globe.svg",
+          "id": "96da7582a3ffa0b4b704b62752fb2d7e"
+        },
+        {
+          "path": "assets/Icons/bell.svg",
+          "id": "6155fc42b6ab5579769d5435122a58ba"
+        },
+        {
+          "path": "assets/Icons/database.svg",
+          "id": "10ac3fb3197e2815618f5c82f83b1264"
+        },
+        {
+          "path": "assets/Icons/type.svg",
+          "id": "beecadf9bc96fe511a2768afed743d69"
+        },
+        {
+          "path": "assets/Icons/image-plus.svg",
+          "id": "1e0772ef245434b0c6dfb3722eb3ccd5"
+        },
+        {
+          "path": "assets/Icons/ellipsis-vertical.svg",
+          "id": "14bd3e08491757d5b86e5a29973c2fcf"
+        },
+        {
+          "path": "assets/Icons/arrow-up.svg",
+          "id": "3beb553e68377bdf1e4f7f49e6867c1a"
+        },
+        {
+          "path": "assets/Icons/arrow-down.svg",
+          "id": "35531cc2a10a1a33dfb3acad9cd58806"
+        },
+        {
+          "path": "assets/Icons/check-check.svg",
+          "id": "7bcc27f3679f518e4ba1b746a558dc57"
+        },
+        {
+          "path": "assets/Icons/monitor-smartphone.svg",
+          "id": "4cb78c16efd549b9f2f379b3a182cd22"
+        },
+        {
+          "path": "assets/Icons/file-text.svg",
+          "id": "e74a4a43906dc4c29bb9f0335897a211"
+        },
+        {
+          "path": "assets/Icons/cloud.svg",
+          "id": "f02967e854dfd56c42325ed1e421743f"
+        },
+        {
+          "path": "assets/Icons/cloud-upload.svg",
+          "id": "0e7cdd45f27d99206ca24658a5320916"
+        },
+        {
+          "path": "assets/Icons/external-link.svg",
+          "id": "81dbed3365474c282daafcd3b6e1c328"
+        },
+        {
+          "path": "assets/Icons/sliders-horizontal.svg",
+          "id": "be1b0057ea85071974fd3ee9df2215de"
+        }
+      ]
+    }
+  ],
+  "storage": {
+    "files": {
+      "assets/Icons/alarm-clock.svg": {
+        "store": "blob",
+        "id": "41e93965b40ad3a212f9a717ae4dc773",
+        "bytes": 430,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/archive.svg": {
+        "store": "blob",
+        "id": "f2a8e95eb2c90f99437fa04e39eaab2c",
+        "bytes": 365,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/arrow-big-up.svg": {
+        "store": "blob",
+        "id": "f04c1bd6de16045f54cc8a4c1e90ee20",
+        "bytes": 411,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/arrow-down.svg": {
+        "store": "blob",
+        "id": "35531cc2a10a1a33dfb3acad9cd58806",
+        "bytes": 285,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/arrow-left.svg": {
+        "store": "blob",
+        "id": "ced2771862b711ff91b0a9953051408e",
+        "bytes": 285,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/arrow-right.svg": {
+        "store": "blob",
+        "id": "e9c5005d1b9fb30f78728aead9887a17",
+        "bytes": 285,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/arrow-up.svg": {
+        "store": "blob",
+        "id": "3beb553e68377bdf1e4f7f49e6867c1a",
+        "bytes": 282,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/battery-medium.svg": {
+        "store": "blob",
+        "id": "0b863f1cda9d95fce7ee35935e586b66",
+        "bytes": 372,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/bell.svg": {
+        "store": "blob",
+        "id": "6155fc42b6ab5579769d5435122a58ba",
+        "bytes": 410,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/book-open-text.svg": {
+        "store": "blob",
+        "id": "3d61d4accfbe7afb36777356a86d4de0",
+        "bytes": 526,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/book-open.svg": {
+        "store": "blob",
+        "id": "40c2b6e345f46476facc3849aa20599c",
+        "bytes": 409,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/brain.svg": {
+        "store": "blob",
+        "id": "35250b65b5ba9ac37be64b94c77ef99b",
+        "bytes": 644,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/calendar-days.svg": {
+        "store": "blob",
+        "id": "82ba0ddb2c35367101828ab42a778a26",
+        "bytes": 549,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/calendar.svg": {
+        "store": "blob",
+        "id": "33299958e4af14af1d08b01795593e90",
+        "bytes": 360,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/chart-column.svg": {
+        "store": "blob",
+        "id": "b2242e172a7c83349e2f753ebb089423",
+        "bytes": 355,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/check-check.svg": {
+        "store": "blob",
+        "id": "7bcc27f3679f518e4ba1b746a558dc57",
+        "bytes": 299,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/check.svg": {
+        "store": "blob",
+        "id": "efb0bb5bced9e58c01de7bbd99b896af",
+        "bytes": 252,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/chevron-down.svg": {
+        "store": "blob",
+        "id": "8a93c69a6647fb0489cda081009457b3",
+        "bytes": 256,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/chevron-left.svg": {
+        "store": "blob",
+        "id": "8397582f2ce88f90b83c22c2a850ed82",
+        "bytes": 258,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/chevron-right.svg": {
+        "store": "blob",
+        "id": "0c9a3e9e736baa12e65dc5b59c9d166c",
+        "bytes": 258,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/chevron-up.svg": {
+        "store": "blob",
+        "id": "d392ef1339f0e360e187c53cbea7bc4d",
+        "bytes": 256,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/circle-alert.svg": {
+        "store": "blob",
+        "id": "b2a601266ecca0d6406f2f1f0e076a8f",
+        "bytes": 364,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/circle-check.svg": {
+        "store": "blob",
+        "id": "a118d564e1a74fab7c5400a1c505b557",
+        "bytes": 305,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/circle-x.svg": {
+        "store": "blob",
+        "id": "6fe3f50f94a4beed280db755693ec96f",
+        "bytes": 321,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/clock.svg": {
+        "store": "blob",
+        "id": "1c9a060d93caf9a6ab5ea24af434c84e",
+        "bytes": 291,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/cloud-check.svg": {
+        "store": "blob",
+        "id": "540c81faf70e7c84bd15c4c71ff600df",
+        "bytes": 344,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/cloud-off.svg": {
+        "store": "blob",
+        "id": "76eef2bd6ce70b509996b40a540a98fd",
+        "bytes": 412,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/cloud-upload.svg": {
+        "store": "blob",
+        "id": "0e7cdd45f27d99206ca24658a5320916",
+        "bytes": 363,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/cloud.svg": {
+        "store": "blob",
+        "id": "f02967e854dfd56c42325ed1e421743f",
+        "bytes": 288,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/command.svg": {
+        "store": "blob",
+        "id": "50f448c25251d3b7ea43664d8d640a0d",
+        "bytes": 310,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/copy.svg": {
+        "store": "blob",
+        "id": "ffd2b48427eac6e29ece066dfea9666e",
+        "bytes": 356,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/corner-down-left.svg": {
+        "store": "blob",
+        "id": "ea527e7d52dd2dc6d9edbcbf0463b07d",
+        "bytes": 305,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/database.svg": {
+        "store": "blob",
+        "id": "10ac3fb3197e2815618f5c82f83b1264",
+        "bytes": 358,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/download.svg": {
+        "store": "blob",
+        "id": "1eccb16c83bba13a266c3156170a59bf",
+        "bytes": 344,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/dumbbell.svg": {
+        "store": "blob",
+        "id": "3cce323eab2857be972720ba0645aa1f",
+        "bytes": 656,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/ellipsis-vertical.svg": {
+        "store": "blob",
+        "id": "14bd3e08491757d5b86e5a29973c2fcf",
+        "bytes": 353,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/ellipsis.svg": {
+        "store": "blob",
+        "id": "23843efaf7eca73b57b783a9e93b4c20",
+        "bytes": 344,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/external-link.svg": {
+        "store": "blob",
+        "id": "81dbed3365474c282daafcd3b6e1c328",
+        "bytes": 363,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/eye-off.svg": {
+        "store": "blob",
+        "id": "03ea337ddbf04b25ad9b6ebc2a429d8c",
+        "bytes": 534,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/eye.svg": {
+        "store": "blob",
+        "id": "7e48f35fd1e6f13f59311b027013eb2a",
+        "bytes": 378,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/file-archive.svg": {
+        "store": "blob",
+        "id": "08dafecd4e5b0dd3815cc5d1abe62889",
+        "bytes": 521,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/file-text.svg": {
+        "store": "blob",
+        "id": "e74a4a43906dc4c29bb9f0335897a211",
+        "bytes": 481,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/fingerprint.svg": {
+        "store": "blob",
+        "id": "5518d6b650fc885f2a6447b05f8c5064",
+        "bytes": 667,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/folder-plus.svg": {
+        "store": "blob",
+        "id": "cdbe6eaa627c49c4731c62c810692ba2",
+        "bytes": 418,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/folder-sync.svg": {
+        "store": "blob",
+        "id": "f75d5678b36e8e67f12b0fe60b9f21dd",
+        "bytes": 520,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/folder.svg": {
+        "store": "blob",
+        "id": "b0ad47e3e07dd044aa795ae49aa976dc",
+        "bytes": 356,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/forward.svg": {
+        "store": "blob",
+        "id": "f7f8270e76feabaa82f6bb6d94d56221",
+        "bytes": 299,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/git-compare-arrows.svg": {
+        "store": "blob",
+        "id": "a5b6b102da274cfa7e091305cd5fb8ed",
+        "bytes": 468,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/globe.svg": {
+        "store": "blob",
+        "id": "96da7582a3ffa0b4b704b62752fb2d7e",
+        "bytes": 356,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/hard-drive.svg": {
+        "store": "blob",
+        "id": "6eb6604d84575848a4c4b8df2bdefe19",
+        "bytes": 492,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/hourglass.svg": {
+        "store": "blob",
+        "id": "4524600fb60cce639fef5b98df6244fd",
+        "bytes": 464,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/house.svg": {
+        "store": "blob",
+        "id": "fdb9efd801dbb120524eaab35acc54fa",
+        "bytes": 401,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/image-plus.svg": {
+        "store": "blob",
+        "id": "1e0772ef245434b0c6dfb3722eb3ccd5",
+        "bytes": 461,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/image.svg": {
+        "store": "blob",
+        "id": "4a1582c0e967ff9be26f29089f7e0678",
+        "bytes": 383,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/inbox.svg": {
+        "store": "blob",
+        "id": "31edcd9aa65c692feed23c61ceb88394",
+        "bytes": 410,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/info.svg": {
+        "store": "blob",
+        "id": "e75881920410ca847254a72121ee4529",
+        "bytes": 318,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/key-round.svg": {
+        "store": "blob",
+        "id": "16956433f471e5094d5d566c2d43fe45",
+        "bytes": 477,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/keyboard.svg": {
+        "store": "blob",
+        "id": "c2c122374bd9b39237c1175e0588fa76",
+        "bytes": 517,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/languages.svg": {
+        "store": "blob",
+        "id": "5f41df6764a20bbfbf56e42a83f4c1e0",
+        "bytes": 404,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/layers.svg": {
+        "store": "blob",
+        "id": "c7cae8be7fb75e1e6091c4f187025a9c",
+        "bytes": 534,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/layout-grid.svg": {
+        "store": "blob",
+        "id": "0503baa2a855564de4755769f5f35735",
+        "bytes": 450,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/leaf.svg": {
+        "store": "blob",
+        "id": "3de3a5e4a35ccd77da083e25b94f871f",
+        "bytes": 421,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/lightbulb.svg": {
+        "store": "blob",
+        "id": "06e342bfe3964d3ecdde2f16090b6ff7",
+        "bytes": 398,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/list-checks.svg": {
+        "store": "blob",
+        "id": "5d65f0d1fad76bcc5233874d235a1003",
+        "bytes": 375,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/list-todo.svg": {
+        "store": "blob",
+        "id": "c9764522ae8b96f35f2cd3138864c43e",
+        "bytes": 396,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/lock-open.svg": {
+        "store": "blob",
+        "id": "3e7c4ddd1b6a9bda5335f0b82da64542",
+        "bytes": 330,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/lock.svg": {
+        "store": "blob",
+        "id": "839e47a6d8ab23848dc76a1daf8be89d",
+        "bytes": 326,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/minus.svg": {
+        "store": "blob",
+        "id": "b2abf08ffafd90d08e16fcf4035ff9ef",
+        "bytes": 245,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/monitor-smartphone.svg": {
+        "store": "blob",
+        "id": "4cb78c16efd549b9f2f379b3a182cd22",
+        "bytes": 430,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/monitor.svg": {
+        "store": "blob",
+        "id": "92d639fdd40cfc1aec9e937ab6b81aaf",
+        "bytes": 371,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/moon.svg": {
+        "store": "blob",
+        "id": "9ec42c18cc55aa7801c8455e01306522",
+        "bytes": 346,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/notebook-pen.svg": {
+        "store": "blob",
+        "id": "9568520b03df440703c144cdc0b85c59",
+        "bytes": 564,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/package.svg": {
+        "store": "blob",
+        "id": "4ae5170104a92196554084ab8fc8a8e4",
+        "bytes": 480,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/palette.svg": {
+        "store": "blob",
+        "id": "c0f77554c42cf6ed7d4e3f2d50c74b80",
+        "bytes": 614,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/panel-left.svg": {
+        "store": "blob",
+        "id": "597aa3a44ea73af0597e9f5744c0b108",
+        "bytes": 307,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/pause.svg": {
+        "store": "blob",
+        "id": "4f8f6287a90e8843120175f8239c1f03",
+        "bytes": 331,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/pencil.svg": {
+        "store": "blob",
+        "id": "adf68fc172215df6e16ec5e119fede61",
+        "bytes": 396,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/play.svg": {
+        "store": "blob",
+        "id": "4aa9dfb87b28e578cfe9b68ec7d93773",
+        "bytes": 318,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/plus.svg": {
+        "store": "blob",
+        "id": "d56bf2b193c425ad2dcda1fcf1ebe9f4",
+        "bytes": 273,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/printer.svg": {
+        "store": "blob",
+        "id": "5203eed942a6d6e340f19aa8815e0f90",
+        "bytes": 431,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/refresh-cw.svg": {
+        "store": "blob",
+        "id": "a43b832cf7ce36771401f604139f9ee0",
+        "bytes": 425,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/repeat.svg": {
+        "store": "blob",
+        "id": "78d7d69d9b543394906f63f3518f35a3",
+        "bytes": 376,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/rotate-ccw.svg": {
+        "store": "blob",
+        "id": "ebf70d44c5bf890fd298bdc6355d232f",
+        "bytes": 320,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/search.svg": {
+        "store": "blob",
+        "id": "df1272ec1227d400b372e4afd79cf3c9",
+        "bytes": 296,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/send-horizontal.svg": {
+        "store": "blob",
+        "id": "54be663abdbe99c36fc40494ddb34e9c",
+        "bytes": 405,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/settings.svg": {
+        "store": "blob",
+        "id": "11796f4ee3012dcbde24c19f2b4f7a7b",
+        "bytes": 609,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/share-2.svg": {
+        "store": "blob",
+        "id": "fdf98d4a8ecdcd2d66fc9907553c72b7",
+        "bytes": 459,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/shield-check.svg": {
+        "store": "blob",
+        "id": "a11c4483f883cbe2f46c2018f96a0f6d",
+        "bytes": 440,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/signal.svg": {
+        "store": "blob",
+        "id": "dbfce2d8c6394c6900019a6af592c2af",
+        "bytes": 364,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/sliders-horizontal.svg": {
+        "store": "blob",
+        "id": "be1b0057ea85071974fd3ee9df2215de",
+        "bytes": 488,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/smartphone.svg": {
+        "store": "blob",
+        "id": "a4fd5d1a567cbfcc466cdb3eb800289d",
+        "bytes": 317,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/sun.svg": {
+        "store": "blob",
+        "id": "e3b5eb7b046ef6531c0263c923c36c1c",
+        "bytes": 538,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/sunrise.svg": {
+        "store": "blob",
+        "id": "2432a1fb433674a17104cec86fd8482d",
+        "bytes": 491,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/tag.svg": {
+        "store": "blob",
+        "id": "c0f1e0d8508c6558222418ff45df06b4",
+        "bytes": 448,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/timer.svg": {
+        "store": "blob",
+        "id": "54e4dffbb028704c6aeab00d4ef57d0e",
+        "bytes": 352,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/trash-2.svg": {
+        "store": "blob",
+        "id": "6e47eb539be794855185a82907797005",
+        "bytes": 424,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/trees.svg": {
+        "store": "blob",
+        "id": "7d6d2f0dc21ba7ee2093a0689b35ff1b",
+        "bytes": 469,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/triangle-alert.svg": {
+        "store": "blob",
+        "id": "ab8370b1065fa7449d594b74491daebc",
+        "bytes": 377,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/type.svg": {
+        "store": "blob",
+        "id": "beecadf9bc96fe511a2768afed743d69",
+        "bytes": 332,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/undo-2.svg": {
+        "store": "blob",
+        "id": "9e5e8a6adc9243de9bdbb22810226c13",
+        "bytes": 328,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/upload.svg": {
+        "store": "blob",
+        "id": "bdc29a4f550df2792963d412032b7c54",
+        "bytes": 342,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/wifi.svg": {
+        "store": "blob",
+        "id": "9ba575d336a94238ccf9f68ce38c8470",
+        "bytes": 384,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/x.svg": {
+        "store": "blob",
+        "id": "57ea19562b8ea8abf9fff2f7a82336fd",
+        "bytes": 274,
+        "type": "image/svg+xml"
+      },
+      "assets/Photos/forest.jpg": {
+        "store": "blob",
+        "id": "76c67e824c2a7d7ad257c8706131d77d",
+        "bytes": 133328,
+        "type": "image/jpeg"
+      },
+      "assets/Photos/mist.jpg": {
+        "store": "blob",
+        "id": "bdd97e561f7aa6e0df7b4715617395a5",
+        "bytes": 208267,
+        "type": "image/jpeg"
+      }
+    },
+    "blobBytesUsed": 382138
+  }
+}

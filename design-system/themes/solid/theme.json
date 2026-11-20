@@ -1,0 +1,8 @@
+{
+  "id": "solid",
+  "name": "Без фото",
+  "base": "solid",
+  "photo": null,
+  "greeting": "auto",
+  "tokens": {}
+}

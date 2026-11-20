@@ -1,0 +1,114 @@
+/* Только для превью в дизайн-системе: фото тем по умолчанию, раскладка демонстраций и «застывшие» состояния
+   (наведение, фокус), которые на статичной картинке иначе не показать. В хабе и приложениях не подключается. */
+:root .hub-backdrop__photo, [data-theme="dark"] .hub-backdrop__photo { background-image: url("../themes/forest/photo.jpg"); }
+[data-theme="light"] .hub-backdrop__photo { background-image: url("../themes/mist/photo.jpg"); }
+[data-theme="solid"] .hub-backdrop__photo { background-image: none; }
+
+html, body { min-height: 100%; }
+body { overflow: hidden; }
+.pv { position: relative; display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--space-5) var(--space-8); padding: var(--space-5) var(--space-6); }
+.pv--col { flex-direction: column; flex-wrap: nowrap; }
+.pv-col { display: grid; gap: var(--space-3); align-content: start; }
+.pv-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); }
+.pv-cap { display: block; margin-bottom: var(--space-1); font-size: var(--font-size-xs); font-weight: var(--weight-medium); color: var(--text-muted); }
+.pv-w { width: 280px; }
+
+/* Застывшие состояния */
+.pv-focus { outline: 2px solid var(--focus); outline-offset: 2px; }
+.pv-hover.hub-btn { border-color: var(--accent); color: var(--accent); }
+.pv-hover.hub-btn--primary { background: var(--accent-hover); border-color: var(--accent-hover); color: var(--on-accent); }
+.pv-hover.hub-btn--quiet { border-color: transparent; background: var(--surface-sunken); color: var(--text); }
+.pv-hover.hub-btn--danger { border-color: var(--danger); background: var(--danger-soft); color: var(--danger); }
+.pv-hover.hub-btn--glass { border-color: var(--line); color: var(--text); }
+:is(.hub-input, .hub-textarea).pv-focus, .hub-select > select.pv-focus { outline: none; border-color: var(--focus); box-shadow: inset 0 0 0 1px var(--focus); }
+:is(.hub-input, .hub-textarea).pv-focus[aria-invalid="true"] { border-color: var(--danger); box-shadow: inset 0 0 0 1px var(--danger); }
+.hub-input--line.pv-focus { outline: none; border-bottom-color: var(--focus); box-shadow: 0 1px 0 0 var(--focus); }
+.hub-input--line.pv-focus[aria-invalid="true"] { border-bottom-color: var(--danger); box-shadow: 0 1px 0 0 var(--danger); }
+:is(.hub-search, .hub-number).pv-focus { outline: none; border-color: var(--focus); box-shadow: inset 0 0 0 1px var(--focus); }
+.hub-capture__bar.pv-focus { outline: none; border-color: var(--accent); background: var(--surface-hover); }
+.pv-hover.hub-row { background: var(--surface-sunken); }
+.pv-hover.hub-card { background: var(--surface-hover); }
+.pv-hover.hub-target { border-color: var(--line); background: var(--surface-hover); }
+.pv-hover.hub-tab { color: var(--text); }
+.pv-hover.hub-input { border-color: var(--text-muted); }
+.pv-hover.hub-rail__item { background: var(--surface-sunken); color: var(--text); }
+.pv-hover.hub-capture__send { border-color: var(--accent); color: var(--accent); }
+.pv-hover.hub-bars__col .hub-bars__bar { background: var(--accent-hover); }
+.pv-hover.hub-bars__col[data-tip]::after {
+  content: attr(data-tip); position: absolute; bottom: calc(var(--v, 0) * 100% + 8px); left: 50%; translate: -50% 0; z-index: var(--z-menu);
+  padding: var(--space-1) var(--space-2); border: 1px solid var(--line-soft); border-radius: var(--radius-sm);
+  background: var(--surface-strong); color: var(--text); box-shadow: var(--shadow-float);
+  font-size: var(--font-size-xs); font-weight: var(--weight-medium); white-space: nowrap;
+}
+
+/* Экран 1440×900 с переключателем состояний над ним */
+.pv-states { display: flex; align-items: center; gap: var(--space-4); height: 64px; padding: 0 var(--space-6); background: var(--bg); border-bottom: 1px solid var(--line-soft); }
+.pv-states__title { font-family: var(--font-heading); font-size: var(--font-size-2xl); font-weight: var(--weight-light); color: var(--text); }
+.pv-states .hub-segmented > button { min-height: 40px; padding: 0 var(--space-5); font-size: var(--font-size-lg); }
+.pv-states__note { margin-left: auto; font-size: var(--font-size-lg); color: var(--text-muted); }
+.pv-screen { position: relative; width: 1440px; height: 900px; overflow: hidden; transform: translateZ(0); }
+.pv-screen--narrow { width: 1024px; margin: 0 auto; }
+.pv-stage { position: relative; width: 1440px; height: 900px; overflow: hidden; background: var(--bg); transform: translateZ(0); }
+.pv-stage > .pv-screen--narrow { position: absolute; left: 208px; top: 0; }
+.hub-tab.pv-focus { outline-offset: 2px; border-radius: var(--radius-xs); }
+.pv-stage__label { position: absolute; left: var(--space-6); bottom: var(--space-4); font-size: var(--font-size-lg); color: var(--text-muted); }
+/* Раскадровка переходов */
+.pv-film { display: flex; flex-wrap: wrap; align-content: center; justify-content: center; gap: var(--space-6) var(--space-4); height: 900px; padding: var(--space-8); background: var(--bg); }
+.pv-film__frame { display: grid; gap: var(--space-3); width: 300px; }
+.pv-film__shot { position: relative; width: 300px; height: 188px; overflow: hidden; border-radius: var(--radius-md); border: 1px solid var(--line-soft); }
+.pv-film__shot > .pv-screen { transform: scale(0.20834); transform-origin: 0 0; }
+.pv-film__t { font-family: var(--font-heading); font-size: var(--font-size-2xl); font-weight: var(--weight-light); color: var(--text); }
+.pv-film__d { font-size: var(--font-size-base); color: var(--text-muted); line-height: var(--leading-normal); }
+.pv-film__arrow { align-self: center; color: var(--text-muted); margin-top: -80px; }
+/* «Чужая программа» под мини-окном ввода */
+.pv-foreign { position: absolute; left: 140px; top: 90px; width: 1160px; height: 720px; border-radius: 10px; background: #f4f4f2; box-shadow: 0 30px 80px rgba(0,0,0,0.45); overflow: hidden; }
+.pv-foreign__bar { height: 40px; background: #e6e6e3; border-bottom: 1px solid #d6d6d2; }
+.pv-foreign__line { height: 12px; margin: 22px 120px 0; border-radius: 6px; background: #dcdcd8; }
+.pv-foreign__line:nth-child(3n) { margin-right: 300px; }
+.pv-foreign__line:nth-child(4n) { margin-right: 200px; }
+.pv-mini { position: absolute; left: 50%; top: 260px; translate: -50% 0; }
+.pv-mini__key { position: absolute; left: 50%; top: 206px; translate: -50% 0; display: flex; gap: var(--space-1); align-items: center; padding: var(--space-1) var(--space-3); border-radius: var(--radius-pill); background: var(--surface-strong); color: var(--text-muted); font-size: var(--font-size-sm); }
+
+/* ───── Телефон: рамка Android, строка состояния, жестовая полоска, клавиатура ───── */
+.pv-phones { display: flex; justify-content: center; align-items: flex-start; gap: 64px; height: 972px; padding: 32px 24px 0; background: var(--bg); }
+.pv-phone-col { display: grid; justify-items: center; align-content: start; gap: var(--space-4); width: 390px; }
+.pv-phone-t { font-family: var(--font-heading); font-size: var(--font-size-2xl); font-weight: var(--weight-light); color: var(--text); text-align: center; }
+.pv-phone-d { margin-top: calc(-1 * var(--space-3)); font-size: var(--font-size-base); color: var(--text-muted); text-align: center; line-height: var(--leading-normal); }
+.pv-phone { position: relative; width: 390px; height: 844px; flex: none; overflow: hidden; border-radius: 44px; transform: translateZ(0); background: var(--bg); color: var(--text);
+  box-shadow: 0 0 0 7px #0a0d0b, 0 0 0 8px rgba(255,255,255,0.14), 0 24px 70px rgba(0,0,0,0.45); }
+.pv-status { position: absolute; z-index: 70; top: 0; left: 0; right: 0; height: 40px; display: flex; align-items: center; justify-content: space-between; padding: 6px 28px 0;
+  font-family: var(--font-body); font-size: var(--font-size-base); font-weight: var(--weight-medium); color: var(--text); font-variant-numeric: tabular-nums; }
+.pv-status--light { color: #fff; }
+.pv-status__icons { display: flex; align-items: center; gap: 6px; }
+.pv-status .hub-icon { width: 16px; height: 16px; stroke-width: 2; }
+.pv-cam { position: absolute; z-index: 71; top: 14px; left: 50%; width: 12px; height: 12px; margin-left: -6px; border-radius: 50%; background: #050605; }
+.pv-gesture { position: absolute; z-index: 71; bottom: 8px; left: 50%; width: 108px; height: 4px; margin-left: -54px; border-radius: 2px; background: var(--text); opacity: 0.6; }
+.pv-body { position: absolute; inset: 40px 0 0 0; display: flex; flex-direction: column; }
+.pv-scroll { position: relative; flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-2) var(--space-4) var(--space-4); }
+.pv-kb { flex: none; display: grid; grid-template-rows: repeat(4, 50px); gap: 9px; padding: 10px 4px 34px; background: #1b201e; }
+[data-theme="light"] .pv-kb { background: #e1e4e1; }
+.pv-kb__row { display: flex; gap: 5px; padding: 0 2px; }
+.pv-kb__row span { flex: 1; display: grid; place-items: center; border-radius: 6px; background: #343b37; color: #eef0ee; font-family: var(--font-body); font-size: 19px; }
+[data-theme="light"] .pv-kb__row span { background: #fff; color: #1b1f1d; }
+.pv-kb__row span.w { flex: 1.45; background: #272d2a; font-size: 13px; }
+[data-theme="light"] .pv-kb__row span.w { background: #c9cdc9; }
+.pv-kb__row span.sp { flex: 4.6; font-size: 13px; color: #9aa29d; }
+/* Рабочий стол Android */
+.pv-home { position: absolute; inset: 40px 0 0 0; display: flex; flex-direction: column; gap: var(--space-5); padding: var(--space-6) var(--space-4) 0; }
+.pv-apps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px 0; margin-top: auto; padding-bottom: 28px; }
+.pv-app { display: grid; justify-items: center; gap: 6px; font-family: var(--font-body); font-size: var(--font-size-xs); color: #fff; text-shadow: 0 1px 4px rgba(0,0,0,0.7); }
+.pv-app i, .pv-app svg.hub-icon { box-sizing: content-box; width: 26px; height: 26px; padding: 15px; border-radius: 50%; background: rgba(245,245,242,0.9); color: #1c2420; }
+.pv-app--hub svg.hub-icon { background: var(--accent); color: var(--on-accent); }
+.pv-home-search { height: 48px; margin: 0 4px 22px; border-radius: 24px; background: rgba(245,245,242,0.9); }
+.pv-wclock { font-family: var(--font-body); font-weight: 300; font-size: 64px; line-height: 1; color: #fff; text-shadow: 0 2px 12px rgba(0,0,0,0.5); padding-left: var(--space-2); }
+.pv-wdate { margin-top: calc(-1 * var(--space-3)); padding-left: var(--space-2); font-family: var(--font-body); font-size: var(--font-size-base); color: #fff; text-shadow: 0 1px 6px rgba(0,0,0,0.6); }
+/* Чужое приложение на телефоне (браузер со статьёй) */
+.pv-fapp { position: absolute; inset: 0; background: #f4f4f2; }
+.pv-fapp__bar { height: 96px; background: #e6e6e3; border-bottom: 1px solid #d6d6d2; }
+.pv-fapp__line { height: 12px; margin: 18px 24px 0; border-radius: 6px; background: #dcdcd8; }
+.pv-fapp__line:nth-child(3n) { margin-right: 120px; }
+.pv-fapp__sel { height: 52px; margin: 18px 20px 0; border-radius: 6px; background: rgba(66,133,244,0.25); }
+/* Вложенная тема (карточки тем, миниатюры): ближайший data-theme задаёт фото */
+[data-theme] [data-theme="dark"] .hub-backdrop__photo { background-image: url("../themes/forest/photo.jpg"); }
+[data-theme] [data-theme="light"] .hub-backdrop__photo { background-image: url("../themes/mist/photo.jpg"); }
+[data-theme] [data-theme="solid"] .hub-backdrop__photo { background-image: none; }

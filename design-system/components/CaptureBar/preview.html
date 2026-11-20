@@ -1,0 +1,56 @@
+<!-- @dsCard group="Оболочка хаба" height=560 subtitle="Пустая · набирается · добавлено · компактная в шапке" -->
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Строка быстрого ввода</title>
+<link rel="stylesheet" href="../../preview/kit.css">
+<style>.hub-capture{margin:0}.hub-capture--compact .hub-capture__note{display:none}</style>
+</head>
+<body>
+<div class="hub-backdrop" data-scene="open"><div class="hub-backdrop__photo"></div><div class="hub-backdrop__veil"></div></div>
+<div class="pv pv--col" style="gap:var(--space-4);width:820px">
+<div><span class="pv-cap">Пустая, в фокусе</span><form class="hub-capture " style="" onsubmit="return false">
+  <div class="hub-capture__bar pv-focus">
+    <i data-icon="lightbulb" class="hub-capture__icon"></i>
+    <input class="hub-capture__input" placeholder="Мысль в корзину…" aria-label="Мысль в корзину">
+    <button class="hub-capture__send" type="submit" disabled>В корзину</button>
+  </div>
+  <p class="hub-capture__note">Enter — сохранить, разобрать можно потом</p>
+</form></div>
+<div><span class="pv-cap">Набирается — кнопка оживает, #метка распознана</span><form class="hub-capture " style="" onsubmit="return false">
+  <div class="hub-capture__bar pv-focus">
+    <i data-icon="lightbulb" class="hub-capture__icon"></i>
+    <input class="hub-capture__input" placeholder="Мысль в корзину…" aria-label="Мысль в корзину" value="купить батарейки для весов #дом">
+    <button class="hub-capture__send pv-hover" type="submit">В корзину</button>
+  </div>
+  <p class="hub-capture__note">Enter — в корзину · Esc — очистить <span class="hub-tag"><i data-icon="tag"></i>дом</span></p>
+</form></div>
+<div><span class="pv-cap">Добавлено — строка снова пустая, курсор остаётся</span><form class="hub-capture " style="" onsubmit="return false">
+  <div class="hub-capture__bar pv-focus">
+    <i data-icon="lightbulb" class="hub-capture__icon"></i>
+    <input class="hub-capture__input" placeholder="Мысль в корзину…" aria-label="Мысль в корзину">
+    <button class="hub-capture__send" type="submit" disabled>В корзину</button>
+  </div>
+  <p class="hub-capture__note is-ok"><i data-icon="check"></i>В корзине — 6 неразобранных · Ctrl+Z — отменить</p>
+</form></div>
+<div><span class="pv-cap">Компактная — в шапке открытого приложения</span><div style="display:flex"><form class="hub-capture hub-capture--compact" style="" onsubmit="return false">
+  <div class="hub-capture__bar">
+    <i data-icon="lightbulb" class="hub-capture__icon"></i>
+    <input class="hub-capture__input" placeholder="Мысль в корзину…" aria-label="Мысль в корзину">
+    <button class="hub-capture__send" type="submit" disabled>В корзину</button>
+  </div>
+  <p class="hub-capture__note"></p>
+</form></div></div>
+</div>
+<script>
+(function () {
+  if (!document.querySelector('link[href*="preview/kit.css"]')) {
+    var l = document.createElement('link'); l.rel = 'stylesheet'; l.href = '../../preview/kit.css'; document.head.appendChild(l);
+  }
+  if (window.HubUI) HubUI.init();
+
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,41 @@
+<!-- @dsCard group="Окна и сообщения" height=330 -->
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Меню</title>
+<link rel="stylesheet" href="../../preview/kit.css">
+
+</head>
+<body>
+<div class="hub-backdrop" data-scene="open"><div class="hub-backdrop__photo"></div><div class="hub-backdrop__veil"></div></div>
+<div class="pv" style="gap:var(--space-6)">
+<ul class="hub-menu" role="menu" aria-label="Действия с элементом" style="width:260px">
+  <li class="hub-menu__label">Элемент корзины</li>
+  <li class="hub-menu__item" role="menuitem"><i data-icon="forward"></i>Перенести в…<span class="hub-menu__meta">1–9</span></li>
+  <li class="hub-menu__item is-active" role="menuitem"><i data-icon="alarm-clock"></i>Отложить<kbd class="hub-kbd">S</kbd></li>
+  <li class="hub-menu__item" role="menuitem"><i data-icon="pencil"></i>Изменить текст<kbd class="hub-kbd">E</kbd></li>
+  <li class="hub-menu__sep" role="separator"></li>
+  <li class="hub-menu__item" role="menuitem" style="color:var(--danger)"><i data-icon="trash-2" style="color:var(--danger)"></i>Удалить<kbd class="hub-kbd">Del</kbd></li>
+</ul>
+<ul class="hub-menu" role="listbox" aria-label="Отложить до" style="width:280px">
+  <li class="hub-menu__label">Отложить до</li>
+  <li class="hub-menu__item" role="option"><i data-icon="sunrise"></i>Сегодня вечером<span class="hub-menu__meta">19:00</span></li>
+  <li class="hub-menu__item" role="option" aria-selected="true"><i data-icon="sun"></i>Завтра утром<span class="hub-menu__meta">9:00</span></li>
+  <li class="hub-menu__item" role="option"><i data-icon="calendar-days"></i>Через неделю<span class="hub-menu__meta">27 ноября</span></li>
+  <li class="hub-menu__sep" role="separator"></li>
+  <li class="hub-menu__item" role="option"><i data-icon="calendar"></i>Выбрать дату…</li>
+  <li class="hub-menu__item" role="option" aria-disabled="true"><i data-icon="repeat"></i>Каждый день<span class="hub-menu__meta">скоро</span></li>
+</ul>
+</div>
+<script>
+(function () {
+  if (!document.querySelector('link[href*="preview/kit.css"]')) {
+    var l = document.createElement('link'); l.rel = 'stylesheet'; l.href = '../../preview/kit.css'; document.head.appendChild(l);
+  }
+  if (window.HubUI) HubUI.init();
+
+})();
+</script>
+</body>
+</html>

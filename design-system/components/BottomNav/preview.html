@@ -1,0 +1,24 @@
+<!-- @dsCard group="Оболочка хаба" height=150 -->
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Нижняя панель (телефон)</title>
+<link rel="stylesheet" href="../../preview/kit.css">
+
+</head>
+<body>
+<div class="hub-backdrop" data-scene="open"><div class="hub-backdrop__photo"></div><div class="hub-backdrop__veil"></div></div>
+<div class="pv" style="gap:var(--space-6)"><div class="pv-col"><span class="pv-cap">«Сегодня» текущий</span><div style="width:390px;border-radius:var(--radius);overflow:hidden"><nav class="hub-navbar" aria-label="Разделы"><button class="hub-navbar__item" type="button" aria-current="page"><span class="hub-navbar__icon"><i data-icon="house"></i></span>Сегодня</button><button class="hub-navbar__item" type="button"><span class="hub-navbar__icon"><i data-icon="inbox"></i><span class="hub-navbar__badge">5</span></span>Корзина</button><button class="hub-navbar__item" type="button"><span class="hub-navbar__icon"><i data-icon="layout-grid"></i></span>Приложения</button><button class="hub-navbar__item" type="button"><span class="hub-navbar__icon"><i data-icon="settings"></i></span>Настройки</button></nav></div></div>
+<div class="pv-col"><span class="pv-cap">Корзина пуста, текущий — «Приложения», фокус на «Настройках»</span><div style="width:390px;border-radius:var(--radius);overflow:hidden"><nav class="hub-navbar" aria-label="Разделы"><button class="hub-navbar__item" type="button"><span class="hub-navbar__icon"><i data-icon="house"></i></span>Сегодня</button><button class="hub-navbar__item" type="button"><span class="hub-navbar__icon"><i data-icon="inbox"></i></span>Корзина</button><button class="hub-navbar__item" type="button" aria-current="page"><span class="hub-navbar__icon"><i data-icon="layout-grid"></i></span>Приложения</button><button class="hub-navbar__item" type="button"><span class="hub-navbar__icon pv-focus"><i data-icon="settings"></i></span>Настройки</button></nav></div></div></div>
+<script>
+(function () {
+  if (!document.querySelector('link[href*="preview/kit.css"]')) {
+    var l = document.createElement('link'); l.rel = 'stylesheet'; l.href = '../../preview/kit.css'; document.head.appendChild(l);
+  }
+  if (window.HubUI) HubUI.init();
+
+})();
+</script>
+</body>
+</html>

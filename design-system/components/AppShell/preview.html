@@ -1,0 +1,187 @@
+<!-- @dsCard group="Экраны" height=964 width=1440 subtitle="Панель приложений · строка ввода в шапке · статус синхронизации" -->
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Оболочка приложения</title>
+<link rel="stylesheet" href="../../preview/kit.css">
+
+</head>
+<body>
+
+<div class="pv-states">
+  <span class="pv-states__title">Оболочка приложения</span>
+  <div class="hub-segmented" role="group" aria-label="Состояние"><button type="button" aria-pressed="true" data-i="0">Приложение открыто</button><button type="button" aria-pressed="false" data-i="1">Окно 1024</button><button type="button" aria-pressed="false" data-i="2">Нет сети</button><button type="button" aria-pressed="false" data-i="3">Конфликт</button></div>
+  <span class="pv-states__note" id="pvNote"></span>
+</div>
+<div id="pvScreen"></div>
+<template data-note="Повторение внутри хаба"><div class="pv-screen" data-scene="open"><div class="hub-backdrop" data-scene="open"><div class="hub-backdrop__photo"></div><div class="hub-backdrop__veil"></div></div>
+<div class="hub-shell">
+<nav class="hub-rail hub-glass" aria-label="Приложения"><button class="hub-rail__item" type="button" title="Сегодня" aria-label="Сегодня"><i data-icon="house"></i></button><button class="hub-rail__item" type="button" title="Корзина" aria-label="Корзина"><i data-icon="inbox"></i><span class="hub-rail__badge">5</span></button><div class="hub-rail__sep"></div><button class="hub-rail__item" type="button" title="Повторение" aria-label="Повторение" aria-current="page"><i data-icon="layers"></i></button><button class="hub-rail__item" type="button" title="План дня" aria-label="План дня"><i data-icon="list-checks"></i></button><button class="hub-rail__item" type="button" title="Календарь" aria-label="Календарь"><i data-icon="calendar"></i></button><button class="hub-rail__item" type="button" title="Дневник" aria-label="Дневник"><i data-icon="notebook-pen"></i></button><button class="hub-rail__item" type="button" title="Учебные блоки" aria-label="Учебные блоки"><i data-icon="timer"></i></button><div class="hub-rail__end"><button class="hub-rail__item" type="button" title="Темы" aria-label="Темы"><i data-icon="palette"></i></button><button class="hub-rail__item" type="button" title="Настройки" aria-label="Настройки"><i data-icon="settings"></i></button></div></nav>
+<header class="hub-shell__top"><form class="hub-capture hub-capture--compact" style="" onsubmit="return false">
+  <div class="hub-capture__bar">
+    <i data-icon="lightbulb" class="hub-capture__icon"></i>
+    <input class="hub-capture__input" placeholder="Мысль в корзину…" aria-label="Мысль в корзину">
+    <button class="hub-capture__send" type="submit" disabled>В корзину</button>
+  </div>
+  <p class="hub-capture__note"></p>
+</form><div class="hub-topbar__right"><span class="hub-sync" data-state="ok"><i data-icon="cloud-check"></i><span>синхронизировано</span></span><span class="hub-row__trail" style="font-size:var(--font-size-sm)"><kbd class="hub-kbd">Ctrl</kbd><kbd class="hub-kbd">K</kbd></span><button class="hub-btn hub-btn--sm hub-btn--glass hub-btn--icon" type="button" aria-label="Заблокировать"><i data-icon="lock"></i></button></div></header>
+<main class="hub-shell__main hub-glass"><div style="display:flex;align-items:flex-end;justify-content:space-between;gap:var(--space-4)">
+  <div><h1 class="hub-page-title">Повторение</h1><p class="hub-muted" style="margin:var(--space-1) 0 0">12 карточек к сроку · 2 темы просели</p></div>
+  <button class="hub-btn" type="button"><i data-icon="plus"></i>Карточка</button>
+</div>
+<div role="tablist" class="hub-tabs" aria-label="Разделы" style="margin-top:var(--space-5)"><button class="hub-tab" role="tab" aria-selected="true" tabindex="0">Сессия <span class=hub-tab__count>12</span></button><button class="hub-tab" role="tab" aria-selected="false" tabindex="-1">Темы</button><button class="hub-tab" role="tab" aria-selected="false" tabindex="-1">Статистика</button><button class="hub-tab" role="tab" aria-selected="false" tabindex="-1">Учебные блоки</button></div>
+<div style="display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:var(--space-6);margin-top:var(--space-6)">
+<section>
+  <div class="hub-meter"><div class="hub-meter__head"><span>Сессия</span><b>3 из 12</b></div><progress class="hub-progress" max="12" value="3"></progress></div>
+  <article class="hub-glass" style="padding:var(--space-8);margin-top:var(--space-5)">
+    <div class="hub-tags"><span class="hub-tag">философия</span><span class="hub-tag hub-tag--warning"><i data-icon="triangle-alert"></i>просела</span></div>
+    <p class="t-display" style="margin:var(--space-4) 0 0">Чем общественный договор у Гоббса отличается от договора у Локка?</p>
+    <div class="hub-btn-row" style="margin-top:var(--space-8)"><button class="hub-btn hub-btn--primary hub-btn--lg" type="button">Показать ответ <kbd class="hub-kbd">Пробел</kbd></button><button class="hub-btn hub-btn--quiet" type="button">Пропустить</button></div>
+  </article>
+</section>
+<aside style="display:grid;gap:var(--space-4);align-content:start">
+<section class="hub-glass" style="padding:var(--space-4) var(--space-4) var(--space-2)"><h2 class="hub-section-title">Просели</h2>
+<ul class="hub-list hub-list--divided">
+  <li><button class="hub-row" type="button"><span class="hub-row__lead"><i data-icon="brain"></i></span><span class="hub-row__body"><span class="hub-row__title">Логика</span><span class="hub-row__meta">удержание 61%</span></span><span class="hub-row__trail">7</span></button></li>
+  <li><button class="hub-row" type="button"><span class="hub-row__lead"><i data-icon="brain"></i></span><span class="hub-row__body"><span class="hub-row__title">Право</span><span class="hub-row__meta">удержание 68%</span></span><span class="hub-row__trail">5</span></button></li>
+</ul></section>
+<section class="hub-glass" style="padding:var(--space-4);display:flex;gap:var(--space-4);align-items:center">
+  <div class="hub-timer hub-timer--sm" data-state="running" style="--p:.35;--_size:96px"><svg class="hub-timer__ring" viewBox="0 0 100 100"><circle class="hub-timer__track" cx="50" cy="50" r="47"/><circle class="hub-timer__value" cx="50" cy="50" r="47" pathLength="100"/></svg><div class="hub-timer__inner"><div class="hub-timer__time" style="font-size:var(--font-size-2xl)">16:12</div></div></div>
+  <div style="flex:1;display:grid;gap:var(--space-2)"><span>Учебный блок</span><div class="hub-steps" role="img" aria-label="1 из 4"><i class="is-done"></i><i class="is-current" style="--p:35%"></i><i></i><i></i></div><span class="hub-muted" style="font-size:var(--font-size-sm)">2 из 4 · идёт</span></div>
+</section></aside>
+</div></main>
+</div></div></template><template data-note="панель та же, шапка сжимается, статус — значком"><div class="pv-stage"><div class="pv-screen pv-screen--narrow" data-scene="open"><div class="hub-backdrop" data-scene="open"><div class="hub-backdrop__photo"></div><div class="hub-backdrop__veil"></div></div>
+<div class="hub-shell">
+<nav class="hub-rail hub-glass" aria-label="Приложения"><button class="hub-rail__item" type="button" title="Сегодня" aria-label="Сегодня"><i data-icon="house"></i></button><button class="hub-rail__item" type="button" title="Корзина" aria-label="Корзина"><i data-icon="inbox"></i><span class="hub-rail__badge">5</span></button><div class="hub-rail__sep"></div><button class="hub-rail__item" type="button" title="Повторение" aria-label="Повторение" aria-current="page"><i data-icon="layers"></i></button><button class="hub-rail__item" type="button" title="План дня" aria-label="План дня"><i data-icon="list-checks"></i></button><button class="hub-rail__item" type="button" title="Календарь" aria-label="Календарь"><i data-icon="calendar"></i></button><button class="hub-rail__item" type="button" title="Дневник" aria-label="Дневник"><i data-icon="notebook-pen"></i></button><button class="hub-rail__item" type="button" title="Учебные блоки" aria-label="Учебные блоки"><i data-icon="timer"></i></button><div class="hub-rail__end"><button class="hub-rail__item" type="button" title="Темы" aria-label="Темы"><i data-icon="palette"></i></button><button class="hub-rail__item" type="button" title="Настройки" aria-label="Настройки"><i data-icon="settings"></i></button></div></nav>
+<header class="hub-shell__top"><form class="hub-capture hub-capture--compact" style="" onsubmit="return false">
+  <div class="hub-capture__bar">
+    <i data-icon="lightbulb" class="hub-capture__icon"></i>
+    <input class="hub-capture__input" placeholder="Мысль в корзину…" aria-label="Мысль в корзину">
+    <button class="hub-capture__send" type="submit" disabled>В корзину</button>
+  </div>
+  <p class="hub-capture__note"></p>
+</form><div class="hub-topbar__right"><span class="hub-sync hub-sync--icon" data-state="ok"><i data-icon="cloud-check"></i><span>синхронизировано</span></span><button class="hub-btn hub-btn--sm hub-btn--glass hub-btn--icon" type="button" aria-label="Заблокировать"><i data-icon="lock"></i></button></div></header>
+<main class="hub-shell__main hub-glass"><div style="display:flex;align-items:flex-end;justify-content:space-between;gap:var(--space-4)">
+  <div><h1 class="hub-page-title">Повторение</h1><p class="hub-muted" style="margin:var(--space-1) 0 0">12 карточек к сроку · 2 темы просели</p></div>
+  <button class="hub-btn" type="button"><i data-icon="plus"></i>Карточка</button>
+</div>
+<div role="tablist" class="hub-tabs" aria-label="Разделы" style="margin-top:var(--space-5)"><button class="hub-tab" role="tab" aria-selected="true" tabindex="0">Сессия <span class=hub-tab__count>12</span></button><button class="hub-tab" role="tab" aria-selected="false" tabindex="-1">Темы</button><button class="hub-tab" role="tab" aria-selected="false" tabindex="-1">Статистика</button><button class="hub-tab" role="tab" aria-selected="false" tabindex="-1">Учебные блоки</button></div>
+<div style="display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:var(--space-6);margin-top:var(--space-6)">
+<section>
+  <div class="hub-meter"><div class="hub-meter__head"><span>Сессия</span><b>3 из 12</b></div><progress class="hub-progress" max="12" value="3"></progress></div>
+  <article class="hub-glass" style="padding:var(--space-8);margin-top:var(--space-5)">
+    <div class="hub-tags"><span class="hub-tag">философия</span><span class="hub-tag hub-tag--warning"><i data-icon="triangle-alert"></i>просела</span></div>
+    <p class="t-display" style="margin:var(--space-4) 0 0">Чем общественный договор у Гоббса отличается от договора у Локка?</p>
+    <div class="hub-btn-row" style="margin-top:var(--space-8)"><button class="hub-btn hub-btn--primary hub-btn--lg" type="button">Показать ответ <kbd class="hub-kbd">Пробел</kbd></button><button class="hub-btn hub-btn--quiet" type="button">Пропустить</button></div>
+  </article>
+</section>
+<aside style="display:grid;gap:var(--space-4);align-content:start">
+<section class="hub-glass" style="padding:var(--space-4) var(--space-4) var(--space-2)"><h2 class="hub-section-title">Просели</h2>
+<ul class="hub-list hub-list--divided">
+  <li><button class="hub-row" type="button"><span class="hub-row__lead"><i data-icon="brain"></i></span><span class="hub-row__body"><span class="hub-row__title">Логика</span><span class="hub-row__meta">удержание 61%</span></span><span class="hub-row__trail">7</span></button></li>
+  <li><button class="hub-row" type="button"><span class="hub-row__lead"><i data-icon="brain"></i></span><span class="hub-row__body"><span class="hub-row__title">Право</span><span class="hub-row__meta">удержание 68%</span></span><span class="hub-row__trail">5</span></button></li>
+</ul></section>
+<section class="hub-glass" style="padding:var(--space-4);display:flex;gap:var(--space-4);align-items:center">
+  <div class="hub-timer hub-timer--sm" data-state="running" style="--p:.35;--_size:96px"><svg class="hub-timer__ring" viewBox="0 0 100 100"><circle class="hub-timer__track" cx="50" cy="50" r="47"/><circle class="hub-timer__value" cx="50" cy="50" r="47" pathLength="100"/></svg><div class="hub-timer__inner"><div class="hub-timer__time" style="font-size:var(--font-size-2xl)">16:12</div></div></div>
+  <div style="flex:1;display:grid;gap:var(--space-2)"><span>Учебный блок</span><div class="hub-steps" role="img" aria-label="1 из 4"><i class="is-done"></i><i class="is-current" style="--p:35%"></i><i></i><i></i></div><span class="hub-muted" style="font-size:var(--font-size-sm)">2 из 4 · идёт</span></div>
+</section></aside>
+</div></main>
+</div></div><span class="pv-stage__label">окно 1024 × 900</span></div></template><template data-note="работа продолжается, статус спокойный"><div class="pv-screen" data-scene="open"><div class="hub-backdrop" data-scene="open"><div class="hub-backdrop__photo"></div><div class="hub-backdrop__veil"></div></div>
+<div class="hub-shell">
+<nav class="hub-rail hub-glass" aria-label="Приложения"><button class="hub-rail__item" type="button" title="Сегодня" aria-label="Сегодня"><i data-icon="house"></i></button><button class="hub-rail__item" type="button" title="Корзина" aria-label="Корзина"><i data-icon="inbox"></i><span class="hub-rail__badge">5</span></button><div class="hub-rail__sep"></div><button class="hub-rail__item" type="button" title="Повторение" aria-label="Повторение" aria-current="page"><i data-icon="layers"></i></button><button class="hub-rail__item" type="button" title="План дня" aria-label="План дня"><i data-icon="list-checks"></i></button><button class="hub-rail__item" type="button" title="Календарь" aria-label="Календарь"><i data-icon="calendar"></i></button><button class="hub-rail__item" type="button" title="Дневник" aria-label="Дневник"><i data-icon="notebook-pen"></i></button><button class="hub-rail__item" type="button" title="Учебные блоки" aria-label="Учебные блоки"><i data-icon="timer"></i></button><div class="hub-rail__end"><button class="hub-rail__item" type="button" title="Темы" aria-label="Темы"><i data-icon="palette"></i></button><button class="hub-rail__item" type="button" title="Настройки" aria-label="Настройки"><i data-icon="settings"></i></button></div></nav>
+<header class="hub-shell__top"><form class="hub-capture hub-capture--compact" style="" onsubmit="return false">
+  <div class="hub-capture__bar">
+    <i data-icon="lightbulb" class="hub-capture__icon"></i>
+    <input class="hub-capture__input" placeholder="Мысль в корзину…" aria-label="Мысль в корзину">
+    <button class="hub-capture__send" type="submit" disabled>В корзину</button>
+  </div>
+  <p class="hub-capture__note"></p>
+</form><div class="hub-topbar__right"><span class="hub-sync" data-state="offline"><i data-icon="cloud-off"></i><span>нет сети · всё сохранено здесь</span></span><span class="hub-row__trail" style="font-size:var(--font-size-sm)"><kbd class="hub-kbd">Ctrl</kbd><kbd class="hub-kbd">K</kbd></span><button class="hub-btn hub-btn--sm hub-btn--glass hub-btn--icon" type="button" aria-label="Заблокировать"><i data-icon="lock"></i></button></div></header>
+<main class="hub-shell__main hub-glass"><div style="display:flex;align-items:flex-end;justify-content:space-between;gap:var(--space-4)">
+  <div><h1 class="hub-page-title">Повторение</h1><p class="hub-muted" style="margin:var(--space-1) 0 0">12 карточек к сроку · 2 темы просели</p></div>
+  <button class="hub-btn" type="button"><i data-icon="plus"></i>Карточка</button>
+</div>
+<div role="tablist" class="hub-tabs" aria-label="Разделы" style="margin-top:var(--space-5)"><button class="hub-tab" role="tab" aria-selected="true" tabindex="0">Сессия <span class=hub-tab__count>12</span></button><button class="hub-tab" role="tab" aria-selected="false" tabindex="-1">Темы</button><button class="hub-tab" role="tab" aria-selected="false" tabindex="-1">Статистика</button><button class="hub-tab" role="tab" aria-selected="false" tabindex="-1">Учебные блоки</button></div>
+<div style="display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:var(--space-6);margin-top:var(--space-6)">
+<section>
+  <div class="hub-meter"><div class="hub-meter__head"><span>Сессия</span><b>3 из 12</b></div><progress class="hub-progress" max="12" value="3"></progress></div>
+  <article class="hub-glass" style="padding:var(--space-8);margin-top:var(--space-5)">
+    <div class="hub-tags"><span class="hub-tag">философия</span><span class="hub-tag hub-tag--warning"><i data-icon="triangle-alert"></i>просела</span></div>
+    <p class="t-display" style="margin:var(--space-4) 0 0">Чем общественный договор у Гоббса отличается от договора у Локка?</p>
+    <div class="hub-btn-row" style="margin-top:var(--space-8)"><button class="hub-btn hub-btn--primary hub-btn--lg" type="button">Показать ответ <kbd class="hub-kbd">Пробел</kbd></button><button class="hub-btn hub-btn--quiet" type="button">Пропустить</button></div>
+  </article>
+</section>
+<aside style="display:grid;gap:var(--space-4);align-content:start">
+<section class="hub-glass" style="padding:var(--space-4) var(--space-4) var(--space-2)"><h2 class="hub-section-title">Просели</h2>
+<ul class="hub-list hub-list--divided">
+  <li><button class="hub-row" type="button"><span class="hub-row__lead"><i data-icon="brain"></i></span><span class="hub-row__body"><span class="hub-row__title">Логика</span><span class="hub-row__meta">удержание 61%</span></span><span class="hub-row__trail">7</span></button></li>
+  <li><button class="hub-row" type="button"><span class="hub-row__lead"><i data-icon="brain"></i></span><span class="hub-row__body"><span class="hub-row__title">Право</span><span class="hub-row__meta">удержание 68%</span></span><span class="hub-row__trail">5</span></button></li>
+</ul></section>
+<section class="hub-glass" style="padding:var(--space-4);display:flex;gap:var(--space-4);align-items:center">
+  <div class="hub-timer hub-timer--sm" data-state="running" style="--p:.35;--_size:96px"><svg class="hub-timer__ring" viewBox="0 0 100 100"><circle class="hub-timer__track" cx="50" cy="50" r="47"/><circle class="hub-timer__value" cx="50" cy="50" r="47" pathLength="100"/></svg><div class="hub-timer__inner"><div class="hub-timer__time" style="font-size:var(--font-size-2xl)">16:12</div></div></div>
+  <div style="flex:1;display:grid;gap:var(--space-2)"><span>Учебный блок</span><div class="hub-steps" role="img" aria-label="1 из 4"><i class="is-done"></i><i class="is-current" style="--p:35%"></i><i></i><i></i></div><span class="hub-muted" style="font-size:var(--font-size-sm)">2 из 4 · идёт</span></div>
+</section></aside>
+</div></main>
+</div></div></template><template data-note="единственное громкое состояние — ведёт к выбору версии"><div class="pv-screen" data-scene="open"><div class="hub-backdrop" data-scene="open"><div class="hub-backdrop__photo"></div><div class="hub-backdrop__veil"></div></div>
+<div class="hub-shell">
+<nav class="hub-rail hub-glass" aria-label="Приложения"><button class="hub-rail__item" type="button" title="Сегодня" aria-label="Сегодня"><i data-icon="house"></i></button><button class="hub-rail__item" type="button" title="Корзина" aria-label="Корзина"><i data-icon="inbox"></i><span class="hub-rail__badge">5</span></button><div class="hub-rail__sep"></div><button class="hub-rail__item" type="button" title="Повторение" aria-label="Повторение" aria-current="page"><i data-icon="layers"></i></button><button class="hub-rail__item" type="button" title="План дня" aria-label="План дня"><i data-icon="list-checks"></i></button><button class="hub-rail__item" type="button" title="Календарь" aria-label="Календарь"><i data-icon="calendar"></i></button><button class="hub-rail__item" type="button" title="Дневник" aria-label="Дневник"><i data-icon="notebook-pen"></i></button><button class="hub-rail__item" type="button" title="Учебные блоки" aria-label="Учебные блоки"><i data-icon="timer"></i></button><div class="hub-rail__end"><button class="hub-rail__item" type="button" title="Темы" aria-label="Темы"><i data-icon="palette"></i></button><button class="hub-rail__item" type="button" title="Настройки" aria-label="Настройки"><i data-icon="settings"></i></button></div></nav>
+<header class="hub-shell__top"><form class="hub-capture hub-capture--compact" style="" onsubmit="return false">
+  <div class="hub-capture__bar">
+    <i data-icon="lightbulb" class="hub-capture__icon"></i>
+    <input class="hub-capture__input" placeholder="Мысль в корзину…" aria-label="Мысль в корзину">
+    <button class="hub-capture__send" type="submit" disabled>В корзину</button>
+  </div>
+  <p class="hub-capture__note"></p>
+</form><div class="hub-topbar__right"><button class="hub-sync" data-state="conflict" type="button"><i data-icon="triangle-alert"></i><span>конфликт в 1 файле</span></button><span class="hub-row__trail" style="font-size:var(--font-size-sm)"><kbd class="hub-kbd">Ctrl</kbd><kbd class="hub-kbd">K</kbd></span><button class="hub-btn hub-btn--sm hub-btn--glass hub-btn--icon" type="button" aria-label="Заблокировать"><i data-icon="lock"></i></button></div></header>
+<main class="hub-shell__main hub-glass"><div style="display:flex;align-items:flex-end;justify-content:space-between;gap:var(--space-4)">
+  <div><h1 class="hub-page-title">Повторение</h1><p class="hub-muted" style="margin:var(--space-1) 0 0">12 карточек к сроку · 2 темы просели</p></div>
+  <button class="hub-btn" type="button"><i data-icon="plus"></i>Карточка</button>
+</div>
+<div role="tablist" class="hub-tabs" aria-label="Разделы" style="margin-top:var(--space-5)"><button class="hub-tab" role="tab" aria-selected="true" tabindex="0">Сессия <span class=hub-tab__count>12</span></button><button class="hub-tab" role="tab" aria-selected="false" tabindex="-1">Темы</button><button class="hub-tab" role="tab" aria-selected="false" tabindex="-1">Статистика</button><button class="hub-tab" role="tab" aria-selected="false" tabindex="-1">Учебные блоки</button></div>
+<div style="display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:var(--space-6);margin-top:var(--space-6)">
+<section>
+  <div class="hub-meter"><div class="hub-meter__head"><span>Сессия</span><b>3 из 12</b></div><progress class="hub-progress" max="12" value="3"></progress></div>
+  <article class="hub-glass" style="padding:var(--space-8);margin-top:var(--space-5)">
+    <div class="hub-tags"><span class="hub-tag">философия</span><span class="hub-tag hub-tag--warning"><i data-icon="triangle-alert"></i>просела</span></div>
+    <p class="t-display" style="margin:var(--space-4) 0 0">Чем общественный договор у Гоббса отличается от договора у Локка?</p>
+    <div class="hub-btn-row" style="margin-top:var(--space-8)"><button class="hub-btn hub-btn--primary hub-btn--lg" type="button">Показать ответ <kbd class="hub-kbd">Пробел</kbd></button><button class="hub-btn hub-btn--quiet" type="button">Пропустить</button></div>
+  </article>
+</section>
+<aside style="display:grid;gap:var(--space-4);align-content:start">
+<section class="hub-glass" style="padding:var(--space-4) var(--space-4) var(--space-2)"><h2 class="hub-section-title">Просели</h2>
+<ul class="hub-list hub-list--divided">
+  <li><button class="hub-row" type="button"><span class="hub-row__lead"><i data-icon="brain"></i></span><span class="hub-row__body"><span class="hub-row__title">Логика</span><span class="hub-row__meta">удержание 61%</span></span><span class="hub-row__trail">7</span></button></li>
+  <li><button class="hub-row" type="button"><span class="hub-row__lead"><i data-icon="brain"></i></span><span class="hub-row__body"><span class="hub-row__title">Право</span><span class="hub-row__meta">удержание 68%</span></span><span class="hub-row__trail">5</span></button></li>
+</ul></section>
+<section class="hub-glass" style="padding:var(--space-4);display:flex;gap:var(--space-4);align-items:center">
+  <div class="hub-timer hub-timer--sm" data-state="running" style="--p:.35;--_size:96px"><svg class="hub-timer__ring" viewBox="0 0 100 100"><circle class="hub-timer__track" cx="50" cy="50" r="47"/><circle class="hub-timer__value" cx="50" cy="50" r="47" pathLength="100"/></svg><div class="hub-timer__inner"><div class="hub-timer__time" style="font-size:var(--font-size-2xl)">16:12</div></div></div>
+  <div style="flex:1;display:grid;gap:var(--space-2)"><span>Учебный блок</span><div class="hub-steps" role="img" aria-label="1 из 4"><i class="is-done"></i><i class="is-current" style="--p:35%"></i><i></i><i></i></div><span class="hub-muted" style="font-size:var(--font-size-sm)">2 из 4 · идёт</span></div>
+</section></aside>
+</div></main>
+</div><div class="hub-menu" style="position:absolute;right:72px;top:64px;width:360px;padding:var(--space-4)">
+<div style="display:flex;gap:var(--space-3)"><i data-icon="triangle-alert" style="color:var(--warning)"></i><div><div style="font-weight:var(--weight-medium)">Конфликт в 1 файле</div><p class="hub-muted" style="margin:var(--space-1) 0 0;font-size:var(--font-size-sm)">obsidian / Дневник / 2026-11-19.md изменён на ПК и на телефоне. Обе версии сохранены.</p></div></div>
+<div class="hub-btn-row" style="justify-content:flex-end;margin-top:var(--space-4)"><button class="hub-btn hub-btn--quiet hub-btn--sm" type="button">Позже</button><button class="hub-btn hub-btn--primary hub-btn--sm" type="button">Сравнить версии</button></div></div></div></template>
+<script>
+(function () {
+  if (!document.querySelector('link[href*="preview/kit.css"]')) {
+    var l = document.createElement('link'); l.rel = 'stylesheet'; l.href = '../../preview/kit.css'; document.head.appendChild(l);
+  }
+  if (window.HubUI) HubUI.init();
+  var tpls = document.querySelectorAll('template[data-note]');
+  var host = document.getElementById('pvScreen'), note = document.getElementById('pvNote');
+  var btns = document.querySelectorAll('.pv-states [data-i]');
+  function show(i) {
+    host.innerHTML = tpls[i].innerHTML; note.textContent = tpls[i].getAttribute('data-note');
+    btns.forEach(function (b) { b.setAttribute('aria-pressed', String(Number(b.dataset.i) === i)); });
+    HubUI.init(host);
+    if (window.pvAfter) window.pvAfter(host, i);
+  }
+  btns.forEach(function (b) { b.addEventListener('click', function () { show(Number(b.dataset.i)); }); });
+
+  show(0);
+
+})();
+</script>
+</body>
+</html>

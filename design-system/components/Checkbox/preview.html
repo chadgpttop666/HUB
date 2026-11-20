@@ -1,0 +1,36 @@
+<!-- @dsCard group="Ввод" height=230 -->
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Чекбокс</title>
+<link rel="stylesheet" href="../../preview/kit.css">
+
+</head>
+<body>
+<div class="hub-backdrop" data-scene="open"><div class="hub-backdrop__photo"></div><div class="hub-backdrop__veil"></div></div>
+<div class="pv" style="gap:var(--space-4) var(--space-8)">
+  <div class="pv-col"><label class="hub-check"><input type="checkbox"><span>карточки</span></label>
+    <label class="hub-check"><input type="checkbox" checked><span>Отмечен</span></label>
+    <label class="hub-check"><input type="checkbox" class="pv-ind"><span>Часть отмечена</span></label>
+    <label class="hub-check"><input type="checkbox" class="pv-focus"><span>Фокус с клавиатуры</span></label></div>
+  <div class="pv-col"><label class="hub-check"><input type="checkbox" aria-invalid="true"><span>Ошибка: нужно согласие</span></label>
+    <label class="hub-check"><input type="checkbox" disabled><span>Недоступен</span></label>
+    <label class="hub-check"><input type="checkbox" checked disabled><span>Отмечен, недоступен</span></label></div>
+  <div class="pv-col"><span class="pv-cap">План дня — сделанное зачёркнуто</span>
+    <label class="hub-check hub-check--done"><input type="checkbox" checked><span>балкон</span></label>
+    <label class="hub-check hub-check--done"><input type="checkbox"><span>учебные блоки · 0 из 4</span></label>
+    <label class="hub-check hub-check--done"><input type="checkbox"><span>спорт · день A</span></label></div>
+</div>
+<script>
+(function () {
+  if (!document.querySelector('link[href*="preview/kit.css"]')) {
+    var l = document.createElement('link'); l.rel = 'stylesheet'; l.href = '../../preview/kit.css'; document.head.appendChild(l);
+  }
+  if (window.HubUI) HubUI.init();
+  document.querySelectorAll('.pv-ind').forEach(function (c) { c.indeterminate = true; });
+
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,47 @@
+<!-- @dsCard group="Основа" height=366 subtitle="Одна разметка — три темы: лес (тёмная), туман (светлая), без фото" -->
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Темы</title>
+<link rel="stylesheet" href="../../preview/kit.css">
+<style>.hub-card{min-height:0}</style>
+</head>
+<body>
+<div class="hub-backdrop" data-scene="open"><div class="hub-backdrop__photo"></div><div class="hub-backdrop__veil"></div></div>
+<div class="pv" style="gap:var(--space-4)"><div class="pv-col" data-theme="dark" style="position:relative;width:288px;height:322px;overflow:hidden;border-radius:var(--radius);transform:translateZ(0);color:var(--text);background:var(--bg)">
+  <div class="hub-backdrop" data-scene="open"><div class="hub-backdrop__photo"></div><div class="hub-backdrop__veil"></div></div>
+  <div style="position:relative;padding:var(--space-4);display:grid;gap:var(--space-3)">
+    <span class="pv-cap" style="margin:0">Лес — тёмная</span>
+    <div class="hub-capture__bar" style="padding-left:var(--space-4)"><i data-icon="lightbulb" class="hub-capture__icon"></i><input class="hub-capture__input" style="font-size:var(--font-size-xl);padding:var(--space-2) 0" placeholder="Мысль в корзину…"></div>
+    <article class="hub-card"><div class="hub-card__app"><i data-icon="layers"></i><span>Повторение</span></div><div class="hub-card__main">12 карточек</div><p class="hub-card__note">2 темы просели</p><div class="hub-card__action"><button class="hub-btn hub-btn--sm" type="button">Начать</button></div></article>
+    <div class="pv-row"><button class="hub-btn hub-btn--primary hub-btn--sm">Основная</button><span class="hub-sync" data-state="ok"><i data-icon="cloud-check"></i>готово</span></div>
+  </div>
+</div><div class="pv-col" data-theme="light" style="position:relative;width:288px;height:322px;overflow:hidden;border-radius:var(--radius);transform:translateZ(0);color:var(--text);background:var(--bg)">
+  <div class="hub-backdrop" data-scene="open"><div class="hub-backdrop__photo"></div><div class="hub-backdrop__veil"></div></div>
+  <div style="position:relative;padding:var(--space-4);display:grid;gap:var(--space-3)">
+    <span class="pv-cap" style="margin:0">Туман — светлая</span>
+    <div class="hub-capture__bar" style="padding-left:var(--space-4)"><i data-icon="lightbulb" class="hub-capture__icon"></i><input class="hub-capture__input" style="font-size:var(--font-size-xl);padding:var(--space-2) 0" placeholder="Мысль в корзину…"></div>
+    <article class="hub-card"><div class="hub-card__app"><i data-icon="layers"></i><span>Повторение</span></div><div class="hub-card__main">12 карточек</div><p class="hub-card__note">2 темы просели</p><div class="hub-card__action"><button class="hub-btn hub-btn--sm" type="button">Начать</button></div></article>
+    <div class="pv-row"><button class="hub-btn hub-btn--primary hub-btn--sm">Основная</button><span class="hub-sync" data-state="ok"><i data-icon="cloud-check"></i>готово</span></div>
+  </div>
+</div><div class="pv-col" data-theme="solid" style="position:relative;width:288px;height:322px;overflow:hidden;border-radius:var(--radius);transform:translateZ(0);color:var(--text);background:var(--bg)">
+  <div class="hub-backdrop" data-scene="open"><div class="hub-backdrop__photo"></div><div class="hub-backdrop__veil"></div></div>
+  <div style="position:relative;padding:var(--space-4);display:grid;gap:var(--space-3)">
+    <span class="pv-cap" style="margin:0">Без фото</span>
+    <div class="hub-capture__bar" style="padding-left:var(--space-4)"><i data-icon="lightbulb" class="hub-capture__icon"></i><input class="hub-capture__input" style="font-size:var(--font-size-xl);padding:var(--space-2) 0" placeholder="Мысль в корзину…"></div>
+    <article class="hub-card"><div class="hub-card__app"><i data-icon="layers"></i><span>Повторение</span></div><div class="hub-card__main">12 карточек</div><p class="hub-card__note">2 темы просели</p><div class="hub-card__action"><button class="hub-btn hub-btn--sm" type="button">Начать</button></div></article>
+    <div class="pv-row"><button class="hub-btn hub-btn--primary hub-btn--sm">Основная</button><span class="hub-sync" data-state="ok"><i data-icon="cloud-check"></i>готово</span></div>
+  </div>
+</div></div>
+<script>
+(function () {
+  if (!document.querySelector('link[href*="preview/kit.css"]')) {
+    var l = document.createElement('link'); l.rel = 'stylesheet'; l.href = '../../preview/kit.css'; document.head.appendChild(l);
+  }
+  if (window.HubUI) HubUI.init();
+
+})();
+</script>
+</body>
+</html>

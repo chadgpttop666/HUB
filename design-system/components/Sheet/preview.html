@@ -1,0 +1,24 @@
+<!-- @dsCard group="Окна и сообщения" height=300 -->
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Нижний лист</title>
+<link rel="stylesheet" href="../../preview/kit.css">
+
+</head>
+<body>
+<div class="hub-backdrop" data-scene="open"><div class="hub-backdrop__photo"></div><div class="hub-backdrop__veil"></div></div>
+<div class="pv" style="gap:var(--space-6)"><div style="width:390px"><div class="hub-sheet hub-sheet--static"><div class="hub-sheet__handle"></div><h2 class="hub-sheet__title">Куда перенести</h2><p class="hub-sheet__text">Приложения, которые принимают элементы корзины</p><ul class="hub-list"><li><button class="hub-row" type="button" aria-selected="true"><span class="hub-row__lead"><span class="hub-app-icon" style="width:40px;height:40px"><i data-icon="layers"></i></span></span><span class="hub-row__body"><span class="hub-row__title">Повторение</span><span class=hub-row__meta>Карточка для повторения</span></span><span class="hub-row__trail">в прошлый раз</span></button></li><li><button class="hub-row" type="button"><span class="hub-row__lead"><span class="hub-app-icon" style="width:40px;height:40px"><i data-icon="list-checks"></i></span></span><span class="hub-row__body"><span class="hub-row__title">План дня</span><span class=hub-row__meta>Задача на сегодня</span></span><span class="hub-row__trail"></span></button></li><li><button class="hub-row" type="button"><span class="hub-row__lead"><span class="hub-app-icon" style="width:40px;height:40px"><i data-icon="calendar"></i></span></span><span class="hub-row__body"><span class="hub-row__title">Календарь</span><span class=hub-row__meta>Событие с датой</span></span><span class="hub-row__trail"></span></button></li></ul></div></div>
+<div style="width:390px"><div class="hub-sheet hub-sheet--static"><div class="hub-sheet__handle"></div><h2 class="hub-sheet__title">Отложить до</h2><p class="hub-sheet__text">Элемент вернётся в корзину в это время</p><ul class="hub-list"><li><button class="hub-row" type="button"><span class="hub-row__lead"><i data-icon="sunrise"></i></span><span class="hub-row__body"><span class="hub-row__title">Сегодня вечером</span></span><span class="hub-row__trail">19:00</span></button></li><li><button class="hub-row" type="button"><span class="hub-row__lead"><i data-icon="sun"></i></span><span class="hub-row__body"><span class="hub-row__title">Завтра утром</span></span><span class="hub-row__trail">9:00</span></button></li><li><button class="hub-row" type="button"><span class="hub-row__lead"><i data-icon="calendar-days"></i></span><span class="hub-row__body"><span class="hub-row__title">Через неделю</span></span><span class="hub-row__trail">27 ноября</span></button></li></ul></div></div></div>
+<script>
+(function () {
+  if (!document.querySelector('link[href*="preview/kit.css"]')) {
+    var l = document.createElement('link'); l.rel = 'stylesheet'; l.href = '../../preview/kit.css'; document.head.appendChild(l);
+  }
+  if (window.HubUI) HubUI.init();
+
+})();
+</script>
+</body>
+</html>

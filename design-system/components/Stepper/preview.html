@@ -1,0 +1,23 @@
+<!-- @dsCard group="Окна и сообщения" height=140 -->
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Шаги</title>
+<link rel="stylesheet" href="../../preview/kit.css">
+
+</head>
+<body>
+<div class="hub-backdrop" data-scene="open"><div class="hub-backdrop__photo"></div><div class="hub-backdrop__veil"></div></div>
+<div class="pv pv--col" style="gap:var(--space-5)"><div><ol class="hub-stepper" aria-label="Шаги"><li aria-current="step">Имя</li><li>Пароль</li><li>Ключ</li><li>Google Drive</li></ol></div><div><ol class="hub-stepper" aria-label="Шаги"><li class="is-done">Имя</li><li class="is-done">Пароль</li><li aria-current="step">Ключ</li><li>Google Drive</li></ol></div><div><ol class="hub-stepper" aria-label="Шаги"><li class="is-done">Имя</li><li class="is-done">Пароль</li><li class="is-done">Ключ</li><li aria-current="step">Google Drive</li></ol></div></div>
+<script>
+(function () {
+  if (!document.querySelector('link[href*="preview/kit.css"]')) {
+    var l = document.createElement('link'); l.rel = 'stylesheet'; l.href = '../../preview/kit.css'; document.head.appendChild(l);
+  }
+  if (window.HubUI) HubUI.init();
+
+})();
+</script>
+</body>
+</html>

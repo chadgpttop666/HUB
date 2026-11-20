@@ -1,0 +1,29 @@
+<!-- @dsCard group="Действия" height=300 -->
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Кнопка</title>
+<link rel="stylesheet" href="../../preview/kit.css">
+
+</head>
+<body>
+<div class="hub-backdrop" data-scene="open"><div class="hub-backdrop__photo"></div><div class="hub-backdrop__veil"></div></div>
+<div class="pv pv--col" style="gap:var(--space-4)">
+  <div class="pv-row"><span class="pv-cap pv-w" style="width:110px">основная</span><button class="hub-btn hub-btn--primary">Начать</button><button class="hub-btn hub-btn--primary pv-hover">Наведение</button><button class="hub-btn hub-btn--primary pv-focus">Фокус</button><button class="hub-btn hub-btn--primary" disabled>Недоступна</button><button class="hub-btn hub-btn--primary" aria-busy="true">Сохраняю</button><button class="hub-btn hub-btn--primary">Показать ответ <kbd class="hub-kbd">Пробел</kbd></button></div>
+  <div class="pv-row"><span class="pv-cap" style="width:110px">обычная</span><button class="hub-btn">Разобрать</button><button class="hub-btn pv-hover">Наведение</button><button class="hub-btn pv-focus">Фокус</button><button class="hub-btn" disabled>Недоступна</button><button class="hub-btn"><i data-icon="plus"></i>Добавить</button><button class="hub-btn hub-btn--glass"><i data-icon="lock"></i>На стекле</button></div>
+  <div class="pv-row"><span class="pv-cap" style="width:110px">тихая</span><button class="hub-btn hub-btn--quiet">Пропустить</button><button class="hub-btn hub-btn--quiet pv-hover">Наведение</button><button class="hub-btn hub-btn--quiet pv-focus">Фокус</button><button class="hub-btn hub-btn--quiet" disabled>Недоступна</button><button class="hub-btn hub-btn--quiet hub-btn--icon" aria-label="Ещё"><i data-icon="ellipsis"></i></button></div>
+  <div class="pv-row"><span class="pv-cap" style="width:110px">опасная</span><button class="hub-btn hub-btn--danger"><i data-icon="trash-2"></i>Удалить</button><button class="hub-btn hub-btn--danger pv-hover">Наведение</button><button class="hub-btn hub-btn--danger pv-focus">Фокус</button><button class="hub-btn hub-btn--danger" disabled>Недоступна</button></div>
+  <div class="pv-row"><span class="pv-cap" style="width:110px">размеры</span><button class="hub-btn hub-btn--sm">Маленькая 32</button><button class="hub-btn">Обычная 36</button><button class="hub-btn hub-btn--lg">Крупная 44</button><button class="hub-btn hub-btn--icon" aria-label="Настройки"><i data-icon="settings"></i></button></div>
+</div>
+<script>
+(function () {
+  if (!document.querySelector('link[href*="preview/kit.css"]')) {
+    var l = document.createElement('link'); l.rel = 'stylesheet'; l.href = '../../preview/kit.css'; document.head.appendChild(l);
+  }
+  if (window.HubUI) HubUI.init();
+
+})();
+</script>
+</body>
+</html>

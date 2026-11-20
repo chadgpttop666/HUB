@@ -1,0 +1,32 @@
+<!-- @dsCard group="Контейнеры" height=200 -->
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Вкладки и сегменты</title>
+<link rel="stylesheet" href="../../preview/kit.css">
+
+</head>
+<body>
+<div class="hub-backdrop" data-scene="open"><div class="hub-backdrop__photo"></div><div class="hub-backdrop__veil"></div></div>
+<div class="pv pv--col" style="gap:var(--space-6)">
+<div role="tablist" class="hub-tabs" data-hub-tabs aria-label="Повторение" style="width:640px">
+  <button class="hub-tab" role="tab" aria-selected="true">Сессия <span class="hub-tab__count">12</span></button>
+  <button class="hub-tab pv-hover" role="tab" aria-selected="false" tabindex="-1">Темы (наведение)</button>
+  <button class="hub-tab pv-focus" role="tab" aria-selected="false" tabindex="-1">Статистика (фокус)</button>
+  <button class="hub-tab" role="tab" aria-selected="false" tabindex="-1" disabled>Дневник</button>
+</div>
+<div class="pv-row"><div class="hub-segmented" role="group" aria-label="Период"><button type="button" aria-pressed="false">Неделя</button><button type="button" aria-pressed="true">14 дней</button><button type="button" aria-pressed="false">Месяц</button></div>
+<span class="pv-cap" style="margin:0">сегменты — короткий выбор вида, 2–4 варианта</span></div>
+</div>
+<script>
+(function () {
+  if (!document.querySelector('link[href*="preview/kit.css"]')) {
+    var l = document.createElement('link'); l.rel = 'stylesheet'; l.href = '../../preview/kit.css'; document.head.appendChild(l);
+  }
+  if (window.HubUI) HubUI.init();
+
+})();
+</script>
+</body>
+</html>

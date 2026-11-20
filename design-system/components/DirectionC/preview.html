@@ -1,0 +1,47 @@
+<!-- @dsCard group="Направления" height=900 width=1440 subtitle="В · Горизонт — строка ввода на линии горизонта, карточки полкой у нижнего края" -->
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Направление В · Горизонт</title>
+<link rel="stylesheet" href="../../preview/kit.css">
+<style>.dirC{position:absolute;inset:0;display:grid;grid-template-rows:auto 1fr auto;padding:var(--space-6) 6vw var(--space-8)}
+.dirC-top{display:flex;justify-content:space-between;align-items:flex-start}
+.dirC-time{font-family:var(--font-heading);font-size:var(--font-size-5xl);font-weight:var(--weight-thin);line-height:var(--leading-none);font-variant-numeric:tabular-nums}
+.dirC-date{margin-top:var(--space-2);font-size:var(--font-size-sm);color:var(--text-muted)}
+.dirC-mid{align-self:center;margin-top:-4vh}
+.dirC-greet{margin:0 0 var(--space-4);text-align:center;font-family:var(--font-heading);font-size:var(--font-size-2xl);font-weight:var(--weight-light);color:var(--text-muted)}
+.dirC-shelf{display:grid;grid-template-columns:repeat(4,minmax(0,1fr)) auto;gap:var(--space-4);align-items:stretch}
+.dirC-shelf .hub-card{min-height:150px}
+.dirC-more{display:grid;place-items:center;width:96px;border:1px dashed var(--line-soft);border-radius:var(--radius);color:var(--text-muted);font-size:var(--font-size-sm);text-align:center}</style>
+</head>
+<body>
+
+<div class="pv-screen" data-scene="open"><div class="hub-backdrop" data-scene="open"><div class="hub-backdrop__photo"></div><div class="hub-backdrop__veil"></div></div><div class="dirC">
+<header class="dirC-top"><div><div class="dirC-time">13:20</div><div class="dirC-date">пятница, 20 ноября · день 61</div></div><div class="hub-topbar__right" style="font-size:var(--font-size-sm)"><span class="hub-sync" data-state="ok"><i data-icon="cloud-check"></i><span>синхронизировано</span></span><button class="hub-btn hub-btn--sm hub-btn--glass" type="button"><i data-icon="lock"></i>Заблокировать</button></div></header>
+<div class="dirC-mid"><p class="dirC-greet">Добрый день, Максим</p><form class="hub-capture " style="" onsubmit="return false">
+  <div class="hub-capture__bar pv-focus">
+    <i data-icon="lightbulb" class="hub-capture__icon"></i>
+    <input class="hub-capture__input" placeholder="Мысль в корзину…" aria-label="Мысль в корзину">
+    <button class="hub-capture__send" type="submit" disabled>В корзину</button>
+  </div>
+  <p class="hub-capture__note">Enter — сохранить, разобрать можно потом</p>
+</form></div>
+<section class="dirC-shelf">
+  <article class="hub-card"><div class="hub-card__app"><i data-icon="layers"></i><span>Повторение</span></div><div class="hub-card__main">12 карточек к сроку</div><p class="hub-card__note">2 темы просели</p><div class="hub-card__action"><button class="hub-btn hub-btn--sm" type="button">Начать</button></div></article>
+  <article class="hub-card"><div class="hub-card__app"><i data-icon="list-checks"></i><span>План дня</span></div><div class="hub-card__main">Осталось 3 из 4</div><p class="hub-card__note">карточки, учебные блоки, спорт</p></article>
+  <article class="hub-card"><div class="hub-card__app"><i data-icon="inbox"></i><span>Корзина</span></div><div class="hub-card__main">5 неразобранных</div><p class="hub-card__note">последнее: «идея для эссе…»</p><div class="hub-card__action"><button class="hub-btn hub-btn--sm" type="button">Разобрать</button></div></article>
+  <article class="hub-card"><div class="hub-card__app"><i data-icon="calendar"></i><span>Календарь</span></div><div class="hub-card__main">Событий нет</div><p class="hub-card__note">завтра — 16:00</p></article>
+  <button class="dirC-more hub-btn--quiet" type="button" style="background:transparent;cursor:pointer">ещё 5<br>→</button>
+</section></div></div>
+<script>
+(function () {
+  if (!document.querySelector('link[href*="preview/kit.css"]')) {
+    var l = document.createElement('link'); l.rel = 'stylesheet'; l.href = '../../preview/kit.css'; document.head.appendChild(l);
+  }
+  if (window.HubUI) HubUI.init();
+
+})();
+</script>
+</body>
+</html>

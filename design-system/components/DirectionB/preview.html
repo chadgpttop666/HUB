@@ -1,0 +1,48 @@
+<!-- @dsCard group="Направления" height=900 width=1440 subtitle="Б · Страница дня — левая колонка как запись в дневнике, фото открыто справа" -->
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Направление Б · Страница дня</title>
+<link rel="stylesheet" href="../../preview/kit.css">
+<style>.dirB{position:absolute;inset:0;padding:var(--space-5) 6vw}
+.dirB-top{display:flex;justify-content:flex-end;align-items:center;gap:var(--space-4)}
+.dirB-col{width:600px;margin-top:9vh}
+.dirB-greet{margin:var(--space-2) 0 0;font-family:var(--font-heading);font-size:var(--font-size-4xl);font-weight:var(--weight-light);line-height:var(--leading-tight)}
+.dirB-list{margin-top:var(--space-6);padding:var(--space-1) var(--space-2)}
+.dirB-list .hub-row{min-height:68px}
+.dirB .hub-capture{margin:var(--space-6) 0 0;width:100%}</style>
+</head>
+<body>
+
+<div class="pv-screen" data-scene="open"><div class="hub-backdrop" data-scene="open"><div class="hub-backdrop__photo"></div><div class="hub-backdrop__veil"></div></div><div class="dirB">
+<div class="dirB-top"><span class="hub-sync" data-state="ok"><i data-icon="cloud-check"></i><span>синхронизировано</span></span><span class="hub-row__trail" style="font-size:var(--font-size-sm)"><kbd class="hub-kbd">Ctrl</kbd><kbd class="hub-kbd">K</kbd></span><button class="hub-btn hub-btn--sm hub-btn--glass" type="button"><i data-icon="lock"></i>Заблокировать</button></div>
+<div class="dirB-col">
+  <div class="hub-lock__date" style="margin:0">пятница, 20 ноября · день 61</div>
+  <h1 class="dirB-greet">Добрый день, Максим</h1>
+  <form class="hub-capture " style="" onsubmit="return false">
+  <div class="hub-capture__bar pv-focus">
+    <i data-icon="lightbulb" class="hub-capture__icon"></i>
+    <input class="hub-capture__input" placeholder="Мысль в корзину…" aria-label="Мысль в корзину">
+    <button class="hub-capture__send" type="submit" disabled>В корзину</button>
+  </div>
+  <p class="hub-capture__note">Enter — сохранить, разобрать можно потом</p>
+</form>
+  <ul class="hub-list hub-list--divided hub-glass dirB-list">
+    <li><div class="hub-row"><span class="hub-row__lead"><i data-icon="layers"></i></span><span class="hub-row__body"><span class="hub-row__title">Повторение</span><span class="hub-row__meta">12 карточек к сроку · 2 темы просели</span></span><span class="hub-row__trail"><button class="hub-btn hub-btn--sm" type="button">Начать</button></span></div></li>
+    <li><div class="hub-row"><span class="hub-row__lead"><i data-icon="list-checks"></i></span><span class="hub-row__body"><span class="hub-row__title">План дня</span><span class="hub-row__meta">осталось 3 из 4: карточки, учебные блоки, спорт</span></span><span class="hub-row__trail"><span>1/4</span></span></div></li>
+    <li><div class="hub-row"><span class="hub-row__lead"><i data-icon="inbox"></i></span><span class="hub-row__body"><span class="hub-row__title">Корзина</span><span class="hub-row__meta">5 неразобранных · последнее: «идея для эссе…»</span></span><span class="hub-row__trail"><button class="hub-btn hub-btn--sm" type="button">Разобрать</button></span></div></li>
+    <li><div class="hub-row"><span class="hub-row__lead"><i data-icon="calendar"></i></span><span class="hub-row__body"><span class="hub-row__title">Календарь</span><span class="hub-row__meta">сегодня событий нет · завтра консультация в 16:00</span></span><span class="hub-row__trail"></span></div></li>
+  </ul>
+</div></div></div>
+<script>
+(function () {
+  if (!document.querySelector('link[href*="preview/kit.css"]')) {
+    var l = document.createElement('link'); l.rel = 'stylesheet'; l.href = '../../preview/kit.css'; document.head.appendChild(l);
+  }
+  if (window.HubUI) HubUI.init();
+
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,33 @@
+<!-- @dsCard group="Ввод" height=300 -->
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Выпадающий список</title>
+<link rel="stylesheet" href="../../preview/kit.css">
+
+</head>
+<body>
+<div class="hub-backdrop" data-scene="open"><div class="hub-backdrop__photo"></div><div class="hub-backdrop__veil"></div></div>
+<div class="pv" style="gap:var(--space-5) var(--space-8)">
+  <div class="pv-col pv-w"><div class="hub-field"><span class="hub-label">Закрыт</span><label class="hub-select"><select aria-label="Тема"><option>Лес — тёмная</option><option>Туман — светлая</option><option>Без фото</option></select></label></div>
+    <div class="hub-field"><span class="hub-label">Ошибка</span><label class="hub-select"><select aria-invalid="true" aria-label="Папка"><option>Выберите папку</option></select></label><span class="hub-hint hub-hint--error"><i data-icon="circle-alert"></i>Без папки синхронизировать нечего</span></div>
+    <div class="hub-field"><span class="hub-label">Недоступен</span><label class="hub-select"><select disabled aria-label="Режим"><option>В обе стороны</option></select></label></div></div>
+  <div class="pv-col" style="width:300px"><div class="hub-field"><span class="hub-label">Открыт (своё меню)</span><label class="hub-select"><select class="pv-focus" aria-label="Отложить"><option>Завтра утром</option></select></label></div>
+    <ul class="hub-menu" role="listbox" aria-label="Отложить до" style="margin-top:calc(-1 * var(--space-2))">
+      <li class="hub-menu__item" role="option"><i data-icon="sunrise"></i>Сегодня вечером<span class="hub-menu__meta">19:00</span></li>
+      <li class="hub-menu__item" role="option" aria-selected="true"><i data-icon="sun"></i>Завтра утром<span class="hub-menu__meta">9:00</span></li>
+      <li class="hub-menu__item" role="option"><i data-icon="calendar-days"></i>Через неделю<span class="hub-menu__meta">27 ноября</span></li>
+    </ul></div>
+</div>
+<script>
+(function () {
+  if (!document.querySelector('link[href*="preview/kit.css"]')) {
+    var l = document.createElement('link'); l.rel = 'stylesheet'; l.href = '../../preview/kit.css'; document.head.appendChild(l);
+  }
+  if (window.HubUI) HubUI.init();
+
+})();
+</script>
+</body>
+</html>

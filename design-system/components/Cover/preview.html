@@ -1,0 +1,57 @@
+<!-- @dsCard height=288 -->
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Хаб</title>
+<style>
+  html, body { margin: 0; height: 100%; }
+  body { background: var(--bg); color: var(--text); font-family: var(--font-body); overflow: hidden; }
+  .cover { position: relative; width: 960px; height: 288px; overflow: hidden; }
+  .art { position: absolute; top: 0; left: 480px; width: 480px; height: 288px; overflow: hidden; }
+  .art svg { display: block; width: 480px; height: 288px; }
+  .sun { fill: var(--accent); }
+  .slab { fill: var(--text); }
+  .fog { fill: var(--text-muted); }
+  .glow { fill: var(--accent-soft); }
+  .ground { fill: var(--bg); }
+  .ring { fill: none; stroke: var(--line); stroke-width: 1; }
+  .horizon { stroke: var(--line); stroke-width: 1; }
+  .r-lg { rx: var(--radius); }
+  .r-pill { rx: 20px; }
+  .words { position: absolute; left: var(--space-8); bottom: var(--space-6); max-width: 440px; }
+  .name { margin: 0; font-family: var(--font-heading); font-size: 120px; font-weight: var(--weight-light); line-height: .9; letter-spacing: -0.01em; color: var(--text); }
+  .tag { margin: var(--space-3) 0 0 6px; font-size: var(--font-size-sm); line-height: 20px; color: var(--text-muted); }
+</style>
+</head>
+<body>
+<div class="cover">
+  <div class="art" aria-hidden="true">
+    <svg viewBox="0 0 480 288" width="480" height="288">
+      <!--
+        blocks      accent — восходящее солнце, полукруг r=112 над горизонтом (главный цвет, самый крупный) · text (сливки) — высокая плита 112×208, уходит за верхний край · text-muted (туман) 112×88 · accent-soft — полоса-отблеск 480×40 под горизонтом; ≈26% обложки
+        arrangement горизонт на y=192 (space-12 × 4), солнце садится на него, плита и туман стоят на той же линии, отблеск лежит ниже, земля — сам фон (bg), вырезанный из круга
+        pattern     буквальный мотив «рассвет»: пять тонких колец line вокруг солнца с шагом space-6 — из «тонкие светлые линии, тёплый акцент цвета рассвета» и колец таймера
+        scales      стороны кратны space-2 (8); шаг колец space-6 (24); углы radius (16); отблеск — пилюля (rx = половина высоты, 20)
+      -->
+      <circle class="ring" cx="208" cy="192" r="136"/>
+      <circle class="ring" cx="208" cy="192" r="160"/>
+      <circle class="ring" cx="208" cy="192" r="184"/>
+      <circle class="ring" cx="208" cy="192" r="208"/>
+      <circle class="ring" cx="208" cy="192" r="232"/>
+      <rect class="slab r-lg" x="352" y="-16" width="112" height="208" rx="16"/>
+      <rect class="fog r-lg" x="0" y="104" width="112" height="88" rx="16"/>
+      <circle class="sun" cx="208" cy="192" r="112"/>
+      <rect class="ground" x="0" y="192" width="480" height="96"/>
+      <line class="horizon" x1="0" y1="192.5" x2="480" y2="192.5"/>
+      <rect class="glow r-pill" x="64" y="216" width="288" height="40" rx="20"/>
+      <rect class="glow r-pill" x="368" y="216" width="112" height="40" rx="20"/>
+    </svg>
+  </div>
+  <div class="words">
+    <h1 class="name">Хаб</h1>
+    <p class="tag">Тихий слой поверх фотографии</p>
+  </div>
+</div>
+</body>
+</html>

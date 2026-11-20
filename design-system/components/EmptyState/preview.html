@@ -1,0 +1,26 @@
+<!-- @dsCard group="Состояния" height=340 -->
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Пустое состояние</title>
+<link rel="stylesheet" href="../../preview/kit.css">
+
+</head>
+<body>
+<div class="hub-backdrop" data-scene="open"><div class="hub-backdrop__photo"></div><div class="hub-backdrop__veil"></div></div>
+<div class="pv" style="gap:var(--space-6);justify-content:center">
+<div class="hub-glass" style="width:420px"><div class="hub-empty"><i data-icon="inbox" class="hub-empty__icon"></i><h2 class="hub-empty__title">Корзина пуста</h2><p class="hub-empty__text">Всё разобрано. Новая мысль — <kbd class="hub-kbd">Ctrl</kbd> <kbd class="hub-kbd">Пробел</kbd> из любой программы.</p><div class="hub-empty__action"><button class="hub-btn" type="button">На «Сегодня»</button></div></div></div>
+<div class="hub-glass" style="width:420px"><div class="hub-empty"><i data-icon="search" class="hub-empty__icon"></i><h2 class="hub-empty__title">Ничего не нашлось</h2><p class="hub-empty__text">По запросу «левиафан» нет ни приложений, ни записей. Проверьте раскладку: «ktdbfafy».</p></div></div>
+</div>
+<script>
+(function () {
+  if (!document.querySelector('link[href*="preview/kit.css"]')) {
+    var l = document.createElement('link'); l.rel = 'stylesheet'; l.href = '../../preview/kit.css'; document.head.appendChild(l);
+  }
+  if (window.HubUI) HubUI.init();
+
+})();
+</script>
+</body>
+</html>

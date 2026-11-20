@@ -1,0 +1,15 @@
+{
+  "id": "forest",
+  "name": "Лес",
+  "base": "dark",
+  "photo": "photo.jpg",
+  "photoPosition": "50% 38%",
+  "photoSource": "Фото из прототипа (скриншот, 1470×840). Автор и лицензия неизвестны — заменить оригиналом или свободным фото до публикации хаба.",
+  "greeting": "auto",
+  "tokens": {
+    "scrim-top": "rgba(6,12,9,0.74)",
+    "scrim-mid": "rgba(6,12,9,0.54)",
+    "scrim-bottom": "rgba(6,12,9,0.30)",
+    "scrim-lock": "rgba(6,12,9,0.38)"
+  }
+}

@@ -1,0 +1,130 @@
+<!-- @dsCard group="Экраны · вторая очередь" height=964 width=1440 subtitle="Папки · конфликт · пробный прогон · стоп-кран" -->
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Синхронизация</title>
+<link rel="stylesheet" href="../../preview/kit.css">
+
+</head>
+<body>
+
+<div class="pv-states">
+  <span class="pv-states__title">Синхронизация</span>
+  <div class="hub-segmented" role="group" aria-label="Состояние"><button type="button" aria-pressed="true" data-i="0">Папки</button><button type="button" aria-pressed="false" data-i="1">Конфликт</button><button type="button" aria-pressed="false" data-i="2">Пробный прогон</button><button type="button" aria-pressed="false" data-i="3">Стоп-кран</button></div>
+  <span class="pv-states__note" id="pvNote"></span>
+</div>
+<div id="pvScreen"></div>
+<template data-note="список синхронизируемых папок и страховка"><div class="pv-screen" data-scene="open"><div class="hub-backdrop" data-scene="open"><div class="hub-backdrop__photo"></div><div class="hub-backdrop__veil"></div></div>
+<div class="hub-shell">
+<nav class="hub-rail hub-glass" aria-label="Приложения"><button class="hub-rail__item" type="button" title="Сегодня" aria-label="Сегодня"><i data-icon="house"></i></button><button class="hub-rail__item" type="button" title="Корзина" aria-label="Корзина"><i data-icon="inbox"></i><span class="hub-rail__badge">5</span></button><div class="hub-rail__sep"></div><button class="hub-rail__item" type="button" title="Повторение" aria-label="Повторение"><i data-icon="layers"></i></button><button class="hub-rail__item" type="button" title="План дня" aria-label="План дня"><i data-icon="list-checks"></i></button><button class="hub-rail__item" type="button" title="Календарь" aria-label="Календарь"><i data-icon="calendar"></i></button><button class="hub-rail__item" type="button" title="Дневник" aria-label="Дневник"><i data-icon="notebook-pen"></i></button><button class="hub-rail__item" type="button" title="Учебные блоки" aria-label="Учебные блоки"><i data-icon="timer"></i></button><div class="hub-rail__end"><button class="hub-rail__item" type="button" title="Темы" aria-label="Темы"><i data-icon="palette"></i></button><button class="hub-rail__item" type="button" title="Настройки" aria-label="Настройки" aria-current=page><i data-icon="settings"></i></button></div></nav>
+<header class="hub-shell__top"><form class="hub-capture hub-capture--compact" style="" onsubmit="return false">
+  <div class="hub-capture__bar">
+    <i data-icon="lightbulb" class="hub-capture__icon"></i>
+    <input class="hub-capture__input" placeholder="Мысль в корзину…" aria-label="Мысль в корзину">
+    <button class="hub-capture__send" type="submit" disabled>В корзину</button>
+  </div>
+  <p class="hub-capture__note"></p>
+</form><div class="hub-topbar__right"><span class="hub-sync" data-state="ok"><i data-icon="cloud-check"></i><span>синхронизировано</span></span><span class="hub-row__trail" style="font-size:var(--font-size-sm)"><kbd class="hub-kbd">Ctrl</kbd><kbd class="hub-kbd">K</kbd></span><button class="hub-btn hub-btn--sm hub-btn--glass hub-btn--icon" type="button" aria-label="Заблокировать"><i data-icon="lock"></i></button></div></header>
+<main class="hub-shell__main hub-glass"><div style="display:flex;align-items:flex-end;justify-content:space-between;gap:var(--space-4)"><div><h1 class="hub-page-title">Синхронизация</h1><p class="hub-muted" style="margin:var(--space-1) 0 0">всё синхронизировано · 2 минуты назад · Google Drive, папка «Хаб»</p></div><div class="hub-btn-row"><button class="hub-btn" type="button"><i data-icon="refresh-cw"></i>Синхронизировать сейчас</button><button class="hub-btn hub-btn--primary" type="button"><i data-icon="folder-plus"></i>Добавить папку</button></div></div>
+<section class="hub-glass" style="margin-top:var(--space-6);padding:var(--space-2) var(--space-3)"><ul class="hub-list hub-list--divided">
+<li><div class="hub-row"><span class="hub-row__lead"><i data-icon="database"></i></span><span class="hub-row__body"><span class="hub-row__title">Данные хаба</span><span class="hub-row__meta">в обе стороны · зашифровано · 2 340 файлов</span></span><span class="hub-row__trail"><span class="hub-sync" data-state="ok"><i data-icon="cloud-check"></i>2 мин назад</span></span></div></li>
+<li><div class="hub-row"><span class="hub-row__lead"><i data-icon="folder"></i></span><span class="hub-row__body"><span class="hub-row__title">Obsidian — основное хранилище</span><span class="hub-row__meta">в обе стороны · зашифровано · 1 204 файла · без .obsidian/workspace*.json</span></span><span class="hub-row__trail"><span class="hub-tag hub-tag--warning"><i data-icon="triangle-alert"></i>конфликт: 1</span><button class="hub-btn hub-btn--sm" type="button">Разобрать</button></span></div></li>
+<li><div class="hub-row"><span class="hub-row__lead"><i data-icon="folder"></i></span><span class="hub-row__body"><span class="hub-row__title">Конспекты</span><span class="hub-row__meta">только копия в облако · зашифровано · 318 файлов</span></span><span class="hub-row__trail"><span class="hub-sync" data-state="ok"><i data-icon="cloud-check"></i>вчера, 23:10</span></span></div></li>
+</ul></section>
+<h2 class="hub-section-title" style="margin-top:var(--space-6)">Страховка</h2>
+<section class="hub-glass" style="padding:var(--space-4) var(--space-5);display:grid;gap:var(--space-3)">
+<label class="hub-switch"><input type="checkbox" role="switch" checked><span>Синхронизировать в фоне, когда хаб закрыт</span></label>
+<label class="hub-switch"><input type="checkbox" role="switch" checked><span>Снимок каждой папки раз в день, хранить 30 последних</span></label>
+<label class="hub-switch"><input type="checkbox" role="switch" checked disabled><span>Остановиться при массовом удалении — включено всегда</span></label>
+</section>
+<p class="hub-hint" style="margin-top:var(--space-4)"><i data-icon="shield-check"></i>Google видит только число файлов и их размеры. Имена и содержимое шифруются на этом устройстве до отправки.</p></main>
+</div></div></template><template data-note="две версии рядом и выбор"><div class="pv-screen" data-scene="open"><div class="hub-backdrop" data-scene="open"><div class="hub-backdrop__photo"></div><div class="hub-backdrop__veil"></div></div>
+<div class="hub-shell">
+<nav class="hub-rail hub-glass" aria-label="Приложения"><button class="hub-rail__item" type="button" title="Сегодня" aria-label="Сегодня"><i data-icon="house"></i></button><button class="hub-rail__item" type="button" title="Корзина" aria-label="Корзина"><i data-icon="inbox"></i><span class="hub-rail__badge">5</span></button><div class="hub-rail__sep"></div><button class="hub-rail__item" type="button" title="Повторение" aria-label="Повторение"><i data-icon="layers"></i></button><button class="hub-rail__item" type="button" title="План дня" aria-label="План дня"><i data-icon="list-checks"></i></button><button class="hub-rail__item" type="button" title="Календарь" aria-label="Календарь"><i data-icon="calendar"></i></button><button class="hub-rail__item" type="button" title="Дневник" aria-label="Дневник"><i data-icon="notebook-pen"></i></button><button class="hub-rail__item" type="button" title="Учебные блоки" aria-label="Учебные блоки"><i data-icon="timer"></i></button><div class="hub-rail__end"><button class="hub-rail__item" type="button" title="Темы" aria-label="Темы"><i data-icon="palette"></i></button><button class="hub-rail__item" type="button" title="Настройки" aria-label="Настройки" aria-current=page><i data-icon="settings"></i></button></div></nav>
+<header class="hub-shell__top"><form class="hub-capture hub-capture--compact" style="" onsubmit="return false">
+  <div class="hub-capture__bar">
+    <i data-icon="lightbulb" class="hub-capture__icon"></i>
+    <input class="hub-capture__input" placeholder="Мысль в корзину…" aria-label="Мысль в корзину">
+    <button class="hub-capture__send" type="submit" disabled>В корзину</button>
+  </div>
+  <p class="hub-capture__note"></p>
+</form><div class="hub-topbar__right"><button class="hub-sync" data-state="conflict" type="button"><i data-icon="triangle-alert"></i><span>конфликт в 1 файле</span></button><span class="hub-row__trail" style="font-size:var(--font-size-sm)"><kbd class="hub-kbd">Ctrl</kbd><kbd class="hub-kbd">K</kbd></span><button class="hub-btn hub-btn--sm hub-btn--glass hub-btn--icon" type="button" aria-label="Заблокировать"><i data-icon="lock"></i></button></div></header>
+<main class="hub-shell__main hub-glass"><div style="display:flex;align-items:flex-end;justify-content:space-between;gap:var(--space-4)"><div><h1 class="hub-page-title">Конфликт</h1><p class="hub-muted" style="margin:var(--space-1) 0 0">Obsidian / Дневник / 2026-11-19.md — файл изменили на двух устройствах, обе версии сохранены</p></div><div class="hub-btn-row"><button class="hub-btn hub-btn--quiet" type="button"><i data-icon="external-link"></i>Открыть в Obsidian</button></div></div>
+<div class="hub-compare" style="margin-top:var(--space-6)">
+ <section class="hub-version is-chosen"><div class="hub-version__head"><i data-icon="monitor"></i><span class="hub-version__title">ПК</span><span class="hub-version__meta">вчера, 23:40 · 2,1 КБ</span></div><div class="hub-version__body">
+  <span class="hub-version__line hub-version__line--same"># 19 ноября</span><span class="hub-version__line hub-version__line--same">Утром — логика, два блока.</span>
+  <span class="hub-version__line hub-version__line--add">Днём перечитал главу 13 «Левиафана»: страх как основание договора.</span>
+  <span class="hub-version__line hub-version__line--same">Вечером — спорт, день B.</span></div>
+  <div style="padding:var(--space-3) var(--space-4);border-top:1px solid var(--line-soft)"><button class="hub-btn hub-btn--primary hub-btn--sm" type="button">Оставить эту <kbd class="hub-kbd">1</kbd></button></div></section>
+ <section class="hub-version"><div class="hub-version__head"><i data-icon="smartphone"></i><span class="hub-version__title">Телефон</span><span class="hub-version__meta">вчера, 23:52 · 1,9 КБ</span></div><div class="hub-version__body">
+  <span class="hub-version__line hub-version__line--same"># 19 ноября</span><span class="hub-version__line hub-version__line--same">Утром — логика, два блока.</span>
+  <span class="hub-version__line hub-version__line--del">Вечером — спорт, день B.</span>
+  <span class="hub-version__line hub-version__line--add">Вечером — спорт, день B, присед 5×5.</span></div>
+  <div style="padding:var(--space-3) var(--space-4);border-top:1px solid var(--line-soft)"><button class="hub-btn hub-btn--sm" type="button">Оставить эту <kbd class="hub-kbd">2</kbd></button></div></section>
+</div>
+<div class="hub-btn-row" style="margin-top:var(--space-5)"><button class="hub-btn" type="button"><i data-icon="copy"></i>Оставить обе <kbd class="hub-kbd">3</kbd></button><span class="hub-hint">вторая сохранится рядом как «2026-11-19 (телефон).md»</span></div></main>
+</div></div></template><template data-note="перед первой синхронизацией новой папки"><div class="pv-screen" data-scene="open"><div class="hub-backdrop" data-scene="open"><div class="hub-backdrop__photo"></div><div class="hub-backdrop__veil"></div></div>
+<div class="hub-shell">
+<nav class="hub-rail hub-glass" aria-label="Приложения"><button class="hub-rail__item" type="button" title="Сегодня" aria-label="Сегодня"><i data-icon="house"></i></button><button class="hub-rail__item" type="button" title="Корзина" aria-label="Корзина"><i data-icon="inbox"></i><span class="hub-rail__badge">5</span></button><div class="hub-rail__sep"></div><button class="hub-rail__item" type="button" title="Повторение" aria-label="Повторение"><i data-icon="layers"></i></button><button class="hub-rail__item" type="button" title="План дня" aria-label="План дня"><i data-icon="list-checks"></i></button><button class="hub-rail__item" type="button" title="Календарь" aria-label="Календарь"><i data-icon="calendar"></i></button><button class="hub-rail__item" type="button" title="Дневник" aria-label="Дневник"><i data-icon="notebook-pen"></i></button><button class="hub-rail__item" type="button" title="Учебные блоки" aria-label="Учебные блоки"><i data-icon="timer"></i></button><div class="hub-rail__end"><button class="hub-rail__item" type="button" title="Темы" aria-label="Темы"><i data-icon="palette"></i></button><button class="hub-rail__item" type="button" title="Настройки" aria-label="Настройки" aria-current=page><i data-icon="settings"></i></button></div></nav>
+<header class="hub-shell__top"><form class="hub-capture hub-capture--compact" style="" onsubmit="return false">
+  <div class="hub-capture__bar">
+    <i data-icon="lightbulb" class="hub-capture__icon"></i>
+    <input class="hub-capture__input" placeholder="Мысль в корзину…" aria-label="Мысль в корзину">
+    <button class="hub-capture__send" type="submit" disabled>В корзину</button>
+  </div>
+  <p class="hub-capture__note"></p>
+</form><div class="hub-topbar__right"><span class="hub-sync" data-state="ok"><i data-icon="cloud-check"></i><span>синхронизировано</span></span><span class="hub-row__trail" style="font-size:var(--font-size-sm)"><kbd class="hub-kbd">Ctrl</kbd><kbd class="hub-kbd">K</kbd></span><button class="hub-btn hub-btn--sm hub-btn--glass hub-btn--icon" type="button" aria-label="Заблокировать"><i data-icon="lock"></i></button></div></header>
+<main class="hub-shell__main hub-glass"><div style="display:flex;align-items:flex-end;justify-content:space-between;gap:var(--space-4)"><div><h1 class="hub-page-title">Новая папка: Конспекты</h1><p class="hub-muted" style="margin:var(--space-1) 0 0">перед первой синхронизацией — пробный прогон: ничего ещё не сделано</p></div><div class="hub-btn-row"></div></div>
+<div style="display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:var(--space-6);margin-top:var(--space-6)">
+<section class="hub-glass" style="padding:var(--space-2) var(--space-3)"><ul class="hub-list hub-list--divided">
+<li><div class="hub-row"><span class="hub-row__lead"><i data-icon="cloud-upload"></i></span><span class="hub-row__body"><span class="hub-row__title">Загрузить в облако</span><span class="hub-row__meta">зашифрованными</span></span><span class="hub-row__trail">1 204 файла · 310 МБ</span></div></li>
+<li><div class="hub-row"><span class="hub-row__lead"><i data-icon="download"></i></span><span class="hub-row__body"><span class="hub-row__title">Скачать из облака</span></span><span class="hub-row__trail">0</span></div></li>
+<li><div class="hub-row"><span class="hub-row__lead"><i data-icon="trash-2"></i></span><span class="hub-row__body"><span class="hub-row__title">Удалить</span></span><span class="hub-row__trail">0</span></div></li>
+<li><div class="hub-row"><span class="hub-row__lead"><i data-icon="eye-off"></i></span><span class="hub-row__body"><span class="hub-row__title">Исключить</span><span class="hub-row__meta">.obsidian/workspace*.json</span></span><span class="hub-row__trail">3 файла</span></div></li></ul></section>
+<section class="hub-glass" style="padding:var(--space-5);display:grid;gap:var(--space-4);align-content:start">
+<div class="hub-field"><span class="hub-label">Режим</span><label class="hub-select"><select aria-label="Режим"><option>Только копия в облако</option><option>В обе стороны</option></select></label></div>
+<label class="hub-switch"><input type="checkbox" role="switch" checked disabled><span>Шифровать — всегда</span></label>
+<div class="hub-btn-row"><button class="hub-btn hub-btn--quiet" type="button">Отмена</button><button class="hub-btn hub-btn--primary" type="button">Начать синхронизацию</button></div></section></div></main>
+</div></div></template><template data-note="массовое удаление — остановлено"><div class="pv-screen" data-scene="open"><div class="hub-backdrop" data-scene="open"><div class="hub-backdrop__photo"></div><div class="hub-backdrop__veil"></div></div>
+<div class="hub-shell">
+<nav class="hub-rail hub-glass" aria-label="Приложения"><button class="hub-rail__item" type="button" title="Сегодня" aria-label="Сегодня"><i data-icon="house"></i></button><button class="hub-rail__item" type="button" title="Корзина" aria-label="Корзина"><i data-icon="inbox"></i><span class="hub-rail__badge">5</span></button><div class="hub-rail__sep"></div><button class="hub-rail__item" type="button" title="Повторение" aria-label="Повторение"><i data-icon="layers"></i></button><button class="hub-rail__item" type="button" title="План дня" aria-label="План дня"><i data-icon="list-checks"></i></button><button class="hub-rail__item" type="button" title="Календарь" aria-label="Календарь"><i data-icon="calendar"></i></button><button class="hub-rail__item" type="button" title="Дневник" aria-label="Дневник"><i data-icon="notebook-pen"></i></button><button class="hub-rail__item" type="button" title="Учебные блоки" aria-label="Учебные блоки"><i data-icon="timer"></i></button><div class="hub-rail__end"><button class="hub-rail__item" type="button" title="Темы" aria-label="Темы"><i data-icon="palette"></i></button><button class="hub-rail__item" type="button" title="Настройки" aria-label="Настройки" aria-current=page><i data-icon="settings"></i></button></div></nav>
+<header class="hub-shell__top"><form class="hub-capture hub-capture--compact" style="" onsubmit="return false">
+  <div class="hub-capture__bar">
+    <i data-icon="lightbulb" class="hub-capture__icon"></i>
+    <input class="hub-capture__input" placeholder="Мысль в корзину…" aria-label="Мысль в корзину">
+    <button class="hub-capture__send" type="submit" disabled>В корзину</button>
+  </div>
+  <p class="hub-capture__note"></p>
+</form><div class="hub-topbar__right"><button class="hub-sync" data-state="conflict" type="button"><i data-icon="triangle-alert"></i><span>конфликт в 1 файле</span></button><span class="hub-row__trail" style="font-size:var(--font-size-sm)"><kbd class="hub-kbd">Ctrl</kbd><kbd class="hub-kbd">K</kbd></span><button class="hub-btn hub-btn--sm hub-btn--glass hub-btn--icon" type="button" aria-label="Заблокировать"><i data-icon="lock"></i></button></div></header>
+<main class="hub-shell__main hub-glass"><div style="display:flex;align-items:flex-end;justify-content:space-between;gap:var(--space-4)"><div><h1 class="hub-page-title">Синхронизация</h1><p class="hub-muted" style="margin:var(--space-1) 0 0">остановлена на папке «Obsidian — основное хранилище»</p></div><div class="hub-btn-row"></div></div>
+<section class="hub-glass" style="margin-top:var(--space-6);padding:var(--space-6);display:flex;gap:var(--space-5);border-color:var(--warning)">
+<i data-icon="triangle-alert" class="hub-icon--lg" style="color:var(--warning)"></i>
+<div style="flex:1"><h2 class="hub-section-title" style="margin-bottom:var(--space-2)">Синхронизация остановлена: слишком много удалений</h2>
+<p style="margin:0;color:var(--text-muted)">С телефона пришло удаление 412 из 1 204 файлов. Это больше порога — похоже на ошибку, а не на уборку. На ПК и в облаке ничего не удалено.</p>
+<p class="hub-hint" style="margin-top:var(--space-3)"><i data-icon="archive"></i>Последний снимок папки — сегодня, 04:00.</p>
+<div class="hub-btn-row" style="margin-top:var(--space-5)"><button class="hub-btn hub-btn--primary" type="button">Вернуть файлы на телефон</button><button class="hub-btn" type="button">Показать список</button><button class="hub-btn hub-btn--danger" type="button"><i data-icon="trash-2"></i>Удалить везде</button></div></div></section></main>
+</div></div></template>
+<script>
+(function () {
+  if (!document.querySelector('link[href*="preview/kit.css"]')) {
+    var l = document.createElement('link'); l.rel = 'stylesheet'; l.href = '../../preview/kit.css'; document.head.appendChild(l);
+  }
+  if (window.HubUI) HubUI.init();
+  var tpls = document.querySelectorAll('template[data-note]');
+  var host = document.getElementById('pvScreen'), note = document.getElementById('pvNote');
+  var btns = document.querySelectorAll('.pv-states [data-i]');
+  function show(i) {
+    host.innerHTML = tpls[i].innerHTML; note.textContent = tpls[i].getAttribute('data-note');
+    btns.forEach(function (b) { b.setAttribute('aria-pressed', String(Number(b.dataset.i) === i)); });
+    HubUI.init(host);
+    if (window.pvAfter) window.pvAfter(host, i);
+  }
+  btns.forEach(function (b) { b.addEventListener('click', function () { show(Number(b.dataset.i)); }); });
+
+  show(0);
+
+})();
+</script>
+</body>
+</html>

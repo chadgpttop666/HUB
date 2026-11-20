@@ -1,0 +1,30 @@
+<!-- @dsCard group="Данные" height=230 -->
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Прогресс</title>
+<link rel="stylesheet" href="../../preview/kit.css">
+
+</head>
+<body>
+<div class="hub-backdrop" data-scene="open"><div class="hub-backdrop__photo"></div><div class="hub-backdrop__veil"></div></div>
+<div class="pv" style="gap:var(--space-6) var(--space-8)">
+<div class="pv-col" style="width:320px"><div class="hub-meter"><div class="hub-meter__head"><span>Сессия повторения</span><b>3 из 12</b></div><progress class="hub-progress" max="12" value="3"></progress></div>
+  <div class="hub-meter"><div class="hub-meter__head"><span>Синхронизация «Obsidian»</span><b>82%</b></div><progress class="hub-progress" max="100" value="82"></progress></div>
+  <div class="hub-meter"><div class="hub-meter__head"><span>Неизвестно, сколько</span></div><progress class="hub-progress"></progress></div></div>
+<div class="pv-col" style="width:320px"><div class="hub-meter"><div class="hub-meter__head"><span>Учебные блоки</span><b>0 из 4</b></div><div class="hub-steps" role="img" aria-label="0 из 4"><i></i><i></i><i></i><i></i></div></div>
+  <div class="hub-meter"><div class="hub-meter__head"><span>Учебные блоки · идёт второй</span><b>1 из 4</b></div><div class="hub-steps" role="img" aria-label="1 из 4, второй идёт"><i class="is-done"></i><i class="is-current" style="--p:35%"></i><i></i><i></i></div></div>
+  <div class="hub-meter"><div class="hub-meter__head"><span>Готово</span><b>4 из 4</b></div><div class="hub-steps" role="img" aria-label="4 из 4"><i class="is-done"></i><i class="is-done"></i><i class="is-done"></i><i class="is-done"></i></div></div></div>
+</div>
+<script>
+(function () {
+  if (!document.querySelector('link[href*="preview/kit.css"]')) {
+    var l = document.createElement('link'); l.rel = 'stylesheet'; l.href = '../../preview/kit.css'; document.head.appendChild(l);
+  }
+  if (window.HubUI) HubUI.init();
+
+})();
+</script>
+</body>
+</html>

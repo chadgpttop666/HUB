@@ -1,0 +1,38 @@
+<!-- @dsCard group="Контейнеры" height=380 -->
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Строка списка</title>
+<link rel="stylesheet" href="../../preview/kit.css">
+
+</head>
+<body>
+<div class="hub-backdrop" data-scene="open"><div class="hub-backdrop__photo"></div><div class="hub-backdrop__veil"></div></div>
+<div class="pv" style="gap:var(--space-6)">
+<div class="pv-col" style="width:440px"><span class="pv-cap">Список с разделителями на стекле</span>
+<ul class="hub-list hub-list--divided hub-glass" style="padding:var(--space-1)">
+  <li><button class="hub-row" type="button"><span class="hub-row__lead"><i data-icon="brain"></i></span><span class="hub-row__body"><span class="hub-row__title">Логика</span><span class="hub-row__meta">24 карточки · удержание 61%</span></span><span class="hub-row__trail"><span class="hub-tag hub-tag--warning"><i data-icon="triangle-alert"></i>просела</span></span></button></li>
+  <li><button class="hub-row pv-hover" type="button"><span class="hub-row__lead"><i data-icon="brain"></i></span><span class="hub-row__body"><span class="hub-row__title">Право (наведение)</span><span class="hub-row__meta">31 карточка · удержание 68%</span></span><span class="hub-row__trail"><i data-icon="chevron-right" class="hub-icon--sm"></i></span></button></li>
+  <li><button class="hub-row" type="button" aria-selected="true"><span class="hub-row__lead"><i data-icon="brain"></i></span><span class="hub-row__body"><span class="hub-row__title">Экономика (выбрана)</span><span class="hub-row__meta">40 карточек · удержание 84%</span></span><span class="hub-row__trail">12</span></button></li>
+  <li><button class="hub-row pv-focus" type="button"><span class="hub-row__lead"><i data-icon="brain"></i></span><span class="hub-row__body"><span class="hub-row__title">Социология (фокус)</span><span class="hub-row__meta">18 карточек · удержание 90%</span></span><span class="hub-row__trail"><kbd class="hub-kbd">Enter</kbd></span></button></li>
+  <li><div class="hub-row" aria-disabled="true"><span class="hub-row__lead"><i data-icon="archive"></i></span><span class="hub-row__body"><span class="hub-row__title">Политология (в архиве)</span><span class="hub-row__meta">недоступна до восстановления</span></span></div></li>
+</ul></div>
+<div class="pv-col" style="width:360px"><span class="pv-cap">Без разделителей, с чекбоксами</span>
+<ul class="hub-list hub-glass" style="padding:var(--space-1)">
+  <li><label class="hub-row"><span class="hub-row__lead"><span class="hub-check hub-check--done"><input type="checkbox" checked aria-label="готово"></span></span><span class="hub-row__body"><span class="hub-row__title" style="color:var(--text-muted);text-decoration:line-through">балкон</span></span><span class="hub-row__trail">утро</span></label></li>
+  <li><label class="hub-row"><span class="hub-row__lead"><span class="hub-check"><input type="checkbox" aria-label="готово"></span></span><span class="hub-row__body"><span class="hub-row__title">учебные блоки</span><span class="hub-row__meta">0 из 4 · по 25 минут</span></span><span class="hub-row__trail">день</span></label></li>
+  <li><label class="hub-row"><span class="hub-row__lead"><span class="hub-check"><input type="checkbox" aria-label="готово"></span></span><span class="hub-row__body"><span class="hub-row__title">спорт · день A</span></span><span class="hub-row__trail">вечер</span></label></li>
+</ul></div>
+</div>
+<script>
+(function () {
+  if (!document.querySelector('link[href*="preview/kit.css"]')) {
+    var l = document.createElement('link'); l.rel = 'stylesheet'; l.href = '../../preview/kit.css'; document.head.appendChild(l);
+  }
+  if (window.HubUI) HubUI.init();
+
+})();
+</script>
+</body>
+</html>

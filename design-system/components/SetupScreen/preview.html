@@ -1,0 +1,61 @@
+<!-- @dsCard group="Экраны · вторая очередь" height=964 width=1440 subtitle="Имя · пароль · ключ восстановления · Google Drive · готово" -->
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Первая настройка</title>
+<link rel="stylesheet" href="../../preview/kit.css">
+
+</head>
+<body>
+
+<div class="pv-states">
+  <span class="pv-states__title">Первая настройка</span>
+  <div class="hub-segmented" role="group" aria-label="Состояние"><button type="button" aria-pressed="true" data-i="0">Имя</button><button type="button" aria-pressed="false" data-i="1">Пароль</button><button type="button" aria-pressed="false" data-i="2">Ключ</button><button type="button" aria-pressed="false" data-i="3">Google Drive</button><button type="button" aria-pressed="false" data-i="4">Готово</button></div>
+  <span class="pv-states__note" id="pvNote"></span>
+</div>
+<div id="pvScreen"></div>
+<template data-note="как здороваться"><div class="pv-screen" data-scene="pass"><div class="hub-backdrop" data-scene="pass"><div class="hub-backdrop__photo"></div><div class="hub-backdrop__veil"></div></div><div style="position:absolute;inset:0;display:grid;place-items:center">
+<div class="hub-glass hub-glass--strong" style="width:620px;padding:var(--space-8);border-radius:var(--radius-xl)"><ol class="hub-stepper" aria-label="Шаги"><li aria-current="step">Имя</li><li>Пароль</li><li>Ключ</li><li>Google Drive</li></ol><div style="margin-top:var(--space-6)"><h1 class="t-display" style="margin:0">Как к вам обращаться?</h1><p class="hub-muted" style="margin:var(--space-2) 0 var(--space-5)">Так хаб будет здороваться на экране входа. Можно поменять в темах.</p>
+<input class="hub-input hub-input--lg pv-focus" value="Максим" aria-label="Имя"><div class="hub-btn-row" style="justify-content:space-between;margin-top:var(--space-8)"><span></span><button class="hub-btn hub-btn--primary" type="button">Дальше <kbd class="hub-kbd">Enter</kbd></button></div></div></div></div></div></template><template data-note="дважды; несовпадение — сразу у поля"><div class="pv-screen" data-scene="pass"><div class="hub-backdrop" data-scene="pass"><div class="hub-backdrop__photo"></div><div class="hub-backdrop__veil"></div></div><div style="position:absolute;inset:0;display:grid;place-items:center">
+<div class="hub-glass hub-glass--strong" style="width:620px;padding:var(--space-8);border-radius:var(--radius-xl)"><ol class="hub-stepper" aria-label="Шаги"><li class="is-done">Имя</li><li aria-current="step">Пароль</li><li>Ключ</li><li>Google Drive</li></ol><div style="margin-top:var(--space-6)"><h1 class="t-display" style="margin:0">Придумайте пароль</h1><p class="hub-muted" style="margin:var(--space-2) 0 var(--space-5)">Им открываются данные хаба на этом устройстве. Восстановить пароль нельзя — только ключом из следующего шага.</p>
+<div style="display:grid;gap:var(--space-4)"><label class="hub-field"><span class="hub-label">Пароль</span><input class="hub-input hub-input--lg hub-input--secret" type="password" value="лес на рассвете"><span class="hub-hint">Длинная фраза из нескольких слов надёжнее короткого сложного слова.</span></label>
+<label class="hub-field"><span class="hub-label">Ещё раз</span><input class="hub-input hub-input--lg hub-input--secret pv-focus" type="password" value="лес на расвете" aria-invalid="true"><span class="hub-hint hub-hint--error"><i data-icon="circle-alert"></i>Пароли не совпадают</span></label></div><div class="hub-btn-row" style="justify-content:space-between;margin-top:var(--space-8)"><button class="hub-btn hub-btn--quiet" type="button"><i data-icon="arrow-left"></i>Назад</button><button class="hub-btn hub-btn--primary" type="button" disabled>Дальше <kbd class="hub-kbd">Enter</kbd></button></div></div></div></div></div></template><template data-note="записать на бумагу; «Дальше» — только после отметки"><div class="pv-screen" data-scene="pass"><div class="hub-backdrop" data-scene="pass"><div class="hub-backdrop__photo"></div><div class="hub-backdrop__veil"></div></div><div style="position:absolute;inset:0;display:grid;place-items:center">
+<div class="hub-glass hub-glass--strong" style="width:620px;padding:var(--space-8);border-radius:var(--radius-xl)"><ol class="hub-stepper" aria-label="Шаги"><li class="is-done">Имя</li><li class="is-done">Пароль</li><li aria-current="step">Ключ</li><li>Google Drive</li></ol><div style="margin-top:var(--space-6)"><h1 class="t-display" style="margin:0">Запишите ключ восстановления</h1><p class="hub-muted" style="margin:var(--space-2) 0 var(--space-5)">Единственный способ вернуть данные, если забудете пароль. Храните на бумаге — не в телефоне и не в облаке. Без пароля и без этого ключа данные не вернуть никак.</p>
+<div class="hub-key" aria-label="Ключ восстановления"><span>7KQ2</span><span>M9XD</span><span>R4TW</span><span>HC8P</span><span>3VNJ</span><span>6YBF</span><span>Q2LS</span><span>W9EA</span></div>
+<div class="hub-btn-row" style="margin-top:var(--space-4)"><button class="hub-btn" type="button"><i data-icon="printer"></i>Распечатать</button></div>
+<label class="hub-check" style="margin-top:var(--space-5)"><input type="checkbox"><span>Я записал ключ и убрал бумагу</span></label><div class="hub-btn-row" style="justify-content:space-between;margin-top:var(--space-8)"><button class="hub-btn hub-btn--quiet" type="button"><i data-icon="arrow-left"></i>Назад</button><button class="hub-btn hub-btn--primary" type="button" disabled>Дальше <kbd class="hub-kbd">Enter</kbd></button></div></div></div></div></div></template><template data-note="узкие права словами; можно позже"><div class="pv-screen" data-scene="pass"><div class="hub-backdrop" data-scene="pass"><div class="hub-backdrop__photo"></div><div class="hub-backdrop__veil"></div></div><div style="position:absolute;inset:0;display:grid;place-items:center">
+<div class="hub-glass hub-glass--strong" style="width:620px;padding:var(--space-8);border-radius:var(--radius-xl)"><ol class="hub-stepper" aria-label="Шаги"><li class="is-done">Имя</li><li class="is-done">Пароль</li><li class="is-done">Ключ</li><li aria-current="step">Google Drive</li></ol><div style="margin-top:var(--space-6)"><h1 class="t-display" style="margin:0">Подключите Google Drive</h1><p class="hub-muted" style="margin:var(--space-2) 0 var(--space-5)">Чтобы данные были одинаковыми на ПК и телефоне.</p>
+<ul class="hub-list"><li><div class="hub-row"><span class="hub-row__lead"><i data-icon="shield-check"></i></span><span class="hub-row__body"><span class="hub-row__title">Хаб видит только свои файлы</span><span class="hub-row__meta">ваши документы на Drive ему недоступны</span></span></div></li>
+<li><div class="hub-row"><span class="hub-row__lead"><i data-icon="key-round"></i></span><span class="hub-row__body"><span class="hub-row__title">Всё шифруется до отправки</span><span class="hub-row__meta">ключ есть только на ваших устройствах</span></span></div></li>
+<li><div class="hub-row"><span class="hub-row__lead"><i data-icon="hard-drive"></i></span><span class="hub-row__body"><span class="hub-row__title">Без интернета всё работает</span><span class="hub-row__meta">Drive догонит, когда появится сеть</span></span></div></li></ul>
+<div class="hub-btn-row" style="justify-content:space-between;margin-top:var(--space-8)"><button class="hub-btn hub-btn--quiet" type="button">Позже — только на этом ПК</button><button class="hub-btn hub-btn--primary" type="button"><i data-icon="external-link"></i>Подключить Google Drive</button></div></div></div></div></div></template><template data-note="итог и автозапуск"><div class="pv-screen" data-scene="pass"><div class="hub-backdrop" data-scene="pass"><div class="hub-backdrop__photo"></div><div class="hub-backdrop__veil"></div></div><div style="position:absolute;inset:0;display:grid;place-items:center">
+<div class="hub-glass hub-glass--strong" style="width:620px;padding:var(--space-8);border-radius:var(--radius-xl)"><div style="margin-top:var(--space-6)"><i data-icon="circle-check" class="hub-empty__icon" style="color:var(--success);width:40px;height:40px"></i><h1 class="t-display" style="margin:var(--space-3) 0 var(--space-5)">Всё готово</h1>
+<ul class="hub-list hub-list--divided"><li><div class="hub-row"><span class="hub-row__lead"><i data-icon="check"></i></span><span class="hub-row__body"><span class="hub-row__title">Пароль задан</span></span></div></li>
+<li><div class="hub-row"><span class="hub-row__lead"><i data-icon="check"></i></span><span class="hub-row__body"><span class="hub-row__title">Ключ восстановления записан</span></span></div></li>
+<li><div class="hub-row"><span class="hub-row__lead"><i data-icon="check"></i></span><span class="hub-row__body"><span class="hub-row__title">Google Drive подключён</span><span class="hub-row__meta">папка «Хаб» создана, первая синхронизация — через пару секунд</span></span></div></li></ul>
+<label class="hub-switch" style="margin-top:var(--space-5)"><input type="checkbox" role="switch" checked><span>Открывать хаб при входе в Windows</span></label>
+<div class="hub-btn-row" style="justify-content:flex-end;margin-top:var(--space-8)"><button class="hub-btn hub-btn--primary" type="button">Перейти к «Сегодня» <kbd class="hub-kbd">Enter</kbd></button></div></div></div></div></div></template>
+<script>
+(function () {
+  if (!document.querySelector('link[href*="preview/kit.css"]')) {
+    var l = document.createElement('link'); l.rel = 'stylesheet'; l.href = '../../preview/kit.css'; document.head.appendChild(l);
+  }
+  if (window.HubUI) HubUI.init();
+  var tpls = document.querySelectorAll('template[data-note]');
+  var host = document.getElementById('pvScreen'), note = document.getElementById('pvNote');
+  var btns = document.querySelectorAll('.pv-states [data-i]');
+  function show(i) {
+    host.innerHTML = tpls[i].innerHTML; note.textContent = tpls[i].getAttribute('data-note');
+    btns.forEach(function (b) { b.setAttribute('aria-pressed', String(Number(b.dataset.i) === i)); });
+    HubUI.init(host);
+    if (window.pvAfter) window.pvAfter(host, i);
+  }
+  btns.forEach(function (b) { b.addEventListener('click', function () { show(Number(b.dataset.i)); }); });
+
+  show(0);
+
+})();
+</script>
+</body>
+</html>

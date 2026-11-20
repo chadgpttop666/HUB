@@ -1,0 +1,138 @@
+<!-- @dsCard group="Экраны" height=964 width=1440 subtitle="Элемент крупно · перенос цифрой · отложить · удалить · пусто" -->
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Разбор корзины</title>
+<link rel="stylesheet" href="../../preview/kit.css">
+
+</head>
+<body>
+
+<div class="pv-states">
+  <span class="pv-states__title">Разбор корзины</span>
+  <div class="hub-segmented" role="group" aria-label="Состояние"><button type="button" aria-pressed="true" data-i="0">Элемент</button><button type="button" aria-pressed="false" data-i="1">Перенос</button><button type="button" aria-pressed="false" data-i="2">Отложить</button><button type="button" aria-pressed="false" data-i="3">Удалено</button><button type="button" aria-pressed="false" data-i="4">Пусто</button></div>
+  <span class="pv-states__note" id="pvNote"></span>
+</div>
+<div id="pvScreen"></div>
+<template data-note="цифры 1–5 — приложения, которые принимают элементы"><div class="pv-screen" data-scene="open"><div class="hub-backdrop" data-scene="open"><div class="hub-backdrop__photo"></div><div class="hub-backdrop__veil"></div></div>
+<div class="hub-today"><header class="hub-topbar">
+  <div><span class="hub-topbar__hello">Добрый день, Максим</span> · пятница, 20 ноября · день 61</div>
+  <div class="hub-topbar__right"><span class="hub-sync" data-state="ok"><i data-icon="cloud-check"></i><span>синхронизировано</span></span><span class="hub-row__trail" style="font-size:inherit"><kbd class="hub-kbd">Ctrl</kbd><kbd class="hub-kbd">K</kbd> команды</span>
+    <button class="hub-btn hub-btn--sm hub-btn--glass" type="button"><i data-icon="lock"></i>Заблокировать</button>
+  </div>
+</header><div class="hub-triage" style="margin-top:3vh"><div class="hub-triage__head">
+  <h1 class="hub-triage__title">Разбор корзины</h1>
+  <div class="hub-meter" style="width:240px"><div class="hub-meter__head"><span>элемент</span><b>1 из 5</b></div><progress class="hub-progress" max="5" value="1"></progress></div>
+</div>
+<article class="hub-glass hub-triage__item" style="">
+  <p class="hub-triage__text">Идея для эссе: почему привычки держатся дольше, чем мотивация — найти пример у Аристотеля</p>
+  <div class="hub-triage__meta"><span class="pv-row" style="gap:var(--space-1)"><i data-icon="smartphone" class="hub-icon--sm"></i>с телефона</span><span>вчера, 23:10</span><span class="hub-tag">#учёба</span></div>
+</article>
+<div><div class="hub-triage__label" style="margin-bottom:var(--space-3)">Куда перенести</div><div class="hub-targets"><button class="hub-target pv-hover" type="button"><i data-icon="layers"></i><span class="hub-target__name">Повторение</span><span class="hub-target__what">Карточка для повторения</span><kbd class="hub-kbd">1</kbd></button><button class="hub-target" type="button"><i data-icon="list-checks"></i><span class="hub-target__name">План дня</span><span class="hub-target__what">Задача на сегодня</span><kbd class="hub-kbd">2</kbd></button><button class="hub-target" type="button"><i data-icon="calendar"></i><span class="hub-target__name">Календарь</span><span class="hub-target__what">Событие с датой</span><kbd class="hub-kbd">3</kbd></button><button class="hub-target" type="button"><i data-icon="notebook-pen"></i><span class="hub-target__name">Дневник</span><span class="hub-target__what">Запись за сегодня</span><kbd class="hub-kbd">4</kbd></button><button class="hub-target" type="button"><i data-icon="book-open"></i><span class="hub-target__name">Чтение</span><span class="hub-target__what">В список чтения</span><kbd class="hub-kbd">5</kbd></button></div></div>
+<div class="hub-triage__actions" style="position:relative">
+  <button class="hub-btn" type="button"><i data-icon="alarm-clock"></i>Отложить <kbd class="hub-kbd">S</kbd></button>
+  <button class="hub-btn hub-btn--danger" type="button"><i data-icon="trash-2"></i>Удалить <kbd class="hub-kbd">Del</kbd></button>
+  <button class="hub-btn hub-btn--quiet" type="button">Пропустить <kbd class="hub-kbd">→</kbd></button>
+</div>
+<p class="hub-hint" style="justify-content:center">1–5 перенести · S отложить · Del удалить · ← → листать · Esc выйти</p></div></div>
+</div></template><template data-note="нажата 1: плитка вспыхнула, элемент улетает к ней"><div class="pv-screen" data-scene="open"><div class="hub-backdrop" data-scene="open"><div class="hub-backdrop__photo"></div><div class="hub-backdrop__veil"></div></div>
+<div class="hub-today"><header class="hub-topbar">
+  <div><span class="hub-topbar__hello">Добрый день, Максим</span> · пятница, 20 ноября · день 61</div>
+  <div class="hub-topbar__right"><span class="hub-sync" data-state="ok"><i data-icon="cloud-check"></i><span>синхронизировано</span></span><span class="hub-row__trail" style="font-size:inherit"><kbd class="hub-kbd">Ctrl</kbd><kbd class="hub-kbd">K</kbd> команды</span>
+    <button class="hub-btn hub-btn--sm hub-btn--glass" type="button"><i data-icon="lock"></i>Заблокировать</button>
+  </div>
+</header><div class="hub-triage" style="margin-top:3vh"><div class="hub-triage__head">
+  <h1 class="hub-triage__title">Разбор корзины</h1>
+  <div class="hub-meter" style="width:240px"><div class="hub-meter__head"><span>элемент</span><b>1 из 5</b></div><progress class="hub-progress" max="5" value="1"></progress></div>
+</div>
+<article class="hub-glass hub-triage__item" style="opacity:.3;transform:translate(-24px,28px) scale(.97)">
+  <p class="hub-triage__text">Идея для эссе: почему привычки держатся дольше, чем мотивация — найти пример у Аристотеля</p>
+  <div class="hub-triage__meta"><span class="pv-row" style="gap:var(--space-1)"><i data-icon="smartphone" class="hub-icon--sm"></i>с телефона</span><span>вчера, 23:10</span><span class="hub-tag">#учёба</span></div>
+</article>
+<div><div class="hub-triage__label" style="margin-bottom:var(--space-3)">Куда перенести</div><div class="hub-targets"><button class="hub-target is-chosen" type="button"><i data-icon="layers"></i><span class="hub-target__name">Повторение</span><span class="hub-target__what">Карточка для повторения</span><kbd class="hub-kbd">1</kbd></button><button class="hub-target" type="button"><i data-icon="list-checks"></i><span class="hub-target__name">План дня</span><span class="hub-target__what">Задача на сегодня</span><kbd class="hub-kbd">2</kbd></button><button class="hub-target" type="button"><i data-icon="calendar"></i><span class="hub-target__name">Календарь</span><span class="hub-target__what">Событие с датой</span><kbd class="hub-kbd">3</kbd></button><button class="hub-target" type="button"><i data-icon="notebook-pen"></i><span class="hub-target__name">Дневник</span><span class="hub-target__what">Запись за сегодня</span><kbd class="hub-kbd">4</kbd></button><button class="hub-target" type="button"><i data-icon="book-open"></i><span class="hub-target__name">Чтение</span><span class="hub-target__what">В список чтения</span><kbd class="hub-kbd">5</kbd></button></div></div>
+<div class="hub-triage__actions" style="position:relative">
+  <button class="hub-btn" type="button"><i data-icon="alarm-clock"></i>Отложить <kbd class="hub-kbd">S</kbd></button>
+  <button class="hub-btn hub-btn--danger" type="button"><i data-icon="trash-2"></i>Удалить <kbd class="hub-kbd">Del</kbd></button>
+  <button class="hub-btn hub-btn--quiet" type="button">Пропустить <kbd class="hub-kbd">→</kbd></button>
+</div>
+<p class="hub-hint" style="justify-content:center">1–5 перенести · S отложить · Del удалить · ← → листать · Esc выйти</p></div></div>
+<div class="hub-toasts"><div class="hub-toast hub-toast--accent"><i data-icon="check"></i><span>Перенесено в «Повторение»</span><button class="hub-toast__action" type="button">Отменить</button></div></div></div></template><template data-note="S — меню сроков, стрелки и Enter"><div class="pv-screen" data-scene="open"><div class="hub-backdrop" data-scene="open"><div class="hub-backdrop__photo"></div><div class="hub-backdrop__veil"></div></div>
+<div class="hub-today"><header class="hub-topbar">
+  <div><span class="hub-topbar__hello">Добрый день, Максим</span> · пятница, 20 ноября · день 61</div>
+  <div class="hub-topbar__right"><span class="hub-sync" data-state="ok"><i data-icon="cloud-check"></i><span>синхронизировано</span></span><span class="hub-row__trail" style="font-size:inherit"><kbd class="hub-kbd">Ctrl</kbd><kbd class="hub-kbd">K</kbd> команды</span>
+    <button class="hub-btn hub-btn--sm hub-btn--glass" type="button"><i data-icon="lock"></i>Заблокировать</button>
+  </div>
+</header><div class="hub-triage" style="margin-top:3vh"><div class="hub-triage__head">
+  <h1 class="hub-triage__title">Разбор корзины</h1>
+  <div class="hub-meter" style="width:240px"><div class="hub-meter__head"><span>элемент</span><b>1 из 5</b></div><progress class="hub-progress" max="5" value="1"></progress></div>
+</div>
+<article class="hub-glass hub-triage__item" style="">
+  <p class="hub-triage__text">Идея для эссе: почему привычки держатся дольше, чем мотивация — найти пример у Аристотеля</p>
+  <div class="hub-triage__meta"><span class="pv-row" style="gap:var(--space-1)"><i data-icon="smartphone" class="hub-icon--sm"></i>с телефона</span><span>вчера, 23:10</span><span class="hub-tag">#учёба</span></div>
+</article>
+<div><div class="hub-triage__label" style="margin-bottom:var(--space-3)">Куда перенести</div><div class="hub-targets"><button class="hub-target" type="button"><i data-icon="layers"></i><span class="hub-target__name">Повторение</span><span class="hub-target__what">Карточка для повторения</span><kbd class="hub-kbd">1</kbd></button><button class="hub-target" type="button"><i data-icon="list-checks"></i><span class="hub-target__name">План дня</span><span class="hub-target__what">Задача на сегодня</span><kbd class="hub-kbd">2</kbd></button><button class="hub-target" type="button"><i data-icon="calendar"></i><span class="hub-target__name">Календарь</span><span class="hub-target__what">Событие с датой</span><kbd class="hub-kbd">3</kbd></button><button class="hub-target" type="button"><i data-icon="notebook-pen"></i><span class="hub-target__name">Дневник</span><span class="hub-target__what">Запись за сегодня</span><kbd class="hub-kbd">4</kbd></button><button class="hub-target" type="button"><i data-icon="book-open"></i><span class="hub-target__name">Чтение</span><span class="hub-target__what">В список чтения</span><kbd class="hub-kbd">5</kbd></button></div></div>
+<div class="hub-triage__actions" style="position:relative">
+  <button class="hub-btn pv-focus" type="button"><i data-icon="alarm-clock"></i>Отложить <kbd class="hub-kbd">S</kbd></button>
+  <button class="hub-btn hub-btn--danger" type="button"><i data-icon="trash-2"></i>Удалить <kbd class="hub-kbd">Del</kbd></button>
+  <button class="hub-btn hub-btn--quiet" type="button">Пропустить <kbd class="hub-kbd">→</kbd></button><ul class="hub-menu" role="listbox" aria-label="Отложить до" style="position:absolute;left:calc(50% - 300px);top:calc(100% + 8px);width:280px">
+  <li class="hub-menu__label">Отложить до</li>
+  <li class="hub-menu__item is-active" role="option"><i data-icon="sunrise"></i>Сегодня вечером<span class="hub-menu__meta">19:00</span></li>
+  <li class="hub-menu__item" role="option"><i data-icon="sun"></i>Завтра утром<span class="hub-menu__meta">9:00</span></li>
+  <li class="hub-menu__item" role="option"><i data-icon="calendar-days"></i>Через неделю<span class="hub-menu__meta">27 ноября</span></li>
+  <li class="hub-menu__sep" role="separator"></li>
+  <li class="hub-menu__item" role="option"><i data-icon="calendar"></i>Выбрать дату…</li></ul>
+</div>
+<p class="hub-hint" style="justify-content:center">1–5 перенести · S отложить · Del удалить · ← → листать · Esc выйти</p></div></div>
+</div></template><template data-note="Del — сразу, без вопроса; отмена в уведомлении"><div class="pv-screen" data-scene="open"><div class="hub-backdrop" data-scene="open"><div class="hub-backdrop__photo"></div><div class="hub-backdrop__veil"></div></div>
+<div class="hub-today"><header class="hub-topbar">
+  <div><span class="hub-topbar__hello">Добрый день, Максим</span> · пятница, 20 ноября · день 61</div>
+  <div class="hub-topbar__right"><span class="hub-sync" data-state="ok"><i data-icon="cloud-check"></i><span>синхронизировано</span></span><span class="hub-row__trail" style="font-size:inherit"><kbd class="hub-kbd">Ctrl</kbd><kbd class="hub-kbd">K</kbd> команды</span>
+    <button class="hub-btn hub-btn--sm hub-btn--glass" type="button"><i data-icon="lock"></i>Заблокировать</button>
+  </div>
+</header><div class="hub-triage" style="margin-top:3vh"><div class="hub-triage__head">
+  <h1 class="hub-triage__title">Разбор корзины</h1>
+  <div class="hub-meter" style="width:240px"><div class="hub-meter__head"><span>элемент</span><b>2 из 5</b></div><progress class="hub-progress" max="5" value="2"></progress></div>
+</div>
+<article class="hub-glass hub-triage__item" style="">
+  <p class="hub-triage__text">Позвонить в библиотеку насчёт продления книг</p>
+  <div class="hub-triage__meta"><span class="pv-row" style="gap:var(--space-1)"><i data-icon="monitor" class="hub-icon--sm"></i>с ПК</span><span>сегодня, 08:42</span></div>
+</article>
+<div><div class="hub-triage__label" style="margin-bottom:var(--space-3)">Куда перенести</div><div class="hub-targets"><button class="hub-target" type="button"><i data-icon="layers"></i><span class="hub-target__name">Повторение</span><span class="hub-target__what">Карточка для повторения</span><kbd class="hub-kbd">1</kbd></button><button class="hub-target" type="button"><i data-icon="list-checks"></i><span class="hub-target__name">План дня</span><span class="hub-target__what">Задача на сегодня</span><kbd class="hub-kbd">2</kbd></button><button class="hub-target" type="button"><i data-icon="calendar"></i><span class="hub-target__name">Календарь</span><span class="hub-target__what">Событие с датой</span><kbd class="hub-kbd">3</kbd></button><button class="hub-target" type="button"><i data-icon="notebook-pen"></i><span class="hub-target__name">Дневник</span><span class="hub-target__what">Запись за сегодня</span><kbd class="hub-kbd">4</kbd></button><button class="hub-target" type="button"><i data-icon="book-open"></i><span class="hub-target__name">Чтение</span><span class="hub-target__what">В список чтения</span><kbd class="hub-kbd">5</kbd></button></div></div>
+<div class="hub-triage__actions" style="position:relative">
+  <button class="hub-btn" type="button"><i data-icon="alarm-clock"></i>Отложить <kbd class="hub-kbd">S</kbd></button>
+  <button class="hub-btn hub-btn--danger" type="button"><i data-icon="trash-2"></i>Удалить <kbd class="hub-kbd">Del</kbd></button>
+  <button class="hub-btn hub-btn--quiet" type="button">Пропустить <kbd class="hub-kbd">→</kbd></button>
+</div>
+<p class="hub-hint" style="justify-content:center">1–5 перенести · S отложить · Del удалить · ← → листать · Esc выйти</p></div></div>
+<div class="hub-toasts"><div class="hub-toast"><i data-icon="trash-2"></i><span>Удалено</span><button class="hub-toast__action" type="button">Отменить</button></div></div></div></template><template data-note="итог разбора и выход"><div class="pv-screen" data-scene="open"><div class="hub-backdrop" data-scene="open"><div class="hub-backdrop__photo"></div><div class="hub-backdrop__veil"></div></div>
+<div class="hub-today"><header class="hub-topbar">
+  <div><span class="hub-topbar__hello">Добрый день, Максим</span> · пятница, 20 ноября · день 61</div>
+  <div class="hub-topbar__right"><span class="hub-sync" data-state="ok"><i data-icon="cloud-check"></i><span>синхронизировано</span></span><span class="hub-row__trail" style="font-size:inherit"><kbd class="hub-kbd">Ctrl</kbd><kbd class="hub-kbd">K</kbd> команды</span>
+    <button class="hub-btn hub-btn--sm hub-btn--glass" type="button"><i data-icon="lock"></i>Заблокировать</button>
+  </div>
+</header><div class="hub-triage" style="margin-top:3vh"><div class="hub-glass" style="margin-top:8vh"><div class="hub-empty" style="padding:var(--space-12) var(--space-6)"><i data-icon="inbox" class="hub-empty__icon"></i><h2 class="hub-empty__title">Корзина пуста</h2><p class="hub-empty__text">Всё разобрано: 3 перенесено, 1 отложено до вечера, 1 удалено. Новая мысль — <kbd class="hub-kbd">Ctrl</kbd><kbd class="hub-kbd">Пробел</kbd> из любой программы.</p><div class="hub-empty__action"><button class="hub-btn hub-btn--primary" type="button">На «Сегодня» <kbd class="hub-kbd">Esc</kbd></button></div></div></div></div></div>
+</div></template>
+<script>
+(function () {
+  if (!document.querySelector('link[href*="preview/kit.css"]')) {
+    var l = document.createElement('link'); l.rel = 'stylesheet'; l.href = '../../preview/kit.css'; document.head.appendChild(l);
+  }
+  if (window.HubUI) HubUI.init();
+  var tpls = document.querySelectorAll('template[data-note]');
+  var host = document.getElementById('pvScreen'), note = document.getElementById('pvNote');
+  var btns = document.querySelectorAll('.pv-states [data-i]');
+  function show(i) {
+    host.innerHTML = tpls[i].innerHTML; note.textContent = tpls[i].getAttribute('data-note');
+    btns.forEach(function (b) { b.setAttribute('aria-pressed', String(Number(b.dataset.i) === i)); });
+    HubUI.init(host);
+    if (window.pvAfter) window.pvAfter(host, i);
+  }
+  btns.forEach(function (b) { b.addEventListener('click', function () { show(Number(b.dataset.i)); }); });
+
+  show(0);
+
+})();
+</script>
+</body>
+</html>

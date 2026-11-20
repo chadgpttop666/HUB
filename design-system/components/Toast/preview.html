@@ -1,0 +1,29 @@
+<!-- @dsCard group="Окна и сообщения" height=300 -->
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Уведомление</title>
+<link rel="stylesheet" href="../../preview/kit.css">
+
+</head>
+<body>
+<div class="hub-backdrop" data-scene="open"><div class="hub-backdrop__photo"></div><div class="hub-backdrop__veil"></div></div>
+<div class="pv pv--col" style="align-items:center;gap:var(--space-3)">
+  <div class="hub-toast"><i data-icon="info"></i><span>Здесь откроется приложение «Повторение»</span></div>
+  <div class="hub-toast hub-toast--accent"><i data-icon="check"></i><span>В корзине — 6 неразобранных</span><button class="hub-toast__action" type="button">Отменить <kbd class="hub-kbd" style="margin-left:4px">Ctrl Z</kbd></button></div>
+  <div class="hub-toast hub-toast--success"><i data-icon="circle-check"></i><span>Приложение «Календарь» установлено</span></div>
+  <div class="hub-toast"><i data-icon="cloud-off"></i><span>Нет сети. Всё сохранено здесь и уйдёт на Drive позже</span></div>
+  <div class="hub-toast"><i data-icon="trash-2"></i><span>Удалено из корзины</span><button class="hub-toast__action" type="button">Отменить</button></div>
+</div>
+<script>
+(function () {
+  if (!document.querySelector('link[href*="preview/kit.css"]')) {
+    var l = document.createElement('link'); l.rel = 'stylesheet'; l.href = '../../preview/kit.css'; document.head.appendChild(l);
+  }
+  if (window.HubUI) HubUI.init();
+
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,30 @@
+<!-- @dsCard group="Оболочка хаба" height=210 subtitle="Готово · идёт · нет сети · конфликт" -->
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Статус синхронизации</title>
+<link rel="stylesheet" href="../../preview/kit.css">
+
+</head>
+<body>
+<div class="hub-backdrop" data-scene="open"><div class="hub-backdrop__photo"></div><div class="hub-backdrop__veil"></div></div>
+<div class="pv" style="gap:var(--space-5) var(--space-10)">
+<div class="pv-col"><span class="pv-cap">со словами — в шапке</span><span class="hub-sync" data-state="ok"><i data-icon="cloud-check"></i><span>синхронизировано</span></span><span class="hub-sync" data-state="busy" role="status"><i data-icon="refresh-cw"></i><span>синхронизация…</span></span><span class="hub-sync" data-state="offline"><i data-icon="cloud-off"></i><span>нет сети · всё сохранено здесь</span></span><button class="hub-sync" data-state="conflict" type="button"><i data-icon="triangle-alert"></i><span>конфликт в 1 файле</span></button></div>
+<div class="pv-col"><span class="pv-cap">только значок — в узком окне и на телефоне</span><div class="pv-row" style="gap:var(--space-5)">
+  <span class="hub-sync hub-sync--icon" data-state="ok" title="синхронизировано"><i data-icon="cloud-check"></i><span>синхронизировано</span></span>
+  <span class="hub-sync hub-sync--icon" data-state="busy" title="синхронизация"><i data-icon="refresh-cw"></i><span>синхронизация</span></span>
+  <span class="hub-sync hub-sync--icon" data-state="offline" title="нет сети"><i data-icon="cloud-off"></i><span>нет сети</span></span>
+  <button class="hub-sync hub-sync--icon" data-state="conflict" type="button" title="конфликт"><i data-icon="triangle-alert"></i><span>конфликт</span></button></div></div>
+</div>
+<script>
+(function () {
+  if (!document.querySelector('link[href*="preview/kit.css"]')) {
+    var l = document.createElement('link'); l.rel = 'stylesheet'; l.href = '../../preview/kit.css'; document.head.appendChild(l);
+  }
+  if (window.HubUI) HubUI.init();
+
+})();
+</script>
+</body>
+</html>

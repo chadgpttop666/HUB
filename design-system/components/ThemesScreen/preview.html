@@ -1,0 +1,144 @@
+<!-- @dsCard group="Экраны · вторая очередь" height=964 width=1440 subtitle="Галерея с живым предпросмотром · настройка темы · новая тема из фото" -->
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Темы</title>
+<link rel="stylesheet" href="../../preview/kit.css">
+
+</head>
+<body>
+
+<div class="pv-states">
+  <span class="pv-states__title">Темы</span>
+  <div class="hub-segmented" role="group" aria-label="Состояние"><button type="button" aria-pressed="true" data-i="0">Галерея</button><button type="button" aria-pressed="false" data-i="1">Настройка</button><button type="button" aria-pressed="false" data-i="2">Новая из фото</button></div>
+  <span class="pv-states__note" id="pvNote"></span>
+</div>
+<div id="pvScreen"></div>
+<template data-note="каждая карточка — сама тема вживую"><div class="pv-screen" data-scene="open"><div class="hub-backdrop" data-scene="open"><div class="hub-backdrop__photo"></div><div class="hub-backdrop__veil"></div></div>
+<div class="hub-shell">
+<nav class="hub-rail hub-glass" aria-label="Приложения"><button class="hub-rail__item" type="button" title="Сегодня" aria-label="Сегодня"><i data-icon="house"></i></button><button class="hub-rail__item" type="button" title="Корзина" aria-label="Корзина"><i data-icon="inbox"></i><span class="hub-rail__badge">5</span></button><div class="hub-rail__sep"></div><button class="hub-rail__item" type="button" title="Повторение" aria-label="Повторение"><i data-icon="layers"></i></button><button class="hub-rail__item" type="button" title="План дня" aria-label="План дня"><i data-icon="list-checks"></i></button><button class="hub-rail__item" type="button" title="Календарь" aria-label="Календарь"><i data-icon="calendar"></i></button><button class="hub-rail__item" type="button" title="Дневник" aria-label="Дневник"><i data-icon="notebook-pen"></i></button><button class="hub-rail__item" type="button" title="Учебные блоки" aria-label="Учебные блоки"><i data-icon="timer"></i></button><div class="hub-rail__end"><button class="hub-rail__item" type="button" title="Темы" aria-label="Темы" aria-current=page><i data-icon="palette"></i></button><button class="hub-rail__item" type="button" title="Настройки" aria-label="Настройки"><i data-icon="settings"></i></button></div></nav>
+<header class="hub-shell__top"><form class="hub-capture hub-capture--compact" style="" onsubmit="return false">
+  <div class="hub-capture__bar">
+    <i data-icon="lightbulb" class="hub-capture__icon"></i>
+    <input class="hub-capture__input" placeholder="Мысль в корзину…" aria-label="Мысль в корзину">
+    <button class="hub-capture__send" type="submit" disabled>В корзину</button>
+  </div>
+  <p class="hub-capture__note"></p>
+</form><div class="hub-topbar__right"><span class="hub-sync" data-state="ok"><i data-icon="cloud-check"></i><span>синхронизировано</span></span><span class="hub-row__trail" style="font-size:var(--font-size-sm)"><kbd class="hub-kbd">Ctrl</kbd><kbd class="hub-kbd">K</kbd></span><button class="hub-btn hub-btn--sm hub-btn--glass hub-btn--icon" type="button" aria-label="Заблокировать"><i data-icon="lock"></i></button></div></header>
+<main class="hub-shell__main hub-glass"><div style="display:flex;align-items:flex-end;justify-content:space-between;gap:var(--space-4)"><div><h1 class="hub-page-title">Темы</h1><p class="hub-muted" style="margin:var(--space-1) 0 0">фото и цвета для хаба и всех приложений сразу</p></div><div class="hub-btn-row"><button class="hub-btn" type="button"><i data-icon="sliders-horizontal"></i>Настроить текущую</button></div></div>
+<div class="hub-themes" style="margin-top:var(--space-6)">
+<button class="hub-theme" type="button" role="radio" aria-checked="true"><div class="hub-theme__shot" data-theme="dark" style="color:var(--text);background:var(--bg)"><div class="hub-backdrop" data-scene="open"><div class="hub-backdrop__photo"></div><div class="hub-backdrop__veil"></div></div><div style="position:relative;padding:var(--space-4);display:grid;gap:var(--space-2)">
+<div class="hub-capture__bar" style="padding:var(--space-1) var(--space-3)"><i data-icon="lightbulb" class="hub-capture__icon" style="width:14px;height:14px"></i><span style="font-family:var(--font-heading);font-weight:var(--weight-light);font-size:var(--font-size-sm);color:var(--text-muted);padding:var(--space-1) 0">Мысль в корзину…</span></div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-2)"><div class="hub-glass" style="padding:var(--space-2) var(--space-3);font-size:var(--font-size-xs)"><span class="hub-muted">Повторение</span><br>12 карточек</div><div class="hub-glass" style="padding:var(--space-2) var(--space-3);font-size:var(--font-size-xs)"><span class="hub-muted">Корзина</span><br>5 неразобранных</div></div></div></div><span class="hub-theme__name">Лес<i data-icon="check"></i></span><span class="hub-theme__meta">тёмная · рассвет</span></button>
+<button class="hub-theme" type="button" role="radio" aria-checked="false"><div class="hub-theme__shot" data-theme="light" style="color:var(--text);background:var(--bg)"><div class="hub-backdrop" data-scene="open"><div class="hub-backdrop__photo"></div><div class="hub-backdrop__veil"></div></div><div style="position:relative;padding:var(--space-4);display:grid;gap:var(--space-2)">
+<div class="hub-capture__bar" style="padding:var(--space-1) var(--space-3)"><i data-icon="lightbulb" class="hub-capture__icon" style="width:14px;height:14px"></i><span style="font-family:var(--font-heading);font-weight:var(--weight-light);font-size:var(--font-size-sm);color:var(--text-muted);padding:var(--space-1) 0">Мысль в корзину…</span></div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-2)"><div class="hub-glass" style="padding:var(--space-2) var(--space-3);font-size:var(--font-size-xs)"><span class="hub-muted">Повторение</span><br>12 карточек</div><div class="hub-glass" style="padding:var(--space-2) var(--space-3);font-size:var(--font-size-xs)"><span class="hub-muted">Корзина</span><br>5 неразобранных</div></div></div></div><span class="hub-theme__name">Туман</span><span class="hub-theme__meta">светлая · рассвет</span></button>
+<button class="hub-theme" type="button" role="radio" aria-checked="false"><div class="hub-theme__shot" data-theme="solid" style="color:var(--text);background:var(--bg)"><div class="hub-backdrop" data-scene="open"><div class="hub-backdrop__photo"></div><div class="hub-backdrop__veil"></div></div><div style="position:relative;padding:var(--space-4);display:grid;gap:var(--space-2)">
+<div class="hub-capture__bar" style="padding:var(--space-1) var(--space-3)"><i data-icon="lightbulb" class="hub-capture__icon" style="width:14px;height:14px"></i><span style="font-family:var(--font-heading);font-weight:var(--weight-light);font-size:var(--font-size-sm);color:var(--text-muted);padding:var(--space-1) 0">Мысль в корзину…</span></div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-2)"><div class="hub-glass" style="padding:var(--space-2) var(--space-3);font-size:var(--font-size-xs)"><span class="hub-muted">Повторение</span><br>12 карточек</div><div class="hub-glass" style="padding:var(--space-2) var(--space-3);font-size:var(--font-size-xs)"><span class="hub-muted">Корзина</span><br>5 неразобранных</div></div></div></div><span class="hub-theme__name">Без фото</span><span class="hub-theme__meta">сплошной цвет</span></button>
+<button class="hub-theme hub-theme--new" type="button"><i data-icon="image-plus" class="hub-icon--lg"></i><span>Новая тема из фото</span><span class="hub-theme__meta">перетащите фото или выберите файл</span></button>
+</div>
+<p class="hub-hint" style="margin-top:var(--space-4)">Наведение на тему показывает её на всём экране; Enter — применить. Темы синхронизируются на телефон.</p></main>
+</div></div></template><template data-note="фото, акцент, шрифт, приветствие; предпросмотр справа"><div class="pv-screen" data-scene="open"><div class="hub-backdrop" data-scene="open"><div class="hub-backdrop__photo"></div><div class="hub-backdrop__veil"></div></div>
+<div class="hub-shell">
+<nav class="hub-rail hub-glass" aria-label="Приложения"><button class="hub-rail__item" type="button" title="Сегодня" aria-label="Сегодня"><i data-icon="house"></i></button><button class="hub-rail__item" type="button" title="Корзина" aria-label="Корзина"><i data-icon="inbox"></i><span class="hub-rail__badge">5</span></button><div class="hub-rail__sep"></div><button class="hub-rail__item" type="button" title="Повторение" aria-label="Повторение"><i data-icon="layers"></i></button><button class="hub-rail__item" type="button" title="План дня" aria-label="План дня"><i data-icon="list-checks"></i></button><button class="hub-rail__item" type="button" title="Календарь" aria-label="Календарь"><i data-icon="calendar"></i></button><button class="hub-rail__item" type="button" title="Дневник" aria-label="Дневник"><i data-icon="notebook-pen"></i></button><button class="hub-rail__item" type="button" title="Учебные блоки" aria-label="Учебные блоки"><i data-icon="timer"></i></button><div class="hub-rail__end"><button class="hub-rail__item" type="button" title="Темы" aria-label="Темы" aria-current=page><i data-icon="palette"></i></button><button class="hub-rail__item" type="button" title="Настройки" aria-label="Настройки"><i data-icon="settings"></i></button></div></nav>
+<header class="hub-shell__top"><form class="hub-capture hub-capture--compact" style="" onsubmit="return false">
+  <div class="hub-capture__bar">
+    <i data-icon="lightbulb" class="hub-capture__icon"></i>
+    <input class="hub-capture__input" placeholder="Мысль в корзину…" aria-label="Мысль в корзину">
+    <button class="hub-capture__send" type="submit" disabled>В корзину</button>
+  </div>
+  <p class="hub-capture__note"></p>
+</form><div class="hub-topbar__right"><span class="hub-sync" data-state="ok"><i data-icon="cloud-check"></i><span>синхронизировано</span></span><span class="hub-row__trail" style="font-size:var(--font-size-sm)"><kbd class="hub-kbd">Ctrl</kbd><kbd class="hub-kbd">K</kbd></span><button class="hub-btn hub-btn--sm hub-btn--glass hub-btn--icon" type="button" aria-label="Заблокировать"><i data-icon="lock"></i></button></div></header>
+<main class="hub-shell__main hub-glass"><div style="display:flex;align-items:flex-end;justify-content:space-between;gap:var(--space-4)"><div><h1 class="hub-page-title">Тема «Лес»</h1><p class="hub-muted" style="margin:var(--space-1) 0 0">изменения видны справа сразу</p></div><div class="hub-btn-row"><button class="hub-btn hub-btn--quiet" type="button">Сбросить</button><button class="hub-btn hub-btn--primary" type="button">Сохранить</button></div></div>
+<div style="display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:var(--space-6);margin-top:var(--space-6)">
+<section class="hub-glass" style="padding:var(--space-5);display:grid;gap:var(--space-5);align-content:start">
+ <div class="hub-field"><span class="hub-label">Фото</span><div style="display:flex;gap:var(--space-4);align-items:center"><div data-theme="dark" style="position:relative;width:160px;height:100px;border-radius:var(--radius-md);overflow:hidden;transform:translateZ(0)"><div class="hub-backdrop" data-scene="lock"><div class="hub-backdrop__photo"></div></div></div>
+ <div style="display:grid;gap:var(--space-2)"><button class="hub-btn hub-btn--sm" type="button"><i data-icon="image"></i>Заменить фото</button><span class="hub-hint">1470×840 · положение 50% / 38%</span></div></div></div>
+ <div class="hub-field"><span class="hub-label">Вуаль посчитана по фото</span><div class="hub-tags"><span class="hub-tag">верх 0.74</span><span class="hub-tag">середина 0.54</span><span class="hub-tag">низ 0.30</span><span class="hub-tag">вход 0.38</span></div><span class="hub-hint" style="color:var(--text)"><i data-icon="circle-check" style="color:var(--success)"></i>Весь текст — не ниже 4.5:1</span></div>
+ <div class="hub-field"><span class="hub-label">Акцент</span><div class="hub-swatches"><button class="hub-swatch" type="button" role="radio" aria-checked="true" aria-label="Рассвет" title="Рассвет" style="--_c:#f0b46a"></button><button class="hub-swatch" type="button" role="radio" aria-checked="false" aria-label="Мёд" title="Мёд" style="--_c:#f3c969"></button><button class="hub-swatch" type="button" role="radio" aria-checked="false" aria-label="Мох" title="Мох" style="--_c:#b7cc8a"></button><button class="hub-swatch" type="button" role="radio" aria-checked="false" aria-label="Иней" title="Иней" style="--_c:#b4cfee"></button><button class="hub-swatch" type="button" role="radio" aria-checked="false" aria-label="Глина" title="Глина" style="--_c:#e9a07a"></button><button class="hub-swatch" type="button" role="radio" aria-checked="false" aria-label="Ржавчина" title="Ржавчина" style="--_c:#9a4a2c" disabled></button></div><span class="hub-hint">Ржавчина недоступна: на стекле этой темы текст акцентом не читается.</span></div>
+ <div class="hub-field"><span class="hub-label">Шрифт крупного текста</span><div class="hub-segmented" role="group"><button type="button" aria-pressed="true">Jost</button><button type="button" aria-pressed="false">Manrope</button><button type="button" aria-pressed="false">Системный</button></div></div>
+ <label class="hub-field"><span class="hub-label">Приветствие</span><input class="hub-input" value="{часть дня}, {имя}"><span class="hub-hint">Сейчас: «Добрый день, Максим»</span></label>
+</section>
+<aside style="display:grid;gap:var(--space-3);align-content:start"><span class="hub-label">Вход</span><div style="position:relative;width:379px;height:237px;overflow:hidden;border-radius:var(--radius-md);border:1px solid var(--line-soft)"><div style="transform:scale(0.2638);transform-origin:0 0"><div class="pv-screen" data-scene="lock"><div class="hub-backdrop" data-scene="lock"><div class="hub-backdrop__photo"></div><div class="hub-backdrop__veil"></div></div>
+<main class="hub-lock" aria-label="Вход в хаб" style="">
+  <div class="hub-lock__clock">13:20</div>
+  <div class="hub-lock__date">пятница, 20 ноября · день 61</div>
+  <h1 class="hub-lock__greet"><span>Добрый день, Максим</span></h1>
+  <form class="hub-lock__form" onsubmit="return false">
+    <div class="hub-lock__row">
+      <input class="hub-input hub-input--line hub-input--secret pv-focus" type="password" placeholder="Пароль" value="" aria-label="Пароль">
+      <button class="hub-btn hub-btn--quiet hub-btn--icon hub-lock__go" type="submit" aria-label="Войти"><i data-icon="arrow-right"></i></button>
+    </div>
+    <p class="hub-lock__msg" data-tone="" aria-live="polite"></p>
+  </form>
+</main>
+<p class="hub-lock__hint">Нажмите любую клавишу</p>
+</div></div></div><span class="hub-label">«Сегодня»</span><div style="position:relative;width:379px;height:237px;overflow:hidden;border-radius:var(--radius-md);border:1px solid var(--line-soft)"><div style="transform:scale(0.2638);transform-origin:0 0"><div class="pv-screen" data-scene="open"><div class="hub-backdrop" data-scene="open"><div class="hub-backdrop__photo"></div><div class="hub-backdrop__veil"></div></div>
+<div class="hub-today">
+<header class="hub-topbar">
+  <div><span class="hub-topbar__hello">Добрый день, Максим</span> · пятница, 20 ноября · день 61</div>
+  <div class="hub-topbar__right"><span class="hub-sync" data-state="ok"><i data-icon="cloud-check"></i><span>синхронизировано</span></span><span class="hub-row__trail" style="font-size:inherit"><kbd class="hub-kbd">Ctrl</kbd><kbd class="hub-kbd">K</kbd> команды</span>
+    <button class="hub-btn hub-btn--sm hub-btn--glass" type="button"><i data-icon="lock"></i>Заблокировать</button>
+  </div>
+</header>
+<div style="margin-top:6vh"><form class="hub-capture " style="" onsubmit="return false">
+  <div class="hub-capture__bar pv-focus">
+    <i data-icon="lightbulb" class="hub-capture__icon"></i>
+    <input class="hub-capture__input" placeholder="Мысль в корзину…" aria-label="Мысль в корзину">
+    <button class="hub-capture__send" type="submit" disabled>В корзину</button>
+  </div>
+  <p class="hub-capture__note">Enter — сохранить, разобрать можно потом</p>
+</form></div>
+
+<section class="hub-cards" style="width:min(1120px,100%);margin:var(--space-4) auto 0;"><article class="hub-card"><div class="hub-card__app"><i data-icon="layers"></i><span>Повторение</span></div><div class="hub-card__main">12 карточек к сроку</div><p class="hub-card__note">2 темы просели: логика, право</p><div class="hub-card__action"><button class="hub-btn hub-btn--sm" type="button">Начать</button></div></article><article class="hub-card"><div class="hub-card__app"><i data-icon="list-checks"></i><span>План дня</span></div><div class="hub-card__main">Осталось 3 из 4</div><ul class="hub-card__list"><li><label class="hub-check hub-check--done"><input type="checkbox" checked><span>балкон</span></label></li><li><label class="hub-check hub-check--done"><input type="checkbox"><span>карточки</span></label></li><li><label class="hub-check hub-check--done"><input type="checkbox"><span>учебные блоки · 0 из 4</span></label></li><li><label class="hub-check hub-check--done"><input type="checkbox"><span>спорт · день A</span></label></li></ul></article><article class="hub-card"><div class="hub-card__app"><i data-icon="inbox"></i><span>Корзина</span></div><div class="hub-card__main">5 неразобранных</div><p class="hub-card__note">последнее: «идея для эссе про привычки и…»</p><div class="hub-card__action"><button class="hub-btn hub-btn--sm" type="button">Разобрать</button></div></article><article class="hub-card"><div class="hub-card__app"><i data-icon="calendar"></i><span>Календарь</span></div><div class="hub-card__main">Сегодня событий нет</div><p class="hub-card__note">завтра — консультация в 16:00</p></article></section>
+</div></div></div></div></aside>
+</div></main>
+</div></div></template><template data-note="основа и вуаль посчитаны по правилу из раздела «Темы»"><div class="pv-screen" data-scene="open"><div class="hub-backdrop" data-scene="open"><div class="hub-backdrop__photo"></div><div class="hub-backdrop__veil"></div></div>
+<div class="hub-shell">
+<nav class="hub-rail hub-glass" aria-label="Приложения"><button class="hub-rail__item" type="button" title="Сегодня" aria-label="Сегодня"><i data-icon="house"></i></button><button class="hub-rail__item" type="button" title="Корзина" aria-label="Корзина"><i data-icon="inbox"></i><span class="hub-rail__badge">5</span></button><div class="hub-rail__sep"></div><button class="hub-rail__item" type="button" title="Повторение" aria-label="Повторение"><i data-icon="layers"></i></button><button class="hub-rail__item" type="button" title="План дня" aria-label="План дня"><i data-icon="list-checks"></i></button><button class="hub-rail__item" type="button" title="Календарь" aria-label="Календарь"><i data-icon="calendar"></i></button><button class="hub-rail__item" type="button" title="Дневник" aria-label="Дневник"><i data-icon="notebook-pen"></i></button><button class="hub-rail__item" type="button" title="Учебные блоки" aria-label="Учебные блоки"><i data-icon="timer"></i></button><div class="hub-rail__end"><button class="hub-rail__item" type="button" title="Темы" aria-label="Темы" aria-current=page><i data-icon="palette"></i></button><button class="hub-rail__item" type="button" title="Настройки" aria-label="Настройки"><i data-icon="settings"></i></button></div></nav>
+<header class="hub-shell__top"><form class="hub-capture hub-capture--compact" style="" onsubmit="return false">
+  <div class="hub-capture__bar">
+    <i data-icon="lightbulb" class="hub-capture__icon"></i>
+    <input class="hub-capture__input" placeholder="Мысль в корзину…" aria-label="Мысль в корзину">
+    <button class="hub-capture__send" type="submit" disabled>В корзину</button>
+  </div>
+  <p class="hub-capture__note"></p>
+</form><div class="hub-topbar__right"><span class="hub-sync" data-state="ok"><i data-icon="cloud-check"></i><span>синхронизировано</span></span><span class="hub-row__trail" style="font-size:var(--font-size-sm)"><kbd class="hub-kbd">Ctrl</kbd><kbd class="hub-kbd">K</kbd></span><button class="hub-btn hub-btn--sm hub-btn--glass hub-btn--icon" type="button" aria-label="Заблокировать"><i data-icon="lock"></i></button></div></header>
+<main class="hub-shell__main hub-glass"><div style="display:flex;align-items:flex-end;justify-content:space-between;gap:var(--space-4)"><div><h1 class="hub-page-title">Новая тема из фото</h1><p class="hub-muted" style="margin:var(--space-1) 0 0">хаб посчитал основу и вуаль сам</p></div><div class="hub-btn-row"></div></div>
+<div style="display:grid;grid-template-columns:420px minmax(0,1fr);gap:var(--space-6);margin-top:var(--space-6)">
+<div data-theme="light" style="position:relative;height:262px;border-radius:var(--radius);overflow:hidden;transform:translateZ(0)"><div class="hub-backdrop" data-scene="lock"><div class="hub-backdrop__photo"></div></div></div>
+<section class="hub-glass" style="padding:var(--space-5);display:grid;gap:var(--space-4);align-content:start">
+<ul class="hub-list hub-list--divided">
+<li><div class="hub-row"><span class="hub-row__lead"><i data-icon="sun"></i></span><span class="hub-row__body"><span class="hub-row__title">Основа — светлая</span><span class="hub-row__meta">средняя яркость фото 0.71: тёмный текст, светлая вуаль</span></span></div></li>
+<li><div class="hub-row"><span class="hub-row__lead"><i data-icon="layers"></i></span><span class="hub-row__body"><span class="hub-row__title">Вуаль</span><span class="hub-row__meta">верх 0.12 · середина 0.18 · низ 0.50 · вход 0.32</span></span></div></li>
+<li><div class="hub-row"><span class="hub-row__lead" style="color:var(--success)"><i data-icon="circle-check"></i></span><span class="hub-row__body"><span class="hub-row__title">Контраст</span><span class="hub-row__meta">весь текст — не ниже 4.5:1 во всех зонах</span></span></div></li></ul>
+<p class="hub-hint hub-hint--warning"><i data-icon="triangle-alert"></i>Низ фото тёмный: вуаль внизу 0.50, земля станет заметно светлее. Можно сдвинуть фото вверх.</p>
+<label class="hub-field"><span class="hub-label">Название</span><input class="hub-input pv-focus" value="Утро"></label>
+<div class="hub-btn-row" style="justify-content:flex-end"><button class="hub-btn hub-btn--quiet" type="button">Сдвинуть фото</button><button class="hub-btn hub-btn--primary" type="button">Сохранить тему</button></div>
+</section></div></main>
+</div></div></template>
+<script>
+(function () {
+  if (!document.querySelector('link[href*="preview/kit.css"]')) {
+    var l = document.createElement('link'); l.rel = 'stylesheet'; l.href = '../../preview/kit.css'; document.head.appendChild(l);
+  }
+  if (window.HubUI) HubUI.init();
+  var tpls = document.querySelectorAll('template[data-note]');
+  var host = document.getElementById('pvScreen'), note = document.getElementById('pvNote');
+  var btns = document.querySelectorAll('.pv-states [data-i]');
+  function show(i) {
+    host.innerHTML = tpls[i].innerHTML; note.textContent = tpls[i].getAttribute('data-note');
+    btns.forEach(function (b) { b.setAttribute('aria-pressed', String(Number(b.dataset.i) === i)); });
+    HubUI.init(host);
+    if (window.pvAfter) window.pvAfter(host, i);
+  }
+  btns.forEach(function (b) { b.addEventListener('click', function () { show(Number(b.dataset.i)); }); });
+
+  show(0);
+
+})();
+</script>
+</body>
+</html>
