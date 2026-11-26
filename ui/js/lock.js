@@ -14,7 +14,7 @@ function screen() {
   let el = $("#screen-lock");
   if (!el) { el = document.createElement("div"); el.id = "screen-lock"; el.className = "shell-lock"; document.body.appendChild(el); }
   el.hidden = false;
-  for (const id of ["#screen-today", "#screen-triage", "#screen-shell"]) { const s = $(id); if (s) s.hidden = true; }
+  for (const id of ["#screen-today", "#screen-triage", "#screen-shell", "#screen-apps"]) { const s = $(id); if (s) s.hidden = true; }
   return el;
 }
 function close() { const el = $("#screen-lock"); if (el) { el.hidden = true; el.innerHTML = ""; } }
@@ -90,10 +90,11 @@ export function runSetup(status) {
             <li><div class="hub-row"><span class="hub-row__lead"><i data-icon="lock"></i></span><span class="hub-row__body"><span class="hub-row__title">Всё уходит зашифрованным</span><span class="hub-row__meta">Google видит число файлов и их размер, но не имена и не содержимое</span></span></div></li>
             <li><div class="hub-row"><span class="hub-row__lead"><i data-icon="cloud-off"></i></span><span class="hub-row__body"><span class="hub-row__title">Без интернета всё работает</span><span class="hub-row__meta">Drive догонит, когда появится связь</span></span></div></li>
           </ul>
-          <p class="hub-hint" id="su-drive-msg" style="margin-top:var(--space-4)"></p>
+          ${driveClientFields(s)}
+          <p class="hub-hint" id="su-drive-msg" style="margin-top:var(--space-4)" role="status"></p>
           <div class="hub-btn-row shell-setup__bar">
             <button class="hub-btn hub-btn--quiet" type="button" data-step="skip">Позже — только на этом устройстве</button>
-            <button class="hub-btn hub-btn--primary" type="button" data-step="drive"><i data-icon="external-link"></i>Подключить Google Drive</button>
+            <button class="hub-btn hub-btn--primary" type="button" data-step="drive" disabled><i data-icon="external-link"></i>Подключить Google Drive</button>
           </div></div></form>`);
       }
       H.icons(el);
@@ -105,9 +106,9 @@ export function runSetup(status) {
     function drawJoin(msg) {
       el.innerHTML = card(`<form>
         <h1 class="t-display" style="margin:0">Подключить к существующему хабу</h1>
-        <p class="hub-muted" style="margin:var(--space-2) 0 var(--space-5)">Войдите в тот же Google-аккаунт, что на первом устройстве, и введите пароль хаба. Данные придут с Drive.</p>
-        <div class="hub-btn-row"><button class="hub-btn" type="button" data-step="google"${s.token ? " disabled" : ""}><i data-icon="external-link"></i>${s.token ? "Google подключён" : "Войти в Google"}</button></div>
-        ${driveOwnClientFields(s)}
+        <p class="hub-muted" style="margin:var(--space-2) 0 var(--space-5)">Используйте тот же Google-аккаунт и OAuth-клиент, что на первом устройстве, затем введите пароль хаба.</p>
+        ${driveClientFields(s)}
+        <div class="hub-btn-row" style="margin-top:var(--space-4)"><button class="hub-btn" type="button" data-step="google" disabled><i data-icon="external-link"></i>${s.token ? "Google подключён" : "Войти в Google"}</button></div>
         <label class="hub-field" style="margin-top:var(--space-5)"><span class="hub-label">Пароль хаба</span><input class="hub-input hub-input--lg hub-input--secret" type="password" id="su-jp" autocomplete="current-password"></label>
         <p class="hub-hint${msg ? " hub-hint--error" : ""}" id="su-jmsg">${msg ? `${H.icon("circle-alert")}${esc(msg)}` : ""}</p>
         ${bar(true, "Подключить", !s.token)}</form>`);
@@ -135,32 +136,44 @@ export function runSetup(status) {
         const cb = $("#su-saved"), next = form.querySelector("[type=submit]");
         cb.addEventListener("change", () => { next.disabled = !cb.checked; });
       }
+      const driveButton = el.querySelector('[data-step="drive"], [data-step="google"]');
+      if (driveButton && !s.token) bindDriveClient(el, driveButton);
       if (form) form.addEventListener("submit", e => { e.preventDefault(); act("next"); });
     }
 
     async function act(what, btn) {
       if (what === "back") {
-        if (s.mode === "join" || s.step === 0) { s.step = -1; s.mode = "new"; }
+        if (s.mode === "join" || s.step === 0) { s.step = -1; s.mode = "new"; s.token = ""; }
         else s.step--;
         return draw();
       }
       if (what === "print") return printKey(s.recovery);
       if (s.mode === "join") {
         if (what === "google") {
-          btn.setAttribute("aria-busy", "true"); btn.disabled = true;
-          try { s.token = await core.driveAuthorize(clientOf(s)); drawJoin(); }
-          catch (e) { drawJoin(String(e.message || e)); }
+          const msg = $("#su-jmsg");
+          const back = el.querySelector('[data-step="back"]');
+          back.disabled = true;
+          try {
+            await withDriveClient(el, btn, msg, (client, token) => {
+              Object.assign(s, client, { token });
+              drawJoin();
+            });
+          } finally { back.disabled = false; }
           return;
         }
         if (what === "next") {
           const pw = $("#su-jp").value;
           const next = el.querySelector("[type=submit]");
+          if (!s.token || !pw || next.disabled) return;
+          const back = el.querySelector('[data-step="back"]');
+          back.disabled = true;
           next.setAttribute("aria-busy", "true"); next.disabled = true;
           try {
             await core.setupJoin(targetOf(s), pw);
             try { localStorage.setItem("hub:name", ""); } catch { /* ничего */ }
             close(); resolve({ joined: true });
           } catch (e) { drawJoin(String(e.message || e)); }
+          finally { next.removeAttribute("aria-busy"); next.disabled = false; back.disabled = false; }
         }
         return;
       }
@@ -182,17 +195,16 @@ export function runSetup(status) {
       if (s.step === 3) {
         if (what === "skip") { close(); return resolve({ name: s.name }); }
         if (what === "drive") {
-          const msg = $("#su-drive-msg");
-          btn.setAttribute("aria-busy", "true"); btn.disabled = true;
-          msg.className = "hub-hint"; msg.textContent = "Окно входа Google открыто в браузере…";
+          const skip = el.querySelector('[data-step="skip"]');
+          skip.disabled = true;
           try {
-            const token = await core.driveAuthorize({});
-            await core.syncConnect({ kind: "drive", token });
-            close(); resolve({ name: s.name, drive: true });
-          } catch (e) {
-            btn.removeAttribute("aria-busy"); btn.disabled = false;
-            msg.className = "hub-hint hub-hint--error"; msg.innerHTML = `${H.icon("circle-alert")}${esc(e.message || e)}`;
-          }
+            await withDriveClient(el, btn, $("#su-drive-msg"), async (client, token) => {
+              Object.assign(s, client);
+              $("#su-drive-msg").textContent = "Проверяем доступ к папке «Hub»…";
+              await core.syncConnect({ kind: "drive", token, ...client });
+              close(); resolve({ name: s.name, drive: true });
+            });
+          } finally { skip.disabled = false; }
         }
       }
     }
@@ -200,21 +212,57 @@ export function runSetup(status) {
   });
 }
 
-export function driveOwnClientFields(s) {
-  return `<details class="shell-details" style="margin-top:var(--space-4)"><summary class="hub-muted">Свой проект Google Cloud (необязательно)</summary>
-    <p class="hub-hint" style="margin:var(--space-2) 0">Без него вход идёт через общий ключ rclone — работает, но с общими лимитами Google. Свой ключ: Google Cloud → «Учётные данные» → «Идентификатор клиента OAuth» → тип «Приложение для ПК».</p>
-    <div style="display:grid;gap:var(--space-3)">
-      <input class="hub-input" id="gc-id" placeholder="Client ID" value="${esc(s.clientId || "")}" autocomplete="off">
-      <input class="hub-input" id="gc-secret" placeholder="Client secret" value="${esc(s.clientSecret || "")}" autocomplete="off">
-    </div></details>`;
+export function driveClientFields({ clientId = "", clientSecret = "", token } = {}) {
+  return `<div class="shell-drive-fields">
+    <p class="hub-hint">В Google Cloud включите Google Drive API и создайте OAuth-клиент типа «Приложение для ПК» (Desktop app). Вставьте оба значения ниже.</p>
+    <label class="hub-field"><span class="hub-label">Client ID</span>
+      <input class="hub-input" id="gc-id" value="${esc(clientId)}" autocomplete="off" spellcheck="false" required${token ? " readonly" : ""}></label>
+    <label class="hub-field"><span class="hub-label">Client Secret</span>
+      <input class="hub-input hub-input--secret" type="password" id="gc-secret" value="${esc(clientSecret)}" autocomplete="off" required${token ? " readonly" : ""}></label>
+    </div>`;
 }
-function clientOf(s) {
-  const id = $("#gc-id"), sec = $("#gc-secret");
-  s.clientId = id ? id.value.trim() : s.clientId || "";
-  s.clientSecret = sec ? sec.value.trim() : s.clientSecret || "";
-  return { clientId: s.clientId, clientSecret: s.clientSecret };
+function readDriveClient(el) {
+  return { clientId: el.querySelector("#gc-id").value.trim(), clientSecret: el.querySelector("#gc-secret").value.trim() };
 }
-function targetOf(s) { return { kind: "drive", token: s.token, clientId: s.clientId || "", clientSecret: s.clientSecret || "" }; }
+const hasDriveClient = ({ clientId, clientSecret }) => !!clientId && !!clientSecret;
+export function bindDriveClient(el, button) {
+  const update = () => { button.disabled = button.hasAttribute("aria-busy") || !hasDriveClient(readDriveClient(el)); };
+  el.querySelector(".shell-drive-fields").addEventListener("input", update);
+  update();
+}
+export async function withDriveClient(el, button, msg, connect) {
+  const client = readDriveClient(el);
+  if (button.disabled || !hasDriveClient(client)) return;
+  const inputs = [...el.querySelectorAll(".shell-drive-fields input")];
+  inputs.forEach(input => { input.readOnly = true; });
+  button.disabled = true;
+  button.setAttribute("aria-busy", "true");
+  msg.className = "hub-hint";
+  msg.textContent = "Завершите вход в Google в браузере…";
+  const cancel = document.createElement("button");
+  cancel.type = "button";
+  cancel.className = "hub-btn hub-btn--sm hub-btn--quiet";
+  cancel.textContent = "Отменить вход";
+  cancel.addEventListener("click", () => {
+    cancel.disabled = true;
+    core.driveCancel().catch(() => { cancel.disabled = false; });
+  });
+  msg.after(cancel);
+  try {
+    const token = await core.driveAuthorize(client);
+    cancel.remove();
+    if (msg.isConnected) await connect(client, token);
+  } catch (err) {
+    msg.className = "hub-hint hub-hint--error";
+    msg.innerHTML = `${H.icon("circle-alert")}${esc(err.message || err)}`;
+  } finally {
+    cancel.remove();
+    inputs.forEach(input => { input.readOnly = false; });
+    button.removeAttribute("aria-busy");
+    button.disabled = false;
+  }
+}
+function targetOf({ token, clientId, clientSecret }) { return { kind: "drive", token, clientId, clientSecret }; }
 
 function printKey(code) {
   const w = window.open("", "_blank", "width=600,height=400");
@@ -271,6 +319,7 @@ export function runLock() {
               <input class="hub-input hub-input--line hub-input--secret" type="password" placeholder="Пароль" aria-label="Пароль" autocomplete="current-password"${msg && tone === "danger" ? ' aria-invalid="true"' : ""}>
               <button class="hub-btn hub-btn--quiet hub-btn--icon hub-lock__go" type="submit" aria-label="Войти"><i data-icon="arrow-right"></i></button>
             </div>
+            <p class="hub-lock__caps hub-hint hub-hint--warning" id="lock-caps" aria-live="polite" hidden></p>
             <p class="hub-lock__msg" data-tone="${tone || ""}" aria-live="polite">${msg ? H.icon(tone === "danger" ? "circle-alert" : "triangle-alert") + esc(msg) : ""}</p>
             ${tone === "danger" ? `<button class="hub-btn hub-btn--quiet hub-btn--sm" type="button" data-act="recover">Войти ключом восстановления</button>` : ""}
           </form>
@@ -293,12 +342,11 @@ export function runLock() {
           row.classList.add("hub-shake"); setTimeout(() => row.classList.remove("hub-shake"), 450);
         }
       });
-      input.addEventListener("keydown", e => {
-        if (e.getModifierState && e.getModifierState("CapsLock")) {
-          const m = el.querySelector(".hub-lock__msg");
-          if (m && !m.dataset.tone) { m.dataset.tone = "warning"; m.innerHTML = H.icon("triangle-alert") + "Включён Caps Lock"; }
-        }
-      });
+      const caps = form.querySelector("#lock-caps");
+      caps.innerHTML = H.icon("triangle-alert") + "Включён Caps Lock";
+      const updateCaps = e => { caps.hidden = !e.getModifierState("CapsLock"); };
+      input.addEventListener("keydown", updateCaps);
+      input.addEventListener("keyup", updateCaps);
       const rec = el.querySelector("[data-act=recover]");
       if (rec) rec.addEventListener("click", () => { mode = "recover"; draw(); });
       if (mode === "pass") { input.focus(); armIdle(); }

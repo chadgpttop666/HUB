@@ -90,7 +90,7 @@ fn valid_app_id(id: &str) -> bool {
 /// Встроенные — внутри хаба (apps/index.json в собранном интерфейсе); свои — папки в <данные хаба>/apps.
 /// Своё приложение с тем же id заменяет встроенное.
 #[tauri::command]
-fn apps_list(app: AppHandle, paths: State<'_, Paths>) -> Result<Vec<AppEntry>, String> {
+async fn apps_list(app: AppHandle, paths: State<'_, Paths>) -> Result<Vec<AppEntry>, String> {
     let resolver = app.asset_resolver();
     let mut out: Vec<AppEntry> = Vec::new();
     let builtin: Vec<String> = resolver
@@ -338,11 +338,12 @@ pub fn run() {
         // второй запуск хаба не открывает второе окно, а поднимает первое
         builder = builder
             .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| desktop::bring_to_front(app)))
-            .plugin(tauri_plugin_autostart::init(tauri_plugin_autostart::MacosLauncher::LaunchAgent, Some(vec![desktop::HIDDEN_ARG])))
+            .plugin(tauri_plugin_autostart::init(tauri_plugin_autostart::MacosLauncher::LaunchAgent, None))
             .on_window_event(desktop::on_window_event);
     }
 
     builder
+        .manage(hubsvc::DriveAuth::default())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
@@ -382,12 +383,9 @@ pub fn run() {
                 if let Err(e) = desktop::tray(app.handle()) {
                     eprintln!("[хаб] значок в трее не появился: {e}");
                 }
-                // автозапуск при входе в систему: хаб сразу в трее, окно не мешает
-                if std::env::args().any(|a| a == desktop::HIDDEN_ARG) {
-                    if let Some(w) = app.get_webview_window("main") {
-                        let _ = w.hide();
-                    }
-                }
+                desktop::bring_to_front(app.handle());
+                #[cfg(windows)]
+                desktop::refresh_autostart(app.handle());
             }
             Ok(())
         })
@@ -418,6 +416,7 @@ pub fn run() {
             hubsvc::sync_status,
             hubsvc::sync_now,
             hubsvc::drive_authorize,
+            hubsvc::drive_cancel,
             hubsvc::sync_connect,
             hubsvc::sync_disconnect,
             hubsvc::sync_rclone_passwords,

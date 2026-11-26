@@ -182,11 +182,22 @@ impl Hub {
 
     pub fn status(&self, store: &Store) -> SyncStatus {
         let defs = if store.is_open() { Self::folder_defs(store) } else { vec![] };
-        let rt = self.rt();
-        let folders = defs
+        let (mut status, local_folders) = {
+            let rt = self.rt();
+            (SyncStatus {
+                configured: rt.target.is_some(),
+                kind: rt.target.as_ref().map(|t| t.kind.clone()).unwrap_or_default(),
+                state: if rt.target.is_none() { "off".into() } else { rt.status.clone() },
+                message: rt.message.clone(),
+                last_sync: rt.state.as_ref().and_then(|s| s.last_sync),
+                device: rt.state.as_ref().map(|s| s.device.clone()).unwrap_or_default(),
+                folders: vec![],
+            }, rt.folders.clone())
+        };
+        status.folders = defs
             .into_iter()
             .map(|d| {
-                let lf = rt.folders.get(&d.id);
+                let lf = local_folders.get(&d.id);
                 let conflicts = lf.filter(|f| !f.path.is_empty()).map(|f| sync::find_conflicts(Path::new(&f.path))).unwrap_or_default();
                 FolderStatus {
                     path: lf.map(|f| f.path.clone()).filter(|p| !p.is_empty()),
@@ -200,15 +211,7 @@ impl Hub {
                 }
             })
             .collect();
-        SyncStatus {
-            configured: rt.target.is_some(),
-            kind: rt.target.as_ref().map(|t| t.kind.clone()).unwrap_or_default(),
-            state: if rt.target.is_none() { "off".into() } else { rt.status.clone() },
-            message: rt.message.clone(),
-            last_sync: rt.state.as_ref().and_then(|s| s.last_sync),
-            device: rt.state.as_ref().map(|s| s.device.clone()).unwrap_or_default(),
-            folders,
-        }
+        status
     }
 
     /// Один проход: данные хаба, снимок, ключи, папки.
@@ -233,10 +236,10 @@ impl Hub {
         let result = (|| -> Result<(), SyncError> {
             let mut rt = self.rt();
             self.rclone(&store, &mut rt).map_err(SyncError::msg)?;
-            let r = rt.rclone.take().expect("rclone есть");
+            let r = rt.rclone.as_ref().expect("rclone есть").clone();
             let mut st = rt.state.take().expect("состояние есть");
             drop(rt);
-            let res = (|| {
+            let mut res = (|| {
                 if !st.bootstrapped {
                     sync::bootstrap(&store, &mut st).map_err(SyncError::msg)?;
                 }
@@ -252,16 +255,20 @@ impl Hub {
             if res.is_ok() && keys_pending {
                 let target = self.rt().target.clone();
                 if let (Some(kf), Some(t)) = (self.read_keys(), target) {
-                    if let Ok(base) = Rclone::base(&t) {
-                        let o = base.run(&["rcat", &rclone::base_path(&t, "keys.json")], Some(&serde_json::to_vec_pretty(&kf).unwrap_or_default()));
-                        if o.ok {
-                            self.rt().keys_pending = false;
-                        }
+                    let upload = (|| {
+                        let base = Rclone::base(&t).map_err(SyncError::msg)?;
+                        let json = serde_json::to_vec_pretty(&kf).map_err(|e| SyncError::msg(e.to_string()))?;
+                        let o = base.run(&["rcat", &rclone::base_path(&t, "keys.json")], Some(&json));
+                        if o.ok { Ok(()) } else { Err(SyncError::from_output(&o)) }
+                    })();
+                    match upload {
+                        Ok(()) => self.rt().keys_pending = false,
+                        Err(e) => res = Err(e),
                     }
                 }
             }
             // папки
-            let defs = Self::folder_defs(&store);
+            let defs = if res.is_ok() { Self::folder_defs(&store) } else { vec![] };
             let wd = self.sync_dir().join("bisync");
             for def in defs {
                 let lf = self.rt().folders.get(&def.id).cloned();
@@ -281,7 +288,6 @@ impl Hub {
             }
             let mut rt = self.rt();
             rt.state = Some(st);
-            rt.rclone = Some(r);
             let _ = self.save_runtime(&store, &mut rt);
             res.map(|_| ())
         })();
@@ -439,8 +445,9 @@ pub fn lock(hub: State<'_, Hub>, store: State<'_, Store>) -> Result<(), String> 
 /* ───────── команды: синхронизация ───────── */
 
 #[tauri::command]
-pub fn sync_status(hub: State<'_, Hub>, store: State<'_, Store>) -> SyncStatus {
-    hub.status(&store)
+pub async fn sync_status(app: AppHandle) -> Result<SyncStatus, String> {
+    tauri::async_runtime::spawn_blocking(move || app.state::<Hub>().status(&app.state::<Store>()))
+        .await.map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -456,65 +463,36 @@ fn test_target(t: Target) -> Target {
     }
 }
 
+// rclone принимает ответ Google на одном порту, поэтому вход может быть только один.
+#[derive(Default, Clone)]
+pub struct DriveAuth(std::sync::Arc<std::sync::atomic::AtomicU8>);
+
+const AUTH_IDLE: u8 = 0;
+const AUTH_RUNNING: u8 = 1;
+const AUTH_CANCELLED: u8 = 2;
+
+#[tauri::command]
+pub fn drive_cancel(auth: State<'_, DriveAuth>) {
+    let _ = auth.0.compare_exchange(AUTH_RUNNING, AUTH_CANCELLED, Ordering::SeqCst, Ordering::SeqCst);
+}
+
 /// Вход в Google через rclone: браузер с запросом прав drive.file, ответ ловит rclone на 127.0.0.1:53682.
 #[tauri::command]
-pub async fn drive_authorize(app: AppHandle, client_id: String, client_secret: String) -> Result<String, String> {
+pub async fn drive_authorize(app: AppHandle, auth: State<'_, DriveAuth>, client_id: String, client_secret: String) -> Result<String, String> {
     if let Ok(p) = std::env::var("HUB_SYNC_LOCAL") {
         return Ok(format!("local:{p}"));
     }
-    use std::io::{BufRead, BufReader};
-    use std::process::{Command, Stdio};
     use tauri_plugin_opener::OpenerExt;
-    let mut cfg = serde_json::Map::new();
-    cfg.insert("scope".into(), json!("drive.file"));
-    if !client_id.trim().is_empty() {
-        cfg.insert("client_id".into(), json!(client_id.trim()));
-        cfg.insert("client_secret".into(), json!(client_secret.trim()));
-    }
-    use base64::Engine;
-    let blob = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(serde_json::to_vec(&cfg).map_err(|e| e.to_string())?);
-    let bin = rclone::locate();
-    let mut cmd = Command::new(&bin);
-    // страница «Вход выполнен» в браузере — своя, вместо белой страницы rclone
-    let page = std::env::temp_dir().join("hub-auth-page.html");
-    let _ = fs::write(&page, include_str!("auth_page.html"));
-    cmd.args(["authorize", "drive", &blob, "--auth-no-open-browser", "--config", ""]);
-    if page.is_file() {
-        cmd.arg("--template").arg(&page);
-    }
-    cmd.stdout(Stdio::piped()).stderr(Stdio::piped()).stdin(Stdio::null());
-    #[cfg(windows)]
-    {
-        use std::os::windows::process::CommandExt;
-        cmd.creation_flags(0x0800_0000);
-    }
-    let mut child = cmd.spawn().map_err(|e| format!("rclone не запустился ({}): {e}", bin.display()))?;
-    let stderr = child.stderr.take().ok_or("нет вывода rclone")?;
-    let app2 = app.clone();
-    let reader = std::thread::spawn(move || {
-        let mut all = String::new();
-        for line in BufReader::new(stderr).lines().map_while(Result::ok) {
-            if let Some(i) = line.find("http://127.0.0.1:53682/auth") {
-                let url = line[i..].split_whitespace().next().unwrap_or("").to_string();
-                let _ = app2.opener().open_url(url, None::<&str>);
-            }
-            all.push_str(&line);
-            all.push('\n');
-        }
-        all
-    });
-    let out = tauri::async_runtime::spawn_blocking(move || child.wait_with_output()).await.map_err(|e| e.to_string())?.map_err(|e| e.to_string())?;
-    let log = reader.join().unwrap_or_default();
-    let text = format!("{}\n{}", String::from_utf8_lossy(&out.stdout), log);
-    rclone::parse_authorize_token(&text).ok_or_else(|| {
-        if text.contains("--->") {
-            // вход прошёл, но ответ rclone в незнакомом виде — сохранить для разбора
-            let _ = fs::write(std::env::temp_dir().join("hub-auth-output.txt"), &text);
-            return "Вход в Google прошёл, но хаб не понял ответ rclone. Его копия — в hub-auth-output.txt во временной папке; пришлите её разработчику".to_string();
-        }
-        let last = log.lines().filter(|l| l.contains("ERROR") || l.contains("Error")).last().unwrap_or("вход не завершён").to_string();
-        format!("Не удалось войти в Google: {last}")
-    })
+    let auth = auth.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        auth.0.compare_exchange(AUTH_IDLE, AUTH_RUNNING, Ordering::SeqCst, Ordering::SeqCst)
+            .map_err(|_| "Вход в Google уже начат")?;
+        let result = rclone::authorize(&client_id, &client_secret, move |url| {
+            let _ = app.opener().open_url(url, None::<&str>);
+        }, || auth.0.load(Ordering::SeqCst) == AUTH_CANCELLED);
+        auth.0.store(AUTH_IDLE, Ordering::SeqCst);
+        result
+    }).await.map_err(|e| e.to_string())?
 }
 
 fn remote_keys(t: &Target) -> Result<Option<KeyFile>, String> {
@@ -524,8 +502,7 @@ fn remote_keys(t: &Target) -> Result<Option<KeyFile>, String> {
         if o.offline() {
             return Err("Нет связи с Drive".into());
         }
-        let s = o.stderr.to_lowercase();
-        if s.contains("not found") {
+        if o.not_found() {
             return Ok(None);
         }
         return Err(o.err());
@@ -664,11 +641,9 @@ pub async fn folder_place(hub: State<'_, Hub>, store: State<'_, Store>, id: Stri
 fn with_rclone<T>(hub: &Hub, store: &Store, f: impl FnOnce(&Rclone) -> T) -> Result<T, String> {
     let mut rt = hub.rt();
     hub.rclone(store, &mut rt)?;
-    let r = rt.rclone.take().expect("rclone есть");
+    let r = rt.rclone.as_ref().expect("rclone есть").clone();
     drop(rt);
-    let out = f(&r);
-    hub.rt().rclone = Some(r);
-    Ok(out)
+    Ok(f(&r))
 }
 
 fn local_folder(hub: &Hub, id: &str) -> Result<LocalFolder, String> {

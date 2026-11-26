@@ -123,11 +123,6 @@ fn crypt(path: &str) -> String {
     format!("{CRYPT}:{path}")
 }
 
-fn not_found(o: &crate::rclone::Output) -> bool {
-    let s = o.stderr.to_lowercase();
-    s.contains("directory not found") || s.contains("object not found") || s.contains("not found")
-}
-
 /// Отметить изменения, накопленные хранилищем: они уйдут в журнал.
 pub fn absorb(store: &Store, st: &mut State) {
     for c in store.take_changes() {
@@ -198,7 +193,7 @@ impl SyncError {
 fn pull(store: &Store, r: &Rclone, st: &mut State, rep: &mut Report) -> Result<(), SyncError> {
     let o = r.run(&["lsf", "--dirs-only", &crypt("hub/")], None);
     if !o.ok {
-        if not_found(&o) {
+        if o.not_found() {
             return Ok(());
         }
         return Err(SyncError::from_output(&o));
@@ -361,7 +356,7 @@ pub fn snapshot(r: &Rclone, st: &mut State, name: &str, src: &str) -> Result<boo
     }
     let o = r.run(&["copy", &crypt(src), &crypt(&format!("snapshots/{name}/{day}"))], None);
     if !o.ok {
-        if not_found(&o) {
+        if o.not_found() {
             return Ok(false);
         }
         return Err(SyncError::from_output(&o));
@@ -456,7 +451,7 @@ pub fn folder_preview(r: &Rclone, def: &FolderDef, path: &Path) -> Result<Previe
     let argv: Vec<&str> = args.iter().map(String::as_str).collect();
     let o = r.run(&argv, None);
     // check возвращает код 1, когда есть различия — это не ошибка
-    if !o.ok && o.stdout.is_empty() {
+    if !o.ok && (o.code != 1 || o.stdout.is_empty()) {
         return Err(SyncError::from_output(&o));
     }
     // rclone check --combined (проверено на 1.76): «+» — только здесь, «-» — только на Drive, «*» — различаются, «=» — одинаковые

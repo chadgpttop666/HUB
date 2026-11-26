@@ -79,6 +79,11 @@ try {
     await pc.js(async () => { const c = document.querySelector("#su-saved"); c.checked = true; c.dispatchEvent(new Event("change")); return true; });
     await pc.js(click, '.shell-setup [type="submit"]');
     await pc.until(has, 5000, "шаг Drive", '[data-step="drive"]');
+    const canConnect = async () => !document.querySelector('[data-step="drive"]').disabled;
+    assert(!(await pc.js(canConnect)), "Drive ждёт обе части OAuth-клиента");
+    await pc.js(fill, "#gc-id", "hub-tests.apps.googleusercontent.com");
+    assert(!(await pc.js(canConnect)), "одного Client ID недостаточно");
+    await pc.js(fill, "#gc-secret", "hub-tests");
     await pc.js(click, '[data-step="drive"]');
     await pc.until(has, 20000, "«Сегодня»", "#screen-today:not([hidden])");
     for (let i = 0; i < 50 && !existsSync(join(W, "drive", "keys.json")); i++) await sleep(300);
@@ -112,6 +117,8 @@ try {
   await test("Телефон: «Подключить к существующему» — ключи и данные с «Drive»", async () => {
     await phone.until(has, 15000, "экран настройки", ".shell-setup");
     await phone.js(click, '[data-choose="join"]');
+    await phone.js(fill, "#gc-id", "hub-tests.apps.googleusercontent.com");
+    await phone.js(fill, "#gc-secret", "hub-tests");
     await phone.js(click, '[data-step="google"]');
     await phone.until(async () => !document.querySelector('#screen-lock [type="submit"]').disabled, 8000, "вход в «Google»").catch(async e => {
       await phone.shot("t-fail-phone.png");

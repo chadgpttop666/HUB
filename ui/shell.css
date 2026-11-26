@@ -20,6 +20,10 @@
 
 /* оболочка приложения: страница приложения — iframe на всю область */
 .shell-main { position: relative; padding: 0; overflow: hidden; }
+/* Фон оболочки уже размыт. Панели не должны заново размывать его при смене iframe. */
+:where(.hub-shell) :is(.shell-main, .hub-rail, .hub-capture__bar) {
+  -webkit-backdrop-filter: none; backdrop-filter: none;
+}
 .shell-frames, .shell-frame { position: absolute; inset: 0; }
 .shell-frame { width: 100%; height: 100%; border: 0; background: transparent; border-radius: inherit; }
 .shell-page { position: absolute; inset: 0; overflow: auto; padding: var(--space-6) var(--space-8); }
@@ -47,6 +51,7 @@
 .shell-setup__body { margin-top: var(--space-6); }
 .shell-setup__bar { justify-content: space-between; margin-top: var(--space-8); }
 .shell-choice { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--space-3); }
+.shell-drive-fields { display: grid; gap: var(--space-3); margin-top: var(--space-4); }
 .shell-details summary { cursor: pointer; }
 .shell-pre { margin: var(--space-4) 0 0; padding: var(--space-3) var(--space-4); border-radius: var(--radius-sm); background: var(--surface-sunken);
   font-size: var(--font-size-sm); white-space: pre-wrap; overflow-wrap: anywhere; user-select: all; }
@@ -94,6 +99,8 @@ input::-ms-reveal, input::-ms-clear { display: none; }
 .shell-secret > input { width: 100%; padding-right: calc(var(--control-sm) + var(--space-3)); }
 .shell-reveal { position: absolute; right: var(--space-1); top: 50%; translate: 0 -50%; color: var(--text-muted); }
 .shell-secret--line > input { text-align: inherit; }
+.hub-lock__caps { justify-content: center; margin-top: var(--space-2); }
+.hub-lock__row .shell-secret--line > input { padding-right: calc(var(--control-sm) + var(--space-2)); }
 
 /* ───────── заголовок окна (ПК) ─────────
    Системная рамка выключена (decorations: false), заголовок рисует хаб — прозрачный, поверх фото темы. */

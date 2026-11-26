@@ -1,6 +1,6 @@
 /* syncui.js — статус синхронизации в шапке и разделы настроек: синхронизация, папки, конфликты, безопасность. */
 import { core, inTauri } from "./core.js";
-import { driveOwnClientFields } from "./lock.js";
+import { bindDriveClient, driveClientFields, withDriveClient } from "./lock.js";
 
 const H = window.HubUI;
 const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -36,7 +36,7 @@ export function syncPill(dataConflicts, compact) {
 
 /* ───────── настройки ───────── */
 
-export async function renderSyncSettings(el, ctx) {
+export function renderSyncSettings(el, ctx) {
   const { state, toast, rerender, platform } = ctx;
   const st = syncStatus;
   const phone = platform === "phone";
@@ -47,17 +47,17 @@ export async function renderSyncSettings(el, ctx) {
     <section class="shell-section" id="sync"><h2 class="hub-section-title">Синхронизация</h2>
       ${!inTauri ? `<p class="hub-muted">В браузере синхронизации нет — только в приложении хаба.</p>` : !st.configured ? `
         <p class="hub-muted" style="margin:0 0 var(--space-4)">Данные хаба и помеченные папки — одинаковые на ПК и телефоне, через вашу папку «Hub» на Google Drive. Всё уходит зашифрованным, Google видит только число файлов и их размер.</p>
-        ${driveOwnClientFields({})}
-        <div class="hub-btn-row" style="margin-top:var(--space-4)"><button class="hub-btn hub-btn--primary" type="button" data-sync="connect"><i data-icon="external-link"></i>Подключить Google Drive</button></div>
-        <p class="hub-hint" id="sync-msg" style="margin-top:var(--space-3)"></p>` : `
+        ${driveClientFields()}
+        <div class="hub-btn-row" style="margin-top:var(--space-4)"><button class="hub-btn hub-btn--primary" type="button" data-sync="connect" disabled><i data-icon="external-link"></i>Подключить Google Drive</button></div>
+        <p class="hub-hint" id="sync-msg" role="status" style="margin-top:var(--space-3)"></p>` : `
         <dl class="shell-kv">
-          <dt>Состояние</dt><dd>${esc({ idle: "синхронизировано", running: "идёт синхронизация", offline: "нет сети — всё сохранено здесь, уйдёт позже", error: "не прошла" }[st.state] || st.state)}${st.message ? ` · ${esc(st.message)}` : ""}</dd>
-          <dt>Последний раз</dt><dd>${esc(when(st.lastSync) || "ещё не было")}</dd>
+          <dt>Состояние</dt><dd id="sync-state" aria-live="polite"></dd>
+          <dt>Последний раз</dt><dd id="sync-last"></dd>
           <dt>Хранилище</dt><dd>${st.kind === "local" ? "папка (проверка)" : "Google Drive, папка «Hub»"}</dd>
           <dt>Это устройство</dt><dd>${esc(st.device)}</dd>
         </dl>
         <div class="hub-btn-row" style="margin-top:var(--space-4)">
-          <button class="hub-btn" type="button" data-sync="now"${st.state === "running" ? ' aria-busy="true" disabled' : ""}><i data-icon="refresh-cw"></i>Синхронизировать</button>
+          <button class="hub-btn" type="button" data-sync="now"><i data-icon="refresh-cw"></i>Синхронизировать</button>
           <button class="hub-btn hub-btn--quiet" type="button" data-sync="rclone"><i data-icon="key-round"></i>Пароли для rclone</button>
           <button class="hub-btn hub-btn--quiet" type="button" data-sync="disconnect">Отключить на этом устройстве</button>
         </div>
@@ -100,6 +100,20 @@ export async function renderSyncSettings(el, ctx) {
     </section>`;
   H.icons(el);
   wire(el, ctx);
+  updateSyncSettingsStatus(el);
+}
+
+export function updateSyncSettingsStatus(el) {
+  const status = el?.querySelector("#sync-state");
+  if (!status) return;
+  const { state, message, lastSync } = syncStatus;
+  const label = { idle: "синхронизировано", running: "идёт синхронизация", offline: "нет сети — всё сохранено здесь, уйдёт позже", error: "не прошла" }[state] || state;
+  status.textContent = message ? `${label} · ${message}` : label;
+  el.querySelector("#sync-last").textContent = when(lastSync) || "ещё не было";
+  const button = el.querySelector('[data-sync="now"]');
+  button.disabled = state === "running";
+  if (button.disabled) button.setAttribute("aria-busy", "true");
+  else button.removeAttribute("aria-busy");
 }
 
 function folderRow(f) {
@@ -201,6 +215,8 @@ async function askPath(title, text, ctx) {
 
 function wire(el, ctx) {
   const { state, toast, refresh, lockNow } = ctx;
+  const connect = el.querySelector('[data-sync="connect"]');
+  if (connect) bindDriveClient(el, connect);
   el.addEventListener("click", async e => {
     const b = e.target.closest("button");
     if (!b) return;
@@ -208,19 +224,12 @@ function wire(el, ctx) {
     try {
       if (d.sync === "connect") {
         const msg = el.querySelector("#sync-msg");
-        b.setAttribute("aria-busy", "true"); b.disabled = true;
-        msg.className = "hub-hint"; msg.textContent = "Окно входа Google открыто в браузере…";
-        try {
-          const id = el.querySelector("#gc-id"), sec = el.querySelector("#gc-secret");
-          const client = { clientId: id ? id.value.trim() : "", clientSecret: sec ? sec.value.trim() : "" };
-          const token = await core.driveAuthorize(client);
-          const r = await core.syncConnect(Object.assign({ kind: "drive", token }, client));
+        await withDriveClient(el, b, msg, async (client, token) => {
+          msg.textContent = "Проверяем доступ к папке «Hub»…";
+          const r = await core.syncConnect({ kind: "drive", token, ...client });
           toast(r === "first" ? "Google Drive подключён — первая синхронизация через пару секунд" : "Хаб снова подключён к Drive", { tone: "success", icon: "circle-check" });
-          refresh();
-        } catch (err) {
-          b.removeAttribute("aria-busy"); b.disabled = false;
-          msg.className = "hub-hint hub-hint--error"; msg.innerHTML = `${H.icon("circle-alert")}${esc(err.message || err)}`;
-        }
+          await refresh();
+        });
       } else if (d.sync === "now") { await core.syncNow(); toast("Синхронизация пошла", { icon: "refresh-cw" }); }
       else if (d.sync === "disconnect") { await core.syncDisconnect(); toast("Синхронизация на этом устройстве выключена. Данные на Drive остались", { icon: "cloud-off" }); refresh(); }
       else if (d.sync === "rclone") {
@@ -255,9 +264,12 @@ function wire(el, ctx) {
       else if (d.folderAction) {
         if (d.folderAction === "force" && !(await confirmDialog("Удалить эти файлы везде?", "Они исчезнут и на Drive, и на других устройствах. Копии останутся в ежедневных снимках на Drive.", "Удалить везде"))) return;
         b.setAttribute("aria-busy", "true");
-        const c = await core.folderSync(d.id, d.folderAction);
-        toast(d.folderAction === "start" ? "Файлы возвращены" : c.length ? `Готово, конфликтов: ${c.length}` : "Папка синхронизирована", { tone: "success", icon: "circle-check" });
-        refresh();
+        b.disabled = true;
+        try {
+          const c = await core.folderSync(d.id, d.folderAction);
+          toast(d.folderAction === "start" ? "Файлы возвращены" : c.length ? `Готово, конфликтов: ${c.length}` : "Папка синхронизирована", { tone: "success", icon: "circle-check" });
+          await refresh();
+        } finally { b.removeAttribute("aria-busy"); b.disabled = false; }
       } else if (d.folderKeep) {
         const name = await core.folderResolve(d.id, d.folderKeep);
         toast(`Оставлена эта версия: ${name}`, { icon: "check" });

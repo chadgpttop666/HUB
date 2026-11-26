@@ -52,6 +52,7 @@ export class AppHost {
     this.apps = new Map();     // id → { id, manifest, source }
     this.frames = new Map();   // id → { iframe, loaded, inboxReady, sent:Set, queue:Promise }
     this.timers = new Map();
+    this.active = null;
     window.addEventListener("message", e => this.onMessage(e));
   }
 
@@ -87,22 +88,34 @@ export class AppHost {
     this.container.appendChild(iframe);
     const f = { iframe, loaded: false, inboxReady: false, sent: new Set(), queue: Promise.resolve() };
     this.frames.set(id, f);
-    this.load(id).catch(e => {
-      console.error(e);
-      this.toast(`«${this.name(id)}» не открылось: ${e.message || e}`, { tone: "danger", icon: "circle-alert", timeout: 8000 });
-    });
+    this.reload(id);
     return f;
   }
 
-  async load(id) {
-    const app = this.apps.get(id), f = this.frames.get(id);
+  reload(id) {
+    const f = this.frames.get(id);
+    if (!f) return;
+    return this.load(id, f).catch(e => {
+      if (this.frames.get(id) !== f) return;
+      console.error(e);
+      this.toast(`«${this.name(id)}» не открылось: ${e.message || e}`, { tone: "danger", icon: "circle-alert", timeout: 8000 });
+    });
+  }
+
+  async load(id, f) {
+    const app = this.apps.get(id);
+    const load = f.load = Symbol();
+    f.loaded = false;
     const base = core.appBase();
     const appBase = `${base}${encodeURIComponent(id)}/`;
     const entry = app.manifest.entry || "index.html";
     const res = await fetch(appBase + entry);
     if (!res.ok) throw new Error(`нет файла ${entry} (${res.status})`);
     const html = await res.text();
+    const current = () => this.frames.get(id) === f && f.load === load;
+    if (!current()) return;
     const dump = await core.dump(id);
+    if (!current()) return;
     const boot = { appId: id, data: dump.json, blobs: dump.blobs, theme: this.getTheme() };
     const network = (app.manifest.permissions && app.manifest.permissions.network) || [];
     const prelude =
@@ -115,27 +128,45 @@ export class AppHost {
       `<script src="${escAttr(base)}_hub/hub-app.js"></script>` +
       `<script src="${escAttr(base)}_hub/hub-ui.js"></script>`;
     f.inboxReady = false; f.sent.clear();
-    f.iframe.addEventListener("load", () => { f.loaded = true; }, { once: true });
+    f.iframe.addEventListener("load", () => {
+      if (!current()) return;
+      f.loaded = true;
+      if (f.pendingAction) {
+        this.post(id, "today.action", f.pendingAction);
+        f.pendingAction = null;
+      }
+    }, { once: true });
     f.iframe.srcdoc = injectPrelude(html, prelude);
   }
 
-  reload(id) { if (this.frames.has(id)) return this.load(id); }
+  remove(id) {
+    const f = this.frames.get(id);
+    if (f) f.iframe.remove();
+    this.frames.delete(id);
+    clearTimeout(this.timers.get(id));
+    this.timers.delete(id);
+    if (this.active === id) this.active = null;
+  }
 
   /* замок: страницы приложений держат расшифрованные данные в памяти — убрать их целиком */
   reset() {
-    for (const f of this.frames.values()) { f.iframe.srcdoc = ""; f.iframe.remove(); }
-    this.frames.clear();
-    for (const t of this.timers.values()) clearTimeout(t);
-    this.timers.clear();
+    for (const id of this.frames.keys()) this.remove(id);
   }
   visible(id) { const f = this.frames.get(id); return !!(f && !f.iframe.hidden); }
 
-  show(id) {
-    for (const [fid, f] of this.frames) f.iframe.hidden = fid !== id;
-    if (id) { const f = this.ensure(id); f.iframe.hidden = false; return f; }
-    return null;
+  show(id, action) {
+    const previous = this.frames.get(this.active);
+    if (previous && this.active !== id) previous.iframe.hidden = true;
+    this.active = id;
+    if (!id) return;
+    const f = this.ensure(id);
+    f.iframe.hidden = false;
+    if (action) {
+      if (f.loaded) this.post(id, "today.action", action);
+      else f.pendingAction = action;
+    }
   }
-  focus(id) { const f = this.frames.get(id); if (f) f.iframe.focus(); }
+  focus(id) { const f = this.frames.get(id); if (f && this.active === id) f.iframe.focus(); }
 
   post(id, event, payload) {
     const f = this.frames.get(id);

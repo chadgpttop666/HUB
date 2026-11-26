@@ -38,7 +38,7 @@
   background: var(--hub-photo, none) 50% 38% / cover no-repeat;
   filter: blur(var(--blur-backdrop));
   transform: scale(calc(1 + 0.04 * var(--hub-move)));
-  transition: filter var(--duration-scene) var(--ease-out), transform calc(var(--duration-scene) * 1.6) var(--ease-out);
+  transition: transform calc(var(--duration-scene) * 1.6) var(--ease-out);
 }
 .hub-backdrop__veil, .hub-backdrop__veil::after { position: absolute; inset: 0; transition: opacity var(--duration-scene) var(--ease-out); }
 .hub-backdrop__veil {
@@ -530,11 +530,10 @@ dialog.hub-dialog::backdrop { background: var(--scrim-mid); -webkit-backdrop-fil
 .hub-lock__date { margin: var(--space-3) 0 var(--space-8); font-size: var(--font-size-md); letter-spacing: var(--tracking-wide); color: var(--text-muted); }
 .hub-lock__greet { margin: 0; font-family: var(--font-heading); font-size: clamp(var(--font-size-3xl), 3.4vw, var(--font-size-4xl)); font-weight: var(--weight-light); line-height: var(--leading-tight); text-wrap: balance; }
 .hub-lock__greet > span { display: inline-block; padding: 0 var(--space-1) var(--space-3); background: linear-gradient(var(--line), var(--line)) no-repeat 50% 100% / 100% 1px; }
-.hub-lock__form { position: relative; width: min(300px, 82vw); margin-top: var(--space-8); transition: opacity var(--duration-slow) var(--ease-out), transform var(--duration-slow) var(--ease-out); }
-.hub-lock__row { position: relative; display: flex; align-items: center; }
-.hub-lock__row .hub-input--line { padding-left: var(--space-8); padding-right: var(--space-8); }
-.hub-lock__go { position: absolute; right: 0; }
-.hub-lock__layout { position: absolute; left: 0; }
+.hub-lock__form { position: relative; width: min(380px, 85vw); margin-top: var(--space-8); transition: opacity var(--duration-slow) var(--ease-out), transform var(--duration-slow) var(--ease-out); }
+.hub-lock__row { display: flex; align-items: center; gap: var(--space-1); }
+.hub-lock__row .hub-input--line { flex: 1; min-width: 0; box-sizing: border-box; padding-inline: var(--space-2); letter-spacing: normal; text-align: start; }
+.hub-lock__go { flex: none; }
 .hub-lock__msg { display: flex; align-items: center; justify-content: center; gap: var(--space-1); min-height: 22px; margin: var(--space-3) 0 0; font-size: var(--font-size-sm); color: var(--text-muted); }
 .hub-lock__msg .hub-icon { width: 16px; height: 16px; }
 .hub-lock__msg[data-tone="error"] { color: var(--danger); }

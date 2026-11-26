@@ -265,5 +265,11 @@ pub fn desktop_set(app: AppHandle, d: State<'_, Desktop>, close_to_tray: Option<
     Ok(())
 }
 
-/// Запуск при входе в систему: окно не показывать, хаб ждёт в трее.
-pub const HIDDEN_ARG: &str = "--hidden";
+/// Обновить существующую запись Windows, в которой раньше был аргумент --hidden.
+#[cfg(windows)]
+pub fn refresh_autostart(app: &AppHandle) {
+    let autostart = app.autolaunch();
+    if let Err(e) = autostart.is_enabled().and_then(|on| if on { autostart.enable() } else { Ok(()) }) {
+        eprintln!("[хаб] запись автозапуска не обновилась: {e}");
+    }
+}

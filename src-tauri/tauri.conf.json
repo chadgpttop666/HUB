@@ -21,6 +21,8 @@
         "minWidth": 1024,
         "minHeight": 680,
         "center": true,
+        "visible": true,
+        "focus": true,
         "backgroundColor": "#0d1511",
         "decorations": false,
         "shadow": true

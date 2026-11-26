@@ -3,7 +3,7 @@ import { core, inTauri } from "./core.js";
 import { HubState, tagsOf, setDevice, DEVICE } from "./state.js";
 import { AppHost } from "./host.js";
 import { runSetup, runLock } from "./lock.js";
-import { renderSyncSettings, setSyncStatus, syncPill, syncStatus } from "./syncui.js";
+import { renderSyncSettings, setSyncStatus, syncPill, syncStatus, updateSyncSettingsStatus } from "./syncui.js";
 import { watchSecrets } from "./secret.js";
 import { installFromPath, pickAndInstall, uninstall, watchDrops } from "./install.js";
 import { themeEditor, greetingText } from "./themes.js";
@@ -102,6 +102,7 @@ function applyTheme() {
 
 /* ───────── экраны ───────── */
 function showScreen(name) {
+  if (name !== "shell" && host) host.show(null);
   $("#screen-today").hidden = name !== "today";
   $("#screen-triage").hidden = name !== "triage";
   $("#screen-shell").hidden = name !== "shell";
@@ -157,7 +158,7 @@ function go(name) {
   if (name === "apps") { view = { name: "apps", app: null }; showScreen("apps"); renderApps(); remember(); return; }
   if (name === "today") { view = { name: "today", app: null }; showScreen("today"); renderToday(); remember(); if (!isPhone()) focusCapture(); }
   else if (name === "triage") startTriage();
-  else if (name === "sync") { go("settings"); setTimeout(() => { const s = $("#sync"); if (s) s.scrollIntoView({ block: "start" }); }, 80); }
+  else if (name === "sync") { go("settings"); $("#sync")?.scrollIntoView({ block: "start" }); }
   else if (name === "lock") lockNow();
   else if (name === "settings") {
     view = { name: "settings", app: null };
@@ -184,11 +185,10 @@ function openApp(id, action) {
   closeSnoozeMenu();
   view = { name: "app", app: id };
   showScreen("shell"); $("#settings").hidden = true;
-  host.show(id);
+  host.show(id, action);
   $("#appbar-title").textContent = host.name(id);
   renderRail(); remember();
-  if (action) host.post(id, "today.action", action);
-  setTimeout(() => host.focus(id), 60);
+  requestAnimationFrame(() => host.focus(id));
 }
 /* порядок в меню — свой (настройки → приложения, ↑↓); он же задаёт Alt+1…9 */
 function appsInOrder() {
@@ -600,12 +600,12 @@ function triageKey(e) {
 }
 
 /* ───────── настройки ───────── */
-async function renderSettings() {
+function renderSettings() {
   const el = $("#settings");
-  const info = await core.info().catch(() => ({}));
+  const syncPanel = $("#settings-sync");
+  const keepConnection = !syncStatus.configured && !!syncPanel?.querySelector("#gc-id");
   const cur = currentTheme();
   const apps = appsInOrder();
-  const desk = inTauri && platform !== "phone" ? await core.desktopPrefs().catch(() => null) : null;
   const keys = [
     [["Ctrl", "Alt", "Пробел"], "мысль в корзину из любой программы"],
     [["Ctrl", "Пробел"], "к строке ввода (или /, на «Сегодня»)"],
@@ -661,18 +661,12 @@ async function renderSettings() {
         <button class="hub-btn" type="button" data-act="install-zip"><i data-icon="file-archive"></i>Из zip</button></div>` : ""}
       <p class="hub-hint" style="margin-top:var(--space-3)">${platform === "phone" ? "Приложения ставятся на ПК и приезжают сюда с синхронизацией." : "Или перетащите папку или zip в окно хаба. Как написать приложение с нейросетью — APP_SPEC.md: приложите его к запросу «сделай мне приложение для…»."}</p>
     </section>
-    ${desk ? `<section class="shell-section" id="settings-pc"><h2 class="hub-section-title">Этот компьютер</h2>
-      <div style="display:grid;gap:var(--space-4)">
-        <label class="hub-switch"><input type="checkbox" role="switch" id="pc-autostart"${desk.autostart ? " checked" : ""}><span>Открывать хаб при входе в Windows</span></label>
-        <label class="hub-switch"><input type="checkbox" role="switch" id="pc-tray"${desk.closeToTray ? " checked" : ""}><span>Крестик прячет хаб в трей</span></label>
-      </div>
-      <p class="hub-hint" style="margin-top:var(--space-3)">${desk.closeToTray ? "Хаб остаётся в трее, и <kbd class=\"hub-kbd\">Ctrl</kbd><kbd class=\"hub-kbd\">Alt</kbd><kbd class=\"hub-kbd\">Пробел</kbd> открывает мини-окно поверх любой программы — даже когда хаб заперт: такая мысль запирается ключом этого компьютера и попадает в корзину после входа. Выйти — правой кнопкой по значку в трее." : "Крестик закрывает хаб совсем; Ctrl+Alt+Пробел работает, только пока хаб открыт."}</p>
-    </section>` : ""}
+    <section class="shell-section" id="settings-pc" hidden></section>
     <section class="shell-section"><h2 class="hub-section-title">Данные</h2>
       <dl class="shell-kv">
-        <dt>Папка данных</dt><dd>${esc(info.dataDir || "—")}</dd>
-        <dt>Папка приложений</dt><dd>${esc(info.appsDir || "—")}</dd>
-        <dt>Версия хаба</dt><dd>${esc(info.version || "—")}</dd>
+        <dt>Папка данных</dt><dd data-info="dataDir">—</dd>
+        <dt>Папка приложений</dt><dd data-info="appsDir">—</dd>
+        <dt>Версия хаба</dt><dd data-info="version">—</dd>
       </dl>
       <p class="hub-hint" style="margin-top:var(--space-3)">Каждая запись — отдельный файл, зашифрованный ключом данных. Ключ открывается паролем или ключом восстановления.</p>
       ${inTauri ? `<div class="hub-btn-row" style="margin-top:var(--space-4)"><button class="hub-btn" type="button" data-act="open-data"><i data-icon="folder"></i>Открыть папку</button></div>` : ""}
@@ -683,16 +677,46 @@ async function renderSettings() {
   H.icons(el);
   const nm = $("#set-name");
   nm.addEventListener("change", () => { if (nm.value.trim() === userName()) return; state.setSetting("name", nm.value.trim()); applyTheme(); renderHello(); toast("Сохранено", { icon: "check" }); });
+  const syncSlot = $("#settings-sync");
+  if (keepConnection) syncSlot.replaceWith(syncPanel);
+  else renderSyncSettings(syncSlot, syncCtx());
+  const infoFields = [...el.querySelectorAll("[data-info]")];
+  core.info().then(info => {
+    for (const field of infoFields) field.textContent = info[field.dataset.info] || "—";
+  }).catch(() => {});
+  if (inTauri && platform !== "phone") {
+    const pc = $("#settings-pc");
+    core.desktopPrefs().then(desk => {
+      if (pc.isConnected) renderDesktopPrefs(pc, desk);
+    }).catch(() => {});
+  }
+}
+function renderDesktopPrefs(el, desk) {
+  el.hidden = false;
+  el.innerHTML = `<h2 class="hub-section-title">Этот компьютер</h2>
+      <div style="display:grid;gap:var(--space-4)">
+        <label class="hub-switch"><input type="checkbox" role="switch" id="pc-autostart"${desk.autostart ? " checked" : ""}><span>Открывать хаб при входе в Windows</span></label>
+        <label class="hub-switch"><input type="checkbox" role="switch" id="pc-tray"${desk.closeToTray ? " checked" : ""}><span>Крестик прячет хаб в трей</span></label>
+      </div>
+      <p class="hub-hint" style="margin-top:var(--space-3)">${desk.closeToTray ? "Хаб остаётся в трее, и <kbd class=\"hub-kbd\">Ctrl</kbd><kbd class=\"hub-kbd\">Alt</kbd><kbd class=\"hub-kbd\">Пробел</kbd> открывает мини-окно поверх любой программы — даже когда хаб заперт: такая мысль запирается ключом этого компьютера и попадает в корзину после входа. Выйти — правой кнопкой по значку в трее." : "Крестик закрывает хаб совсем; Ctrl+Alt+Пробел работает, только пока хаб открыт."}</p>
+`;
   for (const [sel, key] of [["#pc-autostart", "autostart"], ["#pc-tray", "closeToTray"]]) {
-    const sw = $(sel);
-    if (sw) sw.addEventListener("change", async () => {
-      try { await core.desktopSet({ [key]: sw.checked }); toast("Сохранено", { icon: "check" }); }
-      catch (err) { sw.checked = !sw.checked; toast(String(err.message || err), { tone: "danger", icon: "circle-alert" }); }
-      if (key === "closeToTray") renderSettings();
+    const sw = el.querySelector(sel);
+    sw.addEventListener("change", async () => {
+      sw.disabled = true;
+      try {
+        await core.desktopSet({ [key]: sw.checked });
+        desk[key] = sw.checked;
+        toast("Сохранено", { icon: "check" });
+        if (key === "closeToTray") renderDesktopPrefs(el, desk);
+      } catch (err) {
+        sw.checked = desk[key];
+        toast(String(err.message || err), { tone: "danger", icon: "circle-alert" });
+      } finally { sw.disabled = false; }
     });
   }
-  renderSyncSettings($("#settings-sync"), syncCtx());
 }
+
 function syncCtx() {
   return {
     state, toast, platform,
@@ -810,20 +834,24 @@ function installCtx() {
     toast,
     unlocked: () => unlocked,
     openApp: id => openApp(id),
-    afterInstall: async () => { await state.load(); await loadCustomPhotos(); await reloadApps(); },
+    afterInstall: async p => { await state.load(); await loadCustomPhotos(); await reloadApps(p?.kind === "app" ? p.id : null); },
   };
 }
 /* список приложений поменялся: установка, удаление, синхронизация с другого устройства */
-async function reloadApps() {
+async function reloadApps(updatedId) {
   if (!host) return;
   let list = [];
   try { list = await core.apps(); } catch (e) { console.error(e); return; }
+  if (!unlocked) return;
   const ids = new Set(list.map(a => a.id));
-  for (const id of [...host.frames.keys()]) if (!ids.has(id)) { const f = host.frames.get(id); f.iframe.remove(); host.frames.delete(id); }
-  const changed = list.filter(a => { const old = host.apps.get(a.id); return old && JSON.stringify(old.manifest) !== JSON.stringify(a.manifest); }).map(a => a.id);
+  for (const id of host.frames.keys()) if (!ids.has(id)) host.remove(id);
+  const changed = list.filter(a => {
+    const old = host.apps.get(a.id);
+    return a.id === updatedId || (old && (old.source !== a.source || JSON.stringify(old.manifest) !== JSON.stringify(a.manifest)));
+  });
   host.apps.clear();
   host.setApps(list);
-  for (const id of changed) host.reload(id);
+  for (const a of changed) host.reload(a.id);
   for (const a of host.list()) if (a.manifest.card || (a.manifest.accepts || []).length) host.ensure(a.id);
   host.flushAll();
   if (view.name === "app" && !host.apps.has(view.app)) go("today");
@@ -892,6 +920,7 @@ async function lockNow() {
   closeSnoozeMenu();
   document.querySelectorAll("dialog").forEach(d => d.close());
   if (host) host.reset();
+  core.driveCancel().catch(() => {});
   try { await core.lock(); } catch (e) { console.error(e); }
   state.items = []; state.cards = {}; state.deliveries = []; state.conflicts = [];
   for (const sel of ["#today-cards", "#triage", "#settings"]) { const el = $(sel); if (el) el.innerHTML = ""; }
@@ -902,7 +931,12 @@ async function lockNow() {
 }
 
 /* синхронизация: статус и чужие правки */
-core.onSync(st => { setSyncStatus(st); if (unlocked) renderSyncPills(); });
+core.onSync(st => {
+  setSyncStatus(st);
+  if (!unlocked) return;
+  renderSyncPills();
+  updateSyncSettingsStatus($("#settings-sync"));
+});
 core.onDataChanged(async ({ namespaces = [] } = {}) => {
   if (!unlocked) return;
   if (namespaces.includes("hub")) {

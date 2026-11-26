@@ -42,6 +42,7 @@ const tauriCore = {
   lock: () => T.core.invoke("lock"),
 
   /* синхронизация */
+  driveCancel: () => T.core.invoke("drive_cancel"),
   syncStatus: () => T.core.invoke("sync_status"),
   syncNow: () => T.core.invoke("sync_now"),
   driveAuthorize: ({ clientId = "", clientSecret = "" } = {}) => T.core.invoke("drive_authorize", { clientId, clientSecret }),
@@ -169,6 +170,7 @@ const devCore = {
   async lock() { devOpen = false; },
   async syncStatus() { return { configured: false, kind: "", state: "off", message: "", lastSync: null, device: "browser", folders: [] }; },
   async syncNow() {},
+  async driveCancel() {},
   async driveAuthorize() { throw new Error("В браузере синхронизации нет — только в приложении хаба"); },
   async syncConnect() { throw new Error("В браузере синхронизации нет — только в приложении хаба"); },
   async syncDisconnect() {},

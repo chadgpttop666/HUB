@@ -11,14 +11,26 @@
 //! Достать данные без хаба: rclone с теми же двумя паролями (Настройки → Синхронизация → «Пароли для rclone»).
 
 use serde::{Deserialize, Serialize};
-use std::io::Write;
+use std::io::{BufRead, BufReader, Read, Write};
 use std::path::PathBuf;
-use std::process::{Command, Stdio};
+use std::process::{Child, Command, ExitStatus, Stdio};
+use std::time::{Duration, Instant};
 
 use crate::crypto::DataKey;
 
 pub const BASE: &str = "hubdrive";
 pub const CRYPT: &str = "hubcrypt";
+const NETWORK_FLAGS: &[&str] = &["--retries", "1", "--low-level-retries", "2", "--contimeout", "15s", "--timeout", "30s"];
+const COMMAND_TIMEOUT: Duration = Duration::from_secs(120);
+const AUTHORIZE_TIMEOUT: Duration = Duration::from_secs(180);
+
+fn drive_client<'a>(id: &'a str, secret: &'a str) -> Result<(&'a str, &'a str), String> {
+    let (id, secret) = (id.trim(), secret.trim());
+    if id.is_empty() || secret.is_empty() || id.starts_with("202264815644") {
+        return Err("Введите собственные Client ID и Client Secret из Google Cloud и подключите Google Drive заново".into());
+    }
+    Ok((id, secret))
+}
 
 /// Как достучаться до хранилища: Google Drive или (для проверок) обычная папка.
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
@@ -38,6 +50,7 @@ pub struct Target {
     pub path: String,
 }
 
+#[derive(Clone)]
 pub struct Rclone {
     pub bin: PathBuf,
     env: Vec<(String, String)>,
@@ -99,9 +112,17 @@ impl Output {
     }
     pub fn err(&self) -> String {
         let s = self.stderr.trim();
+        let lower = s.to_ascii_lowercase();
+        if ["quota exceeded", "ratelimitexceeded", "rate limit exceeded"].iter().any(|m| lower.contains(m)) {
+            return "Google Drive исчерпал квоту. Проверьте лимиты Google Drive API в своём проекте Google Cloud".into();
+        }
         let last = s.lines().filter(|l| l.contains("ERROR") || l.contains("Failed") || l.contains("error")).last().unwrap_or(s.lines().last().unwrap_or(""));
         if last.is_empty() { format!("rclone завершился с кодом {}", self.code) } else { last.to_string() }
     }
+    pub fn not_found(&self) -> bool {
+        matches!(self.code, 3 | 4)
+    }
+
     /// Похоже на «нет интернета», а не на ошибку
     pub fn offline(&self) -> bool {
         let s = self.stderr.to_lowercase();
@@ -111,20 +132,118 @@ impl Output {
     }
 }
 
-/// `rclone obscure -`: пароль приходит через stdin, а не в аргументах (их видно в списке процессов).
-pub fn obscure(bin: &PathBuf, secret: &str) -> Result<String, String> {
-    let mut child = quiet(Command::new(bin).args(["obscure", "-"]))
-        .stdin(Stdio::piped())
+/// Дренируем оба канала параллельно, чтобы rclone не заблокировался на заполненном буфере.
+fn run_command(
+    cmd: &mut Command,
+    stdin: Option<&[u8]>,
+    timeout: Duration,
+    on_log: impl FnMut(&str) + Send + 'static,
+    cancelled: impl Fn() -> bool,
+) -> Result<Output, String> {
+    quiet(cmd)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
-        .spawn()
-        .map_err(|e| format!("rclone не запустился ({}): {e}", bin.display()))?;
-    child.stdin.take().ok_or("нет stdin")?.write_all(secret.as_bytes()).map_err(|e| e.to_string())?;
-    let out = child.wait_with_output().map_err(|e| e.to_string())?;
-    if !out.status.success() {
-        return Err(String::from_utf8_lossy(&out.stderr).to_string());
+        .stdin(if stdin.is_some() { Stdio::piped() } else { Stdio::null() });
+    let bin = cmd.get_program().to_string_lossy().into_owned();
+    let mut child = cmd.spawn().map_err(|e| format!("rclone не запустился ({bin}): {e}"))?;
+    let mut stdout = child.stdout.take().expect("stdout настроен");
+    let stderr = child.stderr.take().expect("stderr настроен");
+    let read_out = std::thread::spawn(move || {
+        let mut bytes = Vec::new();
+        stdout.read_to_end(&mut bytes).map(|_| bytes)
+    });
+    let read_err = std::thread::spawn(move || -> std::io::Result<String> {
+        let mut on_log = on_log;
+        let mut log = String::new();
+        for line in BufReader::new(stderr).lines() {
+            let line = line?;
+            on_log(&line);
+            log.push_str(&line);
+            log.push('\n');
+        }
+        Ok(log)
+    });
+    if let (Some(data), Some(mut pipe)) = (stdin, child.stdin.take()) {
+        let data = data.to_vec();
+        std::thread::spawn(move || pipe.write_all(&data));
     }
-    Ok(String::from_utf8_lossy(&out.stdout).trim().to_string())
+    let status = wait_for_child(&mut child, timeout, cancelled)?;
+    let stdout = read_out.join().map_err(|_| "Не удалось прочитать вывод rclone")?.map_err(|e| e.to_string())?;
+    let stderr = read_err.join().map_err(|_| "Не удалось прочитать журнал rclone")?.map_err(|e| e.to_string())?;
+    Ok(Output { ok: status.success(), code: status.code().unwrap_or(-1), stdout, stderr })
+}
+
+fn wait_for_child(child: &mut Child, timeout: Duration, cancelled: impl Fn() -> bool) -> Result<ExitStatus, String> {
+    let start = Instant::now();
+    let error = loop {
+        if cancelled() {
+            break "Вход в Google отменён".into();
+        }
+        match child.try_wait() {
+            Ok(Some(status)) => return Ok(status),
+            Ok(None) if start.elapsed() < timeout => std::thread::sleep(Duration::from_millis(25)),
+            Ok(None) => break format!("rclone: время ожидания истекло ({} с)", timeout.as_secs()),
+            Err(e) => break format!("Не удалось дождаться rclone: {e}"),
+        }
+    };
+    let _ = child.kill();
+    let _ = child.wait();
+    Err(error)
+}
+
+/// `rclone obscure -`: пароль приходит через stdin.
+pub fn obscure(bin: &PathBuf, secret: &str) -> Result<String, String> {
+    let out = run_command(Command::new(bin).args(["obscure", "-"]), Some(secret.as_bytes()), Duration::from_secs(15), |_| {}, || false)?;
+    if !out.ok {
+        return Err(out.err());
+    }
+    Ok(out.text().trim().to_string())
+}
+
+pub fn authorize(
+    id: &str,
+    secret: &str,
+    open_url: impl FnMut(&str) + Send + 'static,
+    cancelled: impl Fn() -> bool,
+) -> Result<String, String> {
+    use base64::Engine;
+    let (id, secret) = drive_client(id, secret)?;
+    let cfg = serde_json::json!({ "scope": "drive.file", "client_id": id, "client_secret": secret });
+    let blob = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(cfg.to_string());
+    let mut cmd = Command::new(locate());
+    cmd.args(["authorize", "drive", &blob, "--auth-no-open-browser", "--config", ""]).args(NETWORK_FLAGS);
+    // Страница в браузере после авторизации.
+    let page = std::env::temp_dir().join("hub-auth-page.html");
+    if std::fs::write(&page, include_str!("auth_page.html")).is_ok() {
+        cmd.arg("--template").arg(&page);
+    }
+    let mut open_url = open_url;
+    let mut opened = false;
+    let out = run_command(&mut cmd, None, AUTHORIZE_TIMEOUT, move |line| {
+        if let Some(url) = line.split_whitespace().find(|s| s.starts_with("http://127.0.0.1:53682/auth?")) {
+            if !opened {
+                opened = true;
+                open_url(url);
+            }
+        }
+    }, &cancelled).map_err(|e| {
+        if cancelled() { e } else { format!("Вход в Google не завершён. Попробуйте снова. {e}") }
+    })?;
+    if !out.ok {
+        let log = out.stderr.to_ascii_lowercase();
+        let message = if log.contains("access_denied") {
+            "Доступ к Google Drive отклонён. Повторите вход и разрешите доступ"
+        } else if log.contains("invalid_client") {
+            "Google отклонил OAuth-клиент. Проверьте Client ID и Client Secret"
+        } else if log.contains("address already in use") {
+            "Порт для входа в Google занят. Закройте другое окно входа и повторите попытку"
+        } else {
+            "Google не завершил авторизацию. Проверьте настройки клиента OAuth и повторите вход"
+        };
+        return Err(message.into());
+    }
+    parse_authorize_token(&out.text()).or_else(|| parse_authorize_token(&out.stderr))
+        .ok_or_else(|| "Google не вернул токен доступа. Повторите вход и разрешите доступ к Drive".into())
 }
 
 impl Rclone {
@@ -141,10 +260,9 @@ impl Rclone {
                 env.push((format!("{b}TYPE"), "drive".into()));
                 env.push((format!("{b}SCOPE"), "drive.file".into()));
                 env.push((format!("{b}TOKEN"), target.token.clone()));
-                if !target.client_id.is_empty() {
-                    env.push((format!("{b}CLIENT_ID"), target.client_id.clone()));
-                    env.push((format!("{b}CLIENT_SECRET"), target.client_secret.clone()));
-                }
+                let (id, secret) = drive_client(&target.client_id, &target.client_secret)?;
+                env.push((format!("{b}CLIENT_ID"), id.into()));
+                env.push((format!("{b}CLIENT_SECRET"), secret.into()));
             }
             k => return Err(format!("неизвестное хранилище: {k}")),
         }
@@ -167,25 +285,10 @@ impl Rclone {
 
     pub fn run(&self, args: &[&str], stdin: Option<&[u8]>) -> Output {
         let mut cmd = Command::new(&self.bin);
-        quiet(&mut cmd).args(args).args(["--config", ""]);
-        for (k, v) in &self.env {
-            cmd.env(k, v);
-        }
-        cmd.stdout(Stdio::piped()).stderr(Stdio::piped()).stdin(if stdin.is_some() { Stdio::piped() } else { Stdio::null() });
-        let mut child = match cmd.spawn() {
-            Ok(c) => c,
-            Err(e) => return Output { ok: false, code: -1, stdout: vec![], stderr: format!("rclone не запустился ({}): {e}", self.bin.display()) },
-        };
-        if let (Some(data), Some(mut sin)) = (stdin, child.stdin.take()) {
-            let data = data.to_vec();
-            std::thread::spawn(move || {
-                let _ = sin.write_all(&data);
-            });
-        }
-        match child.wait_with_output() {
-            Ok(o) => Output { ok: o.status.success(), code: o.status.code().unwrap_or(-1), stdout: o.stdout, stderr: String::from_utf8_lossy(&o.stderr).to_string() },
-            Err(e) => Output { ok: false, code: -1, stdout: vec![], stderr: e.to_string() },
-        }
+        cmd.args(args).args(["--config", ""]).args(NETWORK_FLAGS).envs(self.env.iter().cloned());
+        run_command(&mut cmd, stdin, COMMAND_TIMEOUT, |_| {}, || false).unwrap_or_else(|stderr| Output {
+            ok: false, code: -1, stdout: vec![], stderr,
+        })
     }
 }
 

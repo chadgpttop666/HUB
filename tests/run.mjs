@@ -171,6 +171,13 @@ await test("Alt+1 открывает «Повторение» в оболочк�
   await page.keyboard.press("Alt+1");
   await page.waitForSelector("#screen-shell:not([hidden])");
   eq((await text("#titlebar-place")).trim(), "· Повторение", "заголовок окна");
+  await appFrame().evaluate(() => { window.__keptOnSwitch = true; });
+  await page.evaluate(() => window.__hubShell.openApp("calendar"));
+  assert(await page.locator('iframe[data-app="repetition"]').isHidden(), "фрейм скрыт при переключении");
+  await page.evaluate(() => window.__hubShell.go("today"));
+  await page.keyboard.press("Alt+1");
+  const repetition = await (await page.locator('iframe[data-app="repetition"]').elementHandle()).contentFrame();
+  assert(await repetition.evaluate(() => window.__keptOnSwitch), "страница приложения сохранила состояние");
   assert(await page.locator(".hub-rail").isHidden(), "боковая панель по умолчанию спрятана");
   assert(await page.locator(".hub-shell__top").isHidden(), "строка ввода по умолчанию спрятана");
   await page.click('[data-panel="rail"]');
