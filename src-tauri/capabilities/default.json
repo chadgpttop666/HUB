@@ -9,6 +9,7 @@
   "permissions": [
     "core:default",
     "dialog:allow-open",
+    { "identifier": "opener:allow-open-url", "allow": [{ "url": "https://console.cloud.google.com/**" }] },
     "core:window:allow-start-dragging",
     "core:window:allow-minimize",
     "core:window:allow-toggle-maximize",

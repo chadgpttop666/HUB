@@ -116,7 +116,7 @@ export class AppHost {
     if (!current()) return;
     const dump = await core.dump(id);
     if (!current()) return;
-    const boot = { appId: id, data: dump.json, blobs: dump.blobs, theme: this.getTheme() };
+    const boot = { appId: id, data: dump.json, blobs: dump.blobs, theme: this.getTheme(), visible: this.active === id };
     const network = (app.manifest.permissions && app.manifest.permissions.network) || [];
     const prelude =
       `<meta http-equiv="Content-Security-Policy" content="${escAttr(buildCsp(base, appBase, network))}">` +
@@ -131,6 +131,11 @@ export class AppHost {
     f.iframe.addEventListener("load", () => {
       if (!current()) return;
       f.loaded = true;
+      this.post(id, "app.visibility", this.active === id);
+      if (f.pendingFiles) {
+        this.post(id, "app.files", f.pendingFiles);
+        f.pendingFiles = null;
+      }
       if (f.pendingAction) {
         this.post(id, "today.action", f.pendingAction);
         f.pendingAction = null;
@@ -156,15 +161,26 @@ export class AppHost {
 
   show(id, action) {
     const previous = this.frames.get(this.active);
-    if (previous && this.active !== id) previous.iframe.hidden = true;
+    const changed = this.active !== id;
+    if (previous && changed) {
+      previous.iframe.hidden = true;
+      if (previous.loaded) this.post(this.active, "app.visibility", false);
+    }
     this.active = id;
     if (!id) return;
     const f = this.ensure(id);
     f.iframe.hidden = false;
+    if (changed && f.loaded) this.post(id, "app.visibility", true);
     if (action) {
       if (f.loaded) this.post(id, "today.action", action);
       else f.pendingAction = action;
     }
+  }
+  importRepetition(files) {
+    const f = this.frames.get("repetition");
+    if (!f || this.apps.get("repetition")?.source !== "builtin") return;
+    if (f.loaded) this.post("repetition", "app.files", files);
+    else f.pendingFiles = (f.pendingFiles || []).concat(files);
   }
   focus(id) { const f = this.frames.get(id); if (f && this.active === id) f.iframe.focus(); }
 

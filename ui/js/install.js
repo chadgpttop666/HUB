@@ -89,26 +89,62 @@ export async function uninstall(app, ctx) {
   });
 }
 
-/* Перетаскивание папки или zip в окно хаба (только приложение на ПК: браузер путей к файлам не даёт) */
+/* Нативный WebView перехватывает системное перетаскивание до DOM-событий iframe. */
+const repertoire = /\.(zip|json|md|markdown|txt|jpe?g|png|gif|webp|bmp|svg|avif|mp4|m4v|webm|mov|mkv|mp3|m4a|ogg|opus|wav|flac|aac)$/i;
+const fileName = path => path.split(/[\\/]/).pop();
 export function watchDrops(ctx) {
   if (!inTauri) return;
-  let overlay = null;
-  const show = paths => {
-    if (!ctx.unlocked()) return;
+  let overlay, paths = [], destination;
+  const show = ({ position } = {}) => {
+    if (!ctx.unlocked() || !paths.length) return;
+    const forRepetition = paths.every(path => repertoire.test(path)) && !!ctx.repetitionAt(position);
+    if (overlay && destination === forRepetition) return;
+    destination = forRepetition;
     if (!overlay) {
       overlay = document.createElement("div");
-      overlay.className = "hub-overlay shell-drop";
+      overlay.className = "shell-drop";
       document.body.appendChild(overlay);
     }
-    const name = (paths && paths[0] || "").split(/[\\/]/).pop();
-    overlay.innerHTML = `<div class="hub-drop"><i data-icon="package"></i><h2 class="hub-drop__title">Отпустите, чтобы установить</h2>
-      <p class="hub-drop__text">${esc(name || "папка или zip")} — приложение или тема для хаба</p></div>`;
+    const name = paths.length === 1 ? fileName(paths[0]) : `Файлов: ${paths.length}`;
+    overlay.innerHTML = `<div class="hub-drop"><i data-icon="${forRepetition ? "import" : "package"}"></i><h2 class="hub-drop__title">${forRepetition ? "Импортировать в «Повторение»" : "Установить приложение или тему"}</h2>
+      <p class="hub-drop__text">${esc(name)}</p></div>`;
     H.icons(overlay);
   };
-  const hide = () => { if (overlay) { overlay.remove(); overlay = null; } };
+  const hide = () => { overlay?.remove(); overlay = null; paths = []; };
   core.onDragDrop({
-    enter: show,
+    enter: payload => { paths = payload?.paths || []; show(payload); },
+    over: show,
     leave: hide,
-    drop: paths => { hide(); if (ctx.unlocked() && paths && paths[0]) installFromPath(paths[0], ctx); },
+    async drop(payload) {
+      hide();
+      const dropped = payload?.paths || [];
+      if (!ctx.unlocked() || !dropped.length) return;
+      const target = dropped.every(path => repertoire.test(path)) && ctx.repetitionAt(payload.position);
+      if (!target) {
+        if (dropped.every(path => repertoire.test(path) && !/\.zip$/i.test(path))) {
+          ctx.toast("Откройте «Повторение» и перетащите файл в область приложения", { icon: "info" });
+        } else if (dropped.length === 1) await installFromPath(dropped[0], ctx);
+        else ctx.toast("Для установки перетащите одну папку или ZIP", { icon: "info" });
+        return;
+      }
+      try {
+        if (dropped.length === 1 && /\.zip$/i.test(dropped[0]) && await core.droppedPackage(dropped[0])) {
+          if (ctx.unlocked()) await installFromPath(dropped[0], ctx);
+          return;
+        }
+        const files = [];
+        let total = 0;
+        for (const path of dropped) {
+          const bytes = await core.readDroppedFile(path);
+          const file = new File([bytes], fileName(path));
+          total += file.size;
+          if (total > 64 * 1024 * 1024) throw new Error("Файлы занимают больше 64 МБ. Откройте их через выбор файла в приложении");
+          files.push(file);
+        }
+        ctx.importRepetition(target, files);
+      } catch (err) {
+        ctx.toast(String(err.message || err), { tone: "danger", icon: "circle-alert", timeout: 8000 });
+      }
+    },
   });
 }

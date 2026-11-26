@@ -2,6 +2,7 @@
    До ввода пароля ядро не читает ни одного файла данных: всё, что здесь видно, — фото темы, часы и дата. */
 import { core, inTauri } from "./core.js";
 import { greetingText } from "./themes.js";
+import { driveGuide } from "./help.js";
 
 const H = window.HubUI;
 const $ = s => document.querySelector(s);
@@ -214,7 +215,8 @@ export function runSetup(status) {
 
 export function driveClientFields({ clientId = "", clientSecret = "", token } = {}) {
   return `<div class="shell-drive-fields">
-    <p class="hub-hint">В Google Cloud включите Google Drive API и создайте OAuth-клиент типа «Приложение для ПК» (Desktop app). Вставьте оба значения ниже.</p>
+    <p class="hub-hint">Вставьте данные своего OAuth-клиента из Google Cloud.</p>
+    ${driveGuide()}
     <label class="hub-field"><span class="hub-label">Client ID</span>
       <input class="hub-input" id="gc-id" value="${esc(clientId)}" autocomplete="off" spellcheck="false" required${token ? " readonly" : ""}></label>
     <label class="hub-field"><span class="hub-label">Client Secret</span>

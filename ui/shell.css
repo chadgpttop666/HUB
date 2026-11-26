@@ -152,10 +152,39 @@ html:not([data-platform="phone"]) .hub-shell__top .hub-topbar__right { display: 
 /* строка списка, где открывается только середина (справа — свои кнопки) */
 .shell-row-open { flex: 1; min-width: 0; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
 .shell-row-open:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: var(--radius-sm); }
-.shell-drop { z-index: var(--z-dialog); }
+.shell-drop { position: fixed; inset: 0; z-index: var(--z-dialog); display: grid; place-items: center; pointer-events: none; }
 .shell-drop .hub-drop { width: min(560px, calc(100vw - 48px)); }
 
 /* ───────── мини-окно поверх других программ (ui/mini.html) ───────── */
 html.mini, html.mini body { background: transparent; min-height: 0; height: 100%; overflow: hidden; }
 html.mini body { display: grid; place-items: start center; padding: var(--space-3) 0 0; margin: 0; }
 html.mini .hub-capture--mini { max-width: calc(100vw - var(--space-6)); }
+
+.shell-open-card { position: relative; -webkit-backdrop-filter: none; backdrop-filter: none; }
+.shell-open-card .shell-card__action:active { transform: none; }
+.shell-card__action { cursor: pointer; }
+.shell-card__action::after { content: ""; position: absolute; inset: 0; border-radius: var(--radius); }
+.shell-card__action:focus-visible::after { outline: 2px solid var(--focus); outline-offset: 2px; }
+.shell-card__action--hidden { width: 0; height: 0; padding: 0; border: 0; background: none; }
+.shell-guide { margin: var(--space-3) 0; color: var(--text-muted); }
+.shell-guide summary { cursor: pointer; color: var(--text); }
+.shell-guide ol { padding-inline-start: var(--space-6); }
+.shell-guide li + li { margin-top: var(--space-2); }
+.shell-prompt { margin-top: var(--space-4); }
+
+.shell-theme-shot {
+  display: grid; align-items: end; padding: var(--space-3);
+  background: linear-gradient(transparent, var(--scrim-mid)), var(--hub-photo) var(--hub-photo-pos) / cover, var(--bg);
+  color: var(--text);
+}
+.shell-theme-preview__label, .shell-theme-preview__panel {
+  padding: var(--space-2) var(--space-3); border-radius: var(--radius-sm); background-color: var(--surface-strong);
+}
+.shell-theme-preview__label { display: flex; align-items: center; gap: var(--space-2); font-size: var(--font-size-sm); }
+.shell-theme-editor { display: grid; gap: var(--space-3); margin-top: var(--space-4); }
+.shell-theme-controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(155px, 1fr)); gap: var(--space-3) var(--space-4); }
+.shell-theme-controls :is(input, select) { max-width: 100%; accent-color: var(--accent); }
+.shell-editor-preview { height: 170px; background: var(--bg); color: var(--text); }
+.shell-editor-preview .hub-backdrop { position: absolute; }
+.shell-theme-preview__content { display: grid; gap: var(--space-2); padding: var(--space-3); }
+.shell-theme-preview__panel { background-color: var(--surface); }

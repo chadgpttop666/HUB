@@ -43,20 +43,19 @@ export function minVeil(veil, textColor, px, target) {
 }
 
 /* разбор фото: пиксели размытого фото в окне 1440×900 (в масштабе ¼) */
-async function analyse(bitmap, posY) {
+function analyse(bitmap, posX, posY, blur) {
   const W = 360, Hh = 225, scale = 4;
   const c = document.createElement("canvas"); c.width = W; c.height = Hh;
   const ctx = c.getContext("2d", { willReadFrequently: true });
-  const blur = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--blur-backdrop")) || 32;
   const k = Math.max(W / bitmap.width, Hh / bitmap.height) * 1.06; // фото чуть больше окна, как у фона хаба
   const w = bitmap.width * k, h = bitmap.height * k;
   ctx.filter = `blur(${blur / scale}px)`;
-  ctx.drawImage(bitmap, (W - w) / 2, (Hh - h) * posY, w, h);
+  ctx.drawImage(bitmap, (W - w) * posX, (Hh - h) * posY, w, h);
   const data = ctx.getImageData(0, 0, W, Hh).data;
   const px = (x, y) => { const i = (y * W + x) * 4; return [data[i], data[i + 1], data[i + 2]]; };
   const zone = (x0, y0, x1, y1) => {
     const out = [];
-    for (let y = Math.floor(y0 / scale); y < Math.ceil(y1 / scale); y += 1) for (let x = Math.floor(x0 / scale); x < Math.ceil(x1 / scale); x += 1) out.push(px(x, y));
+    for (let y = Math.floor(y0 / scale); y < Math.ceil(y1 / scale); y += 2) for (let x = Math.floor(x0 / scale); x < Math.ceil(x1 / scale); x += 2) out.push(px(x, y));
     return out.map(p => ({ p, l: luminance(p) })).sort((a, b) => a.l - b.l);
   };
   const all = zone(0, 0, 1440, 900);
@@ -66,15 +65,19 @@ async function analyse(bitmap, posY) {
   };
 }
 
-export function computeTokens(an, base, accent) {
+export function computeTokens(an, base, accent, extraVeil = 0) {
   const B = BASE[base];
   const pick = list => (base === "dark" ? list[Math.floor(list.length * 0.99)] : list[Math.floor(list.length * 0.01)]).p;
   const rgba = a => `rgba(${B.veil.join(",")},${a.toFixed(2)})`;
+  const strength = (zone, color, ratio) => {
+    const minimum = minVeil(B.veil, color, pick(zone), ratio);
+    return minimum + (1 - minimum) * extraVeil;
+  };
   const scr = {
-    top: minVeil(B.veil, B.muted, pick(an.zones.top), 4.5),
-    mid: minVeil(B.veil, B.muted, pick(an.zones.mid), 4.5),
-    bottom: minVeil(B.veil, B.muted, pick(an.zones.bottom), 4.5),
-    lock: minVeil(B.veil, B.text, pick(an.zones.lock), 3),
+    top: strength(an.zones.top, B.muted, 4.5),
+    mid: strength(an.zones.mid, B.muted, 4.5),
+    bottom: strength(an.zones.bottom, B.muted, 4.5),
+    lock: strength(an.zones.lock, B.text, 3),
   };
   const a = hex(accent.accent);
   const soft = base === "dark" ? 0.18 : 0.13;
@@ -105,110 +108,201 @@ const slug = s => (String(s).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/
 export const FONTS = [["jost", "Jost — тонкий, как в хабе"], ["manrope", "Manrope — как основной текст"]];
 const FONT_TOKEN = { manrope: "var(--font-body)" };
 
-/* Диалог «Новая тема из фото» и правка своей темы. ctx: { toast, afterSave(id) }; edit: { theme, photo: Blob } */
+const BACKGROUND = { dark: "#0d1511", light: "#f4f1ea" };
+const colorValue = h => typeof h === "string" && /^#[0-9a-f]{6}$/i.test(h) ? h : "";
+const asHex = rgb => "#" + rgb.map(x => x.toString(16).padStart(2, "0")).join("");
+const clamp = (value, lo, hi) => Math.min(hi, Math.max(lo, value));
+function solidAnalysis(color) {
+  const p = hex(color), l = luminance(p);
+  const zone = [{ p, l }];
+  return { median: l, zones: { top: zone, mid: zone, bottom: zone, lock: zone } };
+}
+
 export async function themeEditor(ctx, edit = null) {
   const dlg = document.createElement("dialog");
   dlg.className = "hub-dialog";
   dlg.style.width = "min(620px, calc(100vw - 32px))";
-  document.body.appendChild(dlg);
-  dlg.addEventListener("close", () => { if (st.url) URL.revokeObjectURL(st.url); dlg.remove(); });
-  const st = { bitmap: null, url: null, an: null, base: "auto", accent: "dawn", posY: 0.38, name: "", greeting: "", font: "jost", newPhoto: false };
-  if (edit) {
-    const t = edit.theme;
-    Object.assign(st, { base: t.baseChoice || t.base, accent: t.accentId || "dawn", name: t.name || "", font: t.font || "jost",
-      greeting: t.greeting && t.greeting !== "auto" ? t.greeting : "", posY: (Number(String(t.photoPosition || "").split(/\s+/)[1]?.replace("%", "")) || 38) / 100 });
-    try {
-      st.bitmap = await createImageBitmap(edit.photo);
-      st.url = URL.createObjectURL(edit.photo);
-      st.an = await analyse(st.bitmap, st.posY);
-    } catch (err) { ctx.toast(`Фото темы не открылось: ${err.message || err}`, { tone: "danger", icon: "circle-alert" }); dlg.remove(); return; }
+  const t = edit?.theme || {};
+  const pos = String(t.photoPosition || "").match(/^(\d+)%\s+(\d+)%$/);
+  const baseChoice = ["auto", "dark", "light"].includes(t.baseChoice) ? t.baseChoice : ({ dark: "dark", light: "light", solid: "dark" }[t.base] || "auto");
+  const st = {
+    bitmap: null, url: null, analysis: null, base: baseChoice,
+    accent: t.accentId || "dawn", color: colorValue(t.accentColor || (!t.accentId && t.tokens?.accent)),
+    posX: pos ? clamp(Number(pos[1]), 0, 100) : 50, posY: pos ? clamp(Number(pos[2]), 0, 100) : 38,
+    blur: clamp(Number(t.blur ?? parseFloat(t.tokens?.["blur-backdrop"])) || 0, 0, 36),
+    veil: clamp(Number(t.extraVeil) || 0, 0, 60),
+    opacity: typeof t.surfaceOpacity === "number" ? clamp(t.surfaceOpacity, 20, 100) : null,
+    background: colorValue(t.background || t.tokens?.bg), name: t.name || "",
+    greeting: t.greeting && t.greeting !== "auto" ? t.greeting : "", font: t.font || "jost", photoChanged: false,
+  };
+  if (t.blur == null && !Number.isFinite(parseFloat(t.tokens?.["blur-backdrop"]))) st.blur = 22;
+  const analysePhoto = () => {
+    st.analysis = st.bitmap ? analyse(st.bitmap, st.posX / 100, st.posY / 100, st.blur) : null;
+  };
+  const removePhoto = () => {
+    st.bitmap?.close();
+    if (st.url) URL.revokeObjectURL(st.url);
+    st.bitmap = st.url = st.analysis = null;
+  };
+  const loadPhoto = async photo => {
+    const bitmap = await createImageBitmap(photo);
+    removePhoto();
+    st.bitmap = bitmap;
+    st.url = URL.createObjectURL(photo);
+    analysePhoto();
+  };
+
+  if (edit?.photo) {
+    try { await loadPhoto(edit.photo); }
+    catch (err) { ctx.toast(`Фото темы не открылось: ${err.message || err}`, { tone: "danger", icon: "circle-alert" }); return; }
   }
+  if (edit?.copy) st.name = `${st.name} · своя`.slice(0, 30);
 
   function result() {
-    if (!st.an) return null;
-    const base = st.base === "auto" ? (st.an.median >= 0.4 ? "light" : "dark") : st.base;
-    const accent = ACCENTS[base].find(x => x.id === st.accent) || ACCENTS[base][0];
-    const r = Object.assign({ base, accent }, computeTokens(st.an, base, accent));
-    if (FONT_TOKEN[st.font]) r.tokens["font-heading"] = FONT_TOKEN[st.font];
-    return r;
+    const an = st.analysis || solidAnalysis(st.background || BACKGROUND[st.base] || BACKGROUND.dark);
+    const base = st.base === "auto" ? (an.median >= 0.4 ? "light" : "dark") : st.base;
+    const preset = ACCENTS[base].find(x => x.id === st.accent) || ACCENTS[base][0];
+    const accent = st.color ? {
+      id: "custom", accent: st.color,
+      hover: asHex(mix(base === "light" ? [0, 0, 0] : [255, 255, 255], hex(st.color), 0.1)),
+      on: contrast(hex(st.color), [0, 0, 0]) >= 4.5 ? "#000000" : "#ffffff",
+    } : preset;
+    const r = computeTokens(an, base, accent, st.veil / 100);
+    const tokens = { ...(t.tokens || {}), ...r.tokens, "blur-backdrop": `${st.blur}px` };
+    if (st.font === "jost") delete tokens["font-heading"];
+    else if (FONT_TOKEN[st.font]) tokens["font-heading"] = FONT_TOKEN[st.font];
+    if (st.background) tokens.bg = st.background;
+    if (st.opacity !== null) {
+      const rgb = BASE[base].surface.join(",");
+      tokens.surface = `rgba(${rgb},${st.opacity / 100})`;
+      tokens["surface-hover"] = `rgba(${rgb},${Math.min(1, (st.opacity + 12) / 100)})`;
+    }
+    return { ...r, tokens, base, accent };
   }
+
+  const range = (id, label, value, max, min = 0) => `<label class="hub-field"><span class="hub-label">${label}</span>
+    <input type="range" id="${id}" min="${min}" max="${max}" value="${value}"></label>`;
+  function position() { return `${st.posX}% ${st.posY}%`; }
 
   function draw() {
     const r = result();
     dlg.innerHTML = `<form method="dialog">
-      <h2 class="hub-dialog__title">${edit ? `Тема «${esc(edit.theme.name)}»` : "Новая тема из фото"}</h2>
-      <p class="hub-dialog__body">Хаб сам подберёт основу и силу вуали, чтобы текст читался на любом месте фото.</p>
-      <div style="display:grid;gap:var(--space-4);margin-top:var(--space-5)">
-        <div class="hub-field"><span class="hub-label">Фото</span>
-          <div class="hub-btn-row"><button class="hub-btn" type="button" id="te-pick"><i data-icon="image-plus"></i>${st.bitmap ? "Другое фото" : "Выбрать фото"}</button>
-            <span class="hub-muted" style="font-size:var(--font-size-sm)">${st.bitmap ? `${st.bitmap.width}×${st.bitmap.height}` : "JPEG, PNG или WebP; лучше от 1920 по длинной стороне"}</span></div>
-          <input type="file" id="te-file" accept="image/jpeg,image/png,image/webp" hidden></div>
-        ${r ? `<div class="hub-theme__shot" data-theme="${r.base}" style="height:180px;--hub-photo:url('${st.url}');--hub-photo-pos:50% ${Math.round(st.posY * 100)}%;${Object.entries(r.tokens).map(([k, v]) => `--${k}:${v}`).join(";")};color:var(--text);background:var(--bg)">
-            <div class="hub-backdrop" data-scene="open" style="position:absolute"><div class="hub-backdrop__photo" style="background-position:50% ${Math.round(st.posY * 100)}%"></div><div class="hub-backdrop__veil"></div></div>
-            <div style="position:relative;padding:var(--space-4);display:grid;gap:var(--space-2)">
-              <span id="te-hello" style="font-family:var(--font-heading);font-weight:var(--weight-light);font-size:var(--font-size-xl)">${esc(greetingText(st.greeting, ctx.name ? ctx.name() : ""))}</span>
-              <div class="hub-capture__bar" style="padding:var(--space-1) var(--space-3)"><i data-icon="lightbulb" class="hub-capture__icon"></i><span class="hub-muted" style="font-size:var(--font-size-sm);padding:var(--space-1) 0">Мысль в корзину…</span></div>
-              <div style="display:flex;gap:var(--space-2)"><span class="hub-btn hub-btn--sm hub-btn--primary">Начать</span><span class="hub-tag hub-tag--accent">акцент</span></div>
-            </div></div>
-          <p class="hub-hint" style="margin:0">${H.icon(r.checks.heavy ? "triangle-alert" : "info")}основа: ${r.base === "dark" ? "тёмная" : "светлая"} (яркость ${Math.round(st.an.median * 100)}%) · вуаль сверху ${Math.round(r.scr.top * 100)}%, в середине ${Math.round(r.scr.mid * 100)}%, внизу ${Math.round(r.scr.bottom * 100)}%${r.checks.heavy ? " · фото пёстрое, вуаль сильная — можно сдвинуть фото или взять другое" : ""}</p>
-          <div class="shell-form-row">
-            <label class="hub-field"><span class="hub-label">Основа</span><span class="hub-select"><select id="te-base">
-              ${[["auto", "сама по фото"], ["dark", "тёмная"], ["light", "светлая"]].map(([v, l]) => `<option value="${v}"${st.base === v ? " selected" : ""}>${l}</option>`).join("")}</select></span></label>
-            <label class="hub-field" style="flex:1"><span class="hub-label">Положение фото по высоте</span>
-              <input type="range" id="te-pos" min="0" max="100" value="${Math.round(st.posY * 100)}" style="width:100%"></label>
+      <h2 class="hub-dialog__title">${edit && !edit.copy ? `Тема «${esc(t.name)}»` : "Новая тема"}</h2>
+      <div class="shell-theme-editor">
+        <div class="hub-theme__shot shell-editor-preview" id="te-preview">
+          <div class="hub-backdrop" data-scene="open"><div class="hub-backdrop__photo"></div><div class="hub-backdrop__veil"></div></div>
+          <div class="shell-theme-preview__content">
+            <span id="te-hello" class="t-display"></span>
+            <div class="hub-glass shell-theme-preview__panel">Карточка приложения</div>
+            <div><span class="hub-btn hub-btn--sm hub-btn--primary">Начать</span></div>
           </div>
-          <div><span class="hub-label">Акцент</span><div class="hub-swatches" role="radiogroup" style="margin-top:var(--space-2)">${ACCENTS[r.base].map(a => `
-            <button class="hub-swatch" type="button" role="radio" aria-checked="${a.id === r.accent.id}" aria-label="${a.name}" title="${a.name}" data-accent="${a.id}" style="--_c:${a.accent};background:${a.accent}"></button>`).join("")}</div>
-            ${r.checks.accentOnGlass < 4.5 || r.checks.onAccent < 4.5 ? `<p class="hub-hint hub-hint--warning">${H.icon("triangle-alert")}акцент читается хуже 4.5:1</p>` : ""}</div>` : ""}
-        <label class="hub-field"><span class="hub-label">Название</span><input class="hub-input" id="te-name" maxlength="30" value="${esc(st.name)}" placeholder="Например, Горы"></label>
-        <label class="hub-field"><span class="hub-label">Приветствие</span><input class="hub-input" id="te-greet" maxlength="60" value="${esc(st.greeting)}" placeholder="по времени суток; можно своё, {name} — имя"></label>
-        <label class="hub-field"><span class="hub-label">Шрифт крупного текста</span><span class="hub-select"><select id="te-font">
-          ${FONTS.map(([v, l]) => `<option value="${v}"${st.font === v ? " selected" : ""}>${l}</option>`).join("")}</select></span></label>
+        </div>
+        <p class="hub-hint" id="te-report"></p>
+        <div class="hub-btn-row">
+          <button class="hub-btn" type="button" id="te-pick"><i data-icon="image-plus"></i>${st.bitmap ? "Заменить фото" : "Выбрать фото"}</button>
+          ${st.bitmap ? '<button class="hub-btn hub-btn--quiet" type="button" id="te-remove-photo">Убрать фото</button>' : ""}
+          <input type="file" id="te-file" accept="image/jpeg,image/png,image/webp" hidden>
+        </div>
+        <div class="shell-theme-controls">
+          <label class="hub-field"><span class="hub-label">Основа</span><span class="hub-select"><select id="te-base">
+            ${[["auto", "Автоматически"], ["dark", "Тёмная"], ["light", "Светлая"]].map(([v, l]) => `<option value="${v}"${st.base === v ? " selected" : ""}>${l}</option>`).join("")}</select></span></label>
+          ${st.bitmap ? `${range("te-x", "Фото по ширине", st.posX, 100)}${range("te-pos", "Фото по высоте", st.posY, 100)}
+            ${range("te-blur", "Размытие фото", st.blur, 36)}${range("te-veil", "Усиление вуали", st.veil, 60)}` :
+            `<label class="hub-field"><span class="hub-label">Цвет фона</span><input type="color" id="te-bg" value="${st.background || BACKGROUND[r.base]}"></label>`}
+          ${range("te-opacity", "Плотность карточек", st.opacity ?? (r.base === "light" ? 58 : 42), 100, 20)}
+          <div><span class="hub-label">Готовые акценты</span><div class="hub-swatches" role="radiogroup" aria-label="Готовые акценты">${ACCENTS[r.base].map(a => `
+            <button class="hub-swatch" type="button" role="radio" aria-checked="${a.id === r.accent.id}" aria-label="${a.name}" title="${a.name}" data-accent="${a.id}" style="--_c:${a.accent};background:${a.accent}"></button>`).join("")}</div></div>
+          <label class="hub-field"><span class="hub-label">Свой акцент</span><input type="color" id="te-color" value="${r.accent.accent}"></label>
+          <label class="hub-field"><span class="hub-label">Название</span><input class="hub-input" id="te-name" maxlength="30" value="${esc(st.name)}"></label>
+          <label class="hub-field"><span class="hub-label">Приветствие</span><input class="hub-input" id="te-greet" maxlength="60" value="${esc(st.greeting)}" placeholder="По времени суток, {name} — имя"></label>
+          <label class="hub-field"><span class="hub-label">Шрифт заголовков</span><span class="hub-select"><select id="te-font">
+            ${FONTS.map(([v, l]) => `<option value="${v}"${st.font === v ? " selected" : ""}>${l}</option>`).join("")}</select></span></label>
+        </div>
       </div>
       <div class="hub-dialog__actions"><button class="hub-btn hub-btn--quiet" value="cancel">Отмена</button>
-        <button class="hub-btn hub-btn--primary" type="button" id="te-save"${r ? "" : " disabled"}>Сохранить тему</button></div></form>`;
+        <button class="hub-btn hub-btn--primary" type="button" id="te-save">Сохранить тему</button></div></form>`;
     H.icons(dlg);
-    dlg.querySelector("#te-pick").addEventListener("click", () => dlg.querySelector("#te-file").click());
-    dlg.querySelector("#te-file").addEventListener("change", async e => {
-      const f = e.target.files && e.target.files[0];
-      if (!f) return;
+    const find = id => dlg.querySelector(`#${id}`);
+    const preview = find("te-preview");
+    function updatePreview() {
+      const current = result();
+      preview.dataset.theme = current.base;
+      preview.removeAttribute("style");
+      preview.style.setProperty("--hub-photo", st.url ? `url('${st.url}')` : "none");
+      preview.style.setProperty("--hub-photo-pos", position());
+      for (const [key, value] of Object.entries(current.tokens)) preview.style.setProperty(`--${key}`, value);
+      find("te-hello").textContent = greetingText(st.greeting, ctx.name?.() || "");
+      const report = find("te-report");
+      const contrastWarning = current.checks.accentOnGlass < 4.5;
+      report.textContent = `основа: ${current.base === "dark" ? "тёмная" : "светлая"}${contrastWarning ? " · для мелкого текста лучше выбрать более контрастный акцент" : ""}`;
+      report.classList.toggle("hub-hint--warning", contrastWarning);
+    }
+    updatePreview();
+    find("te-pick").addEventListener("click", () => find("te-file").click());
+    find("te-file").addEventListener("change", async e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const save = find("te-save");
+      save.disabled = true;
       try {
-        st.bitmap = await createImageBitmap(f);
-        if (st.url) URL.revokeObjectURL(st.url);
-        st.url = URL.createObjectURL(f);
-        st.newPhoto = true;
-        if (!st.name) st.name = f.name.replace(/\.[^.]+$/, "").slice(0, 30);
-        st.an = await analyse(st.bitmap, st.posY);
+        await loadPhoto(file);
+        if (!dlg.open) { removePhoto(); return; }
+        if (!st.name) st.name = file.name.replace(/\.[^.]+$/, "").slice(0, 30);
+        st.photoChanged = true;
         draw();
       } catch (err) { ctx.toast(`Фото не открылось: ${err.message || err}`, { tone: "danger", icon: "circle-alert" }); }
+      finally { save.disabled = false; }
     });
-    const keep = () => { st.name = dlg.querySelector("#te-name").value; st.greeting = dlg.querySelector("#te-greet").value; st.font = dlg.querySelector("#te-font").value; };
-    dlg.querySelector("#te-font").addEventListener("change", () => { keep(); draw(); });
-    dlg.querySelector("#te-greet").addEventListener("input", e => { const h = dlg.querySelector("#te-hello"); if (h) h.textContent = greetingText(e.target.value, ctx.name ? ctx.name() : ""); });
-    const base = dlg.querySelector("#te-base");
-    if (base) base.addEventListener("change", () => { keep(); st.base = base.value; draw(); });
-    const pos = dlg.querySelector("#te-pos");
-    if (pos) pos.addEventListener("change", async () => { keep(); st.posY = Number(pos.value) / 100; st.an = await analyse(st.bitmap, st.posY); draw(); });
-    dlg.querySelectorAll("[data-accent]").forEach(b => b.addEventListener("click", () => { keep(); st.accent = b.dataset.accent; draw(); }));
-    dlg.querySelector("#te-save").addEventListener("click", async () => {
-      keep();
-      const r = result();
-      if (!r) return;
-      const id = edit ? edit.theme.id : `${slug(st.name)}-${Math.random().toString(36).slice(2, 6)}`;
+    find("te-remove-photo")?.addEventListener("click", () => { removePhoto(); st.photoChanged = true; draw(); });
+    find("te-name").addEventListener("input", e => { st.name = e.target.value; });
+    find("te-greet").addEventListener("input", e => { st.greeting = e.target.value; updatePreview(); });
+    find("te-font").addEventListener("change", e => { st.font = e.target.value; updatePreview(); });
+    find("te-base").addEventListener("change", e => { st.base = e.target.value; draw(); });
+    for (const [id, key, analyseAgain] of [
+      ["te-x", "posX", true], ["te-pos", "posY", true], ["te-blur", "blur", true],
+      ["te-veil", "veil", false], ["te-opacity", "opacity", false],
+    ]) {
+      const input = find(id);
+      input?.addEventListener("input", () => { st[key] = Number(input.value); updatePreview(); });
+      if (analyseAgain) input?.addEventListener("change", () => { analysePhoto(); updatePreview(); });
+    }
+    find("te-bg")?.addEventListener("input", e => { st.background = e.target.value; updatePreview(); });
+    find("te-bg")?.addEventListener("change", draw);
+    find("te-color").addEventListener("input", e => {
+      st.color = e.target.value;
+      dlg.querySelectorAll("[data-accent]").forEach(b => b.setAttribute("aria-checked", "false"));
+      updatePreview();
+    });
+    dlg.querySelectorAll("[data-accent]").forEach(b => b.addEventListener("click", () => { st.accent = b.dataset.accent; st.color = ""; draw(); }));
+    const save = find("te-save");
+    save.addEventListener("click", async () => {
+      save.disabled = true;
+      const r = result(), copy = !edit || edit.copy;
+      const id = copy ? `${slug(st.name)}-${Math.random().toString(36).slice(2, 6)}` : t.id;
+      const photoKey = `themes/${id}/photo`;
       const theme = {
-        id, name: st.name.trim() || "Своя тема", base: r.base, photo: "photo.jpg",
-        photoPosition: `50% ${Math.round(st.posY * 100)}%`, photoSource: "своё фото",
-        greeting: st.greeting.trim() || "auto", tokens: r.tokens, custom: true, version: "1",
-        baseChoice: st.base, accentId: r.accent.id, font: st.font,
+        ...t, id, name: st.name.trim() || "Своя тема", base: r.base, photo: st.bitmap ? "photo.jpg" : null,
+        photoPosition: position(), photoSource: st.bitmap ? (st.photoChanged ? "своё фото" : t.photoSource || "своё фото") : "",
+        greeting: st.greeting.trim() || "auto", tokens: r.tokens, custom: true, version: t.version || "1",
+        baseChoice: st.base, accentId: r.accent.id, accentColor: st.color,
+        font: st.font, background: st.background, blur: st.blur, extraVeil: st.veil, surfaceOpacity: st.opacity,
       };
       try {
-        if (!edit || st.newPhoto) await core.set("hub", `themes/${id}/photo`, await encodePhoto(st.bitmap));
+        if (st.bitmap && (copy || st.photoChanged)) {
+          const photo = await encodePhoto(st.bitmap);
+          if (!photo) throw new Error("Не удалось сохранить изображение");
+          await core.set("hub", photoKey, photo);
+        }
         await core.set("hub", `themes/${id}`, theme);
+        if (!st.bitmap && st.photoChanged && !copy) await core.remove("hub", photoKey);
         dlg.close();
         await ctx.afterSave(id);
       } catch (err) { ctx.toast(`Тема не сохранилась: ${err.message || err}`, { tone: "danger", icon: "circle-alert" }); }
+      finally { save.disabled = false; }
     });
   }
+  document.body.appendChild(dlg);
+  dlg.addEventListener("close", () => { removePhoto(); dlg.remove(); }, { once: true });
   draw();
   dlg.showModal();
 }

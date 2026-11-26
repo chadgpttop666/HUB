@@ -70,10 +70,14 @@ const tauriCore = {
     const options = kind === "folder" ? { directory: true, multiple: false } : { directory: false, multiple: false, filters: [{ name: "Архив приложения или темы", extensions: ["zip"] }] };
     try { return await T.core.invoke("plugin:dialog|open", { options }); } catch (e) { console.warn(e); return null; }
   },
-  onDragDrop({ enter, leave, drop }) {
-    T.event.listen("tauri://drag-enter", e => enter(e.payload && e.payload.paths));
+  droppedPackage: path => T.core.invoke("dropped_package", { path }),
+  readDroppedFile: path => T.core.invoke("read_dropped_file", { path }),
+  async openUrl(url) { return T.core.invoke("plugin:opener|open_url", { url }); },
+  onDragDrop({ enter, over, leave, drop }) {
+    T.event.listen("tauri://drag-enter", e => enter(e.payload));
+    T.event.listen("tauri://drag-over", e => over(e.payload));
     T.event.listen("tauri://drag-leave", () => leave());
-    T.event.listen("tauri://drag-drop", e => drop(e.payload && e.payload.paths));
+    T.event.listen("tauri://drag-drop", e => drop(e.payload));
   },
   /* ПК: мини-окно, трей, автозапуск */
   quickCapture: text => T.core.invoke("quick_capture", { text }),

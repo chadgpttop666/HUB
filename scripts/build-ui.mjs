@@ -15,6 +15,7 @@ export function build({ quiet = false } = {}) {
   rmSync(dist, { recursive: true, force: true });
   mkdirSync(dist, { recursive: true });
   cpSync(join(root, "ui"), dist, { recursive: true });
+  cpSync(join(root, "APP_SPEC.md"), join(dist, "APP_SPEC.md"));
 
   const hub = join(dist, "hub");
   mkdirSync(hub, { recursive: true });

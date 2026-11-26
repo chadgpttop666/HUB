@@ -77,6 +77,32 @@ fn skip(rel: &str) -> bool {
     rel.split('/').any(|s| s == "__MACOSX" || s == ".git" || s == "node_modules") || name == ".DS_Store" || name == "Thumbs.db"
 }
 
+/// Отличить установочный ZIP от выгрузки приложения по оглавлению архива.
+pub fn is_package_zip(path: &Path) -> bool {
+    let Ok(file) = fs::File::open(path) else { return false };
+    let Ok(archive) = zip::ZipArchive::new(file) else { return false };
+    if archive.len() > MAX_FILES {
+        return false;
+    }
+    let mut root = None;
+    let mut nested_manifest = false;
+    let mut single_root = true;
+    for name in archive.file_names().filter(|name| !name.ends_with('/') && !skip(name)) {
+        let Some(name) = safe_rel(name) else { continue };
+        if matches!(name.as_str(), "manifest.json" | "theme.json") {
+            return true;
+        }
+        if let Some((folder, relative)) = name.split_once('/') {
+            let first = root.get_or_insert_with(|| folder.to_string());
+            single_root &= *first == folder;
+            nested_manifest |= matches!(relative, "manifest.json" | "theme.json");
+        } else {
+            single_root = false;
+        }
+    }
+    single_root && nested_manifest
+}
+
 /// Прочитать папку или zip. В архиве допускается одна общая папка верхнего уровня.
 pub fn read(path: &Path) -> Result<Package, String> {
     let mut files = BTreeMap::new();
@@ -452,6 +478,13 @@ mod tests {
         z.write_all(b"x").unwrap();
         z.start_file("__MACOSX/._x", o).unwrap();
         z.finish().unwrap();
+        assert!(is_package_zip(&zpath));
+        let backup = d.path().join("backup.zip");
+        let mut z = zip::ZipWriter::new(fs::File::create(&backup).unwrap());
+        z.start_file("theory-base.json", o).unwrap();
+        z.write_all(b"{}").unwrap();
+        z.finish().unwrap();
+        assert!(!is_package_zip(&backup));
         let pkg = read(&zpath).unwrap();
         assert!(pkg.files.contains_key("index.html") && !pkg.files.keys().any(|k| k.contains("evil") || k.contains("MACOSX")), "{:?}", pkg.files.keys());
         let p = check(&pkg, &st);

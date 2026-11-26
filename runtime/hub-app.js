@@ -14,6 +14,7 @@
   try { delete window.__HUB_BOOT__; } catch (e) { window.__HUB_BOOT__ = undefined; }
   var host = window.parent;
   var appId = boot.appId || "app";
+  var visible = boot.visible !== false;
 
   /* ───────── связь с хабом ───────── */
   var seq = 0, waiting = {};
@@ -46,6 +47,7 @@
       if (m.error) w.reject(new Error(m.error)); else w.resolve(m.result);
       return;
     }
+    if (m.event === "app.visibility") visible = !!m.payload;
     if (m.event === "theme") applyTheme(m.payload);
     else if (m.event === "inbox.items") receiveItems(m.payload || []);
     else if (m.event === "today.action") emit("today.action", m.payload || {});
@@ -163,6 +165,7 @@
   var hub = {
     __ready: true,
     appId: appId,
+    get visible() { return visible; },
     version: 1,
     data: data,
     inbox: inbox,

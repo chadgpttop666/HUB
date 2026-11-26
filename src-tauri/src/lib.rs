@@ -326,6 +326,58 @@ fn window_focused(window: WebviewWindow) -> bool {
     window.is_focused().unwrap_or(true) && !window.is_minimized().unwrap_or(false)
 }
 
+/* Файлы, явно переданные через системное перетаскивание в главное окно. */
+#[derive(Default)]
+struct DroppedFiles(std::sync::Mutex<Vec<PathBuf>>);
+
+fn remember_drop(app: &AppHandle, label: &str, event: &tauri::DragDropEvent) {
+    if label != "main" {
+        return;
+    }
+    if let tauri::DragDropEvent::Drop { paths, .. } = event {
+        if let Some(files) = app.try_state::<DroppedFiles>() {
+            *files.0.lock().unwrap_or_else(|e| e.into_inner()) = paths.clone();
+        }
+    }
+}
+
+#[tauri::command]
+async fn dropped_package(window: WebviewWindow, store: State<'_, Store>, files: State<'_, DroppedFiles>, path: PathBuf) -> Result<bool, String> {
+    if window.label() != "main" || !store.is_open() {
+        return Err("Откройте хаб для установки".into());
+    }
+    if !files.0.lock().unwrap_or_else(|e| e.into_inner()).contains(&path) {
+        return Err("Перетащите файл ещё раз".into());
+    }
+    tauri::async_runtime::spawn_blocking(move || Ok(path.is_dir() || packages::is_package_zip(&path)))
+        .await.map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn read_dropped_file(window: WebviewWindow, store: State<'_, Store>, files: State<'_, DroppedFiles>, path: PathBuf) -> Result<Response, String> {
+    if window.label() != "main" || !store.is_open() {
+        return Err("Откройте хаб для импорта файла".into());
+    }
+    {
+        let mut allowed = files.0.lock().unwrap_or_else(|e| e.into_inner());
+        let index = allowed.iter().position(|p| p == &path).ok_or("Перетащите файл ещё раз")?;
+        allowed.swap_remove(index);
+    }
+    tauri::async_runtime::spawn_blocking(move || {
+        use std::io::Read;
+        if !path.is_file() {
+            return Err("Для импорта в приложение нужен файл".into());
+        }
+        let file = fs::File::open(path).map_err(|e| format!("Не удалось открыть файл: {e}"))?;
+        let mut bytes = Vec::new();
+        file.take(packages::MAX_TOTAL + 1).read_to_end(&mut bytes).map_err(|e| format!("Не удалось прочитать файл: {e}"))?;
+        if bytes.len() as u64 > packages::MAX_TOTAL {
+            return Err("Файл больше 64 МБ. Откройте его через выбор файла в приложении".into());
+        }
+        Ok(Response::new(bytes))
+    }).await.map_err(|e| e.to_string())?
+}
+
 /* ───────── запуск ───────── */
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -344,6 +396,17 @@ pub fn run() {
 
     builder
         .manage(hubsvc::DriveAuth::default())
+        .manage(DroppedFiles::default())
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::DragDrop(drop) = event {
+                remember_drop(window.app_handle(), window.label(), drop);
+            }
+        })
+        .on_webview_event(|webview, event| {
+            if let tauri::WebviewEvent::DragDrop(drop) = event {
+                remember_drop(webview.app_handle(), webview.label(), drop);
+            }
+        })
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
@@ -403,6 +466,8 @@ pub fn run() {
             notify,
             window_focused,
             package_inspect,
+            read_dropped_file,
+            dropped_package,
             package_install,
             app_uninstall,
             theme_remove,

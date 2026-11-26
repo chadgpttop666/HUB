@@ -3846,7 +3846,7 @@ function planTick() {
   if (!session) return;
   const now = Date.now(), sec = (now - (session.t || now)) / 1000;
   session.t = now;
-  if (sec > 0 && sec <= 120 && !document.hidden) {
+  if (sec > 0 && sec <= 120 && appIsVisible()) {
     const d = todayISO();
     db.plan.timed[d] = (db.plan.timed[d] || 0) + sec;
     addRewardTime(sec);
@@ -3914,7 +3914,7 @@ function timerLoop() {
     finishBlock(t, mins, late > 120000 ? `Блок закончился, пока приложение было закрыто.` : "Блок закончен!");
     return;
   }
-  renderTimerBar();
+  if (appIsVisible()) renderTimerBar();
 }
 function renderTimerBar() {
   const el = $("timerbar"), t = db.plan.timer;
@@ -3940,9 +3940,14 @@ function renderTimerBar() {
   }
 }
 // уход со вкладки: для засечки — время не считается; для таймера повторений — ещё и отвлечение
-document.addEventListener("visibilitychange", () => {
+const appIsVisible = () => !document.hidden && window.hub?.visible !== false;
+let wasVisible = appIsVisible();
+function onAppVisibility() {
+  const visible = appIsVisible();
+  if (visible === wasVisible) return;
+  wasVisible = visible;
   const t = db.plan.timer, now = Date.now();
-  if (document.hidden) { awayAt = now; if (t && t.kind === "rep" && session && !session.done) t.dn++; return; }
+  if (!visible) { awayAt = now; if (t && t.kind === "rep" && session && !session.done) t.dn++; return; }
   if (session) session.t = now;
   if (awayAt && t && t.kind === "rep" && session && !session.done) {
     const sec = (now - awayAt) / 1000, d = todayISO();
@@ -3952,8 +3957,11 @@ document.addEventListener("visibilitychange", () => {
     saveDB();
   }
   awayAt = null;
-  render();
-});
+  timerLoop();
+}
+document.addEventListener("visibilitychange", onAppVisibility);
+if (window.hub) hub.on("app.visibility", onAppVisibility);
+
 
 // =====================================================================
 //  Плеер: ролики и песни хранятся в IndexedDB браузера
@@ -4256,8 +4264,9 @@ window.addEventListener("drop", e => {
   hideDrop();
   if (!k) return;
   e.preventDefault();
-  handleDrop(e.dataTransfer, k);
+  handleDrop(e.dataTransfer, k).catch(reportDropError);
 });
+const reportDropError = e => toast(`Не удалось импортировать файл: ${e.message || e}`);
 async function handleDrop(dt, kind) {
   if (!$("modal").classList.contains("hidden")) { toast("Сначала закрой открытое окно."); return; }
   const pid = curPersonId();
@@ -4295,7 +4304,7 @@ async function handleDrop(dt, kind) {
     }
   }
   if (media.length) { activeTab = "player"; clearSearch(); render(); if (mediaList === null) await loadMedia(); await addMedia(media); }
-  if (data.length) importData(data);
+  if (data.length) await importData(data);
 }
 
 // ---------- старт ----------
@@ -4311,9 +4320,14 @@ loadPhotos();
 //  Без хаба (файл открыт прямо в браузере) этот блок ничего не делает.
 // =====================================================================
 if (window.hub) {
+  hub.on("app.files", files => { hideDrop(); handleDrop({ files }, "files").catch(reportDropError); });
   const plural = (n, f) => { const a = n % 10, b = n % 100; return `${n} ${a === 1 && b !== 11 ? f[0] : a >= 2 && a <= 4 && (b < 12 || b > 14) ? f[1] : f[2]}`; };
+  let cardVersion = -1, cardDay;
   const hubCard = () => {
-    const t = todayISO(), dc = dueCounts(t), mode = db.meta.settings.mode;
+    const t = todayISO();
+    if (cardVersion === dbVersion && cardDay === t) return;
+    cardVersion = dbVersion; cardDay = t;
+    const dc = dueCounts(t), mode = db.meta.settings.mode;
     const n = mode === "topics" ? dc.topics : dc.questions;
     const inRep = db.records.filter(r => activeQs(r).length).length;
     if (!inRep) {

@@ -5,9 +5,10 @@ import { AppHost } from "./host.js";
 import { runSetup, runLock } from "./lock.js";
 import { renderSyncSettings, setSyncStatus, syncPill, syncStatus, updateSyncSettingsStatus } from "./syncui.js";
 import { watchSecrets } from "./secret.js";
-import { installFromPath, pickAndInstall, uninstall, watchDrops } from "./install.js";
+import { pickAndInstall, uninstall, watchDrops } from "./install.js";
 import { themeEditor, greetingText } from "./themes.js";
 import { openCommand } from "./command.js";
+import { aiGuide, showAiPrompt } from "./help.js";
 
 const H = window.HubUI;
 const $ = sel => document.querySelector(sel);
@@ -81,15 +82,22 @@ const themePhoto = t => {
   return t.photo ? `url('${new URL(`hub/themes/${t.id}/${t.photo}`, location.href).href}')` : "none";
 };
 function themePayload() { const t = currentTheme(); return { id: t.id, name: t.name, base: t.base, tokens: t.tokens || {} }; }
-let appliedTokens = [];
+let appliedTokens = {}, appliedTheme;
 function applyTheme() {
   const t = currentTheme();
-  html.setAttribute("data-theme", t.base || "dark");
-  appliedTokens.forEach(k => html.style.removeProperty(`--${k}`));
-  appliedTokens = Object.keys(t.tokens || {});
-  for (const [k, v] of Object.entries(t.tokens || {})) html.style.setProperty(`--${k}`, v);
-  html.style.setProperty("--hub-photo", themePhoto(t));
-  html.style.setProperty("--hub-photo-pos", t.photoPosition || "50% 38%");
+  const photo = themePhoto(t), position = t.photoPosition || "50% 38%";
+  const next = JSON.stringify([t.id, t.base, t.name, t.tokens, photo, position]);
+  if (appliedTheme !== next) {
+    appliedTheme = next;
+    html.dataset.theme = t.base || "dark";
+    const tokens = t.tokens || {};
+    for (const k of Object.keys(appliedTokens)) if (!(k in tokens)) html.style.removeProperty(`--${k}`);
+    for (const [k, v] of Object.entries(tokens)) if (appliedTokens[k] !== v) html.style.setProperty(`--${k}`, v);
+    appliedTokens = tokens;
+    html.style.setProperty("--hub-photo", photo);
+    html.style.setProperty("--hub-photo-pos", position);
+    if (host) host.broadcastTheme();
+  }
   try {
     if (unlocked) {
       localStorage.setItem("hub:theme", t.id); localStorage.setItem("hub:theme-base", t.base);
@@ -97,7 +105,6 @@ function applyTheme() {
       if (typeof state.settings.name === "string") localStorage.setItem("hub:name", state.settings.name);
     }
   } catch { /* ничего */ }
-  if (host) host.broadcastTheme();
 }
 
 /* ───────── экраны ───────── */
@@ -239,7 +246,8 @@ function renderSyncPills() {
 }
 function cardHTML(c) {
   const list = c.list || null;
-  return `<article class="hub-card${c.done ? " hub-card--done" : ""}" data-card="${esc(c.key)}">
+  const action = c.action && !c.done ? c.action : null;
+  return `<article class="hub-card shell-open-card${isPhone() ? " hub-card--compact" : ""}${c.done ? " hub-card--done" : ""}" data-card="${esc(c.key)}">
     <div class="hub-card__app">${iconHTML(c.icon)}<span>${esc(c.name)}</span></div>
     ${c.loading
       ? `<div class="shell-card-skeleton"><div class="hub-skeleton hub-skeleton--title"></div><div class="hub-skeleton hub-skeleton--text"></div></div>`
@@ -248,7 +256,7 @@ function cardHTML(c) {
     ${list ? `<ul class="hub-card__list">${list.slice(0, 4).map(x =>
       `<li><label class="hub-check${x.done ? " hub-check--done" : ""}"><input type="checkbox" tabindex="-1" ${x.done ? "checked" : ""} onclick="return false"><span>${esc(x.text)}</span></label></li>`).join("")}</ul>
       ${list.length > 4 ? `<p class="hub-card__more">ещё ${list.length - 4}</p>` : ""}` : ""}
-    ${c.action && !c.done ? `<div class="hub-card__action"><button class="hub-btn hub-btn--sm" type="button" data-card-action="${esc(c.key)}">${esc(c.action.label)}</button></div>` : ""}
+    <div class="${action ? "hub-card__action" : ""}"><button class="${action ? "hub-btn hub-btn--sm" : "shell-card__action--hidden"} shell-card__action" type="button" data-card-action="${esc(c.key)}" aria-label="${esc(action ? `${action.label} — ${c.name}` : `Открыть «${c.name}»`)}">${action ? esc(action.label) : ""}</button></div>
   </article>`;
 }
 function inboxCard() {
@@ -270,18 +278,37 @@ function appCard(a) {
   if (a.manifest.card) return Object.assign(base, { loading: true, action: { label: "Открыть" } });
   return Object.assign(base, { main: a.manifest.description || "Открыть приложение", action: { label: "Открыть" } });
 }
+const cardMarkup = new WeakMap();
 function renderToday() {
   renderHello();
   const cards = [inboxCard(), ...appsInOrder().map(appCard)];
   const box = $("#today-cards");
-  box.innerHTML = cards.map(cardHTML).join("");
-  if (isPhone()) box.querySelectorAll(".hub-card").forEach(c => c.classList.add("hub-card--compact"));
-  H.icons(box);
+  const existing = new Map([...box.children].map(el => [el.dataset.card, el]));
+  const template = document.createElement("template");
+  let next = box.firstElementChild;
+  for (const card of cards) {
+    const markup = cardHTML(card);
+    const old = existing.get(card.key);
+    existing.delete(card.key);
+    let el = old;
+    if (!el || cardMarkup.get(el) !== markup) {
+      template.innerHTML = markup;
+      el = template.content.firstElementChild;
+      cardMarkup.set(el, markup);
+      H.icons(el);
+      if (old === next && old) { old.replaceWith(el); next = el; }
+      else old?.remove();
+    }
+    if (el !== next) box.insertBefore(el, next);
+    next = el.nextElementSibling;
+  }
+  existing.forEach(el => el.remove());
   const note = $("#today-note");
   const allDone = cards.every(c => c.done);
   note.hidden = !allDone;
   if (allDone) note.textContent = "На сегодня всё.";
 }
+
 function bumpInboxCard() {
   const el = document.querySelector('[data-card="inbox"]');
   if (!el) return;
@@ -626,23 +653,22 @@ function renderSettings() {
     <section class="shell-section" id="settings-themes"><h2 class="hub-section-title">Тема</h2>
       <div class="hub-themes" role="radiogroup" aria-label="Тема">${allThemes().map(t => `
         <button class="hub-theme" type="button" role="radio" aria-checked="${t.id === cur.id}" data-theme-id="${esc(t.id)}">
-          <div class="hub-theme__shot" data-theme="${esc(t.base)}" style="--hub-photo:${themePhoto(t)};color:var(--text);background:var(--bg)">
-            <div class="hub-backdrop" data-scene="open" style="position:absolute"><div class="hub-backdrop__photo"></div><div class="hub-backdrop__veil"></div></div>
-            <div style="position:relative;padding:var(--space-4);display:grid;gap:var(--space-2)">
-              <div class="hub-capture__bar" style="padding:var(--space-1) var(--space-3)"><i data-icon="lightbulb" class="hub-capture__icon"></i><span class="hub-muted" style="font-family:var(--font-heading);font-size:var(--font-size-sm);padding:var(--space-1) 0">Мысль в корзину…</span></div>
-              <div class="hub-glass" style="padding:var(--space-2) var(--space-3);font-size:var(--font-size-xs)"><span class="hub-muted">Корзина</span><br>${state.visibleItems().length ? esc(plural(state.visibleItems().length, UNSORTED)) : "пусто"}</div>
-            </div>
+          <div class="hub-theme__shot shell-theme-shot" data-theme="${esc(t.base)}"
+            style="--hub-photo:${esc(themePhoto(t))};--hub-photo-pos:${esc(t.photoPosition || "50% 38%")}">
+            <span class="shell-theme-preview__label">${iconHTML("lightbulb")}Мысль в корзину…</span>
           </div>
           <span class="hub-theme__name">${esc(t.name)}${t.id === cur.id ? `<i data-icon="check"></i>` : ""}</span>
           <span class="hub-theme__meta">${t.base === "light" ? "светлая" : t.base === "solid" ? "сплошной цвет" : "тёмная"}${t.custom ? " · своя" : ""}</span>
         </button>`).join("")}
-        <button class="hub-theme hub-theme--new" type="button" data-act="theme-new"><i data-icon="image-plus" class="hub-icon--lg"></i><span>Новая тема из фото</span><span class="hub-theme__meta">основа и вуаль подберутся сами</span></button>
+        <button class="hub-theme hub-theme--new" type="button" data-act="theme-new"><i data-icon="image-plus" class="hub-icon--lg"></i><span>Новая тема</span><span class="hub-theme__meta">фото или сплошной цвет</span></button>
       </div>
+      <button class="hub-btn hub-btn--sm" type="button" data-act="theme-copy"><i data-icon="copy"></i>Настроить копию выбранной темы</button>
       ${(state.themes || []).length ? `<div class="hub-btn-row" style="margin-top:var(--space-3)">${state.themes.map(t => `<button class="hub-btn hub-btn--sm" type="button" data-theme-edit="${esc(t.id)}"><i data-icon="pencil"></i>Изменить «${esc(t.name)}»</button><button class="hub-btn hub-btn--sm hub-btn--quiet" type="button" data-theme-remove="${esc(t.id)}"><i data-icon="trash-2"></i>Удалить</button>`).join("")}</div>` : ""}
-      <p class="hub-hint" style="margin-top:var(--space-3)">Своя тема синхронизируется на телефон. Тему от нейросети (папка или zip с theme.json) — перетащите в окно хаба.</p>
+      ${aiGuide("theme")}
     </section>
     <div id="settings-sync"></div>
     <section class="shell-section"><h2 class="hub-section-title">Приложения</h2>
+      ${aiGuide("app")}
       <ul class="hub-list hub-list--divided hub-glass" style="padding:var(--space-1) var(--space-2)">${apps.map((a, i) => `
         <li><div class="hub-row">
           <span class="hub-row__lead">${iconHTML(a.manifest.icon)}</span>
@@ -659,7 +685,7 @@ function renderSettings() {
       ${inTauri && platform !== "phone" ? `<div class="hub-btn-row" style="margin-top:var(--space-4)">
         <button class="hub-btn" type="button" data-act="install-folder"><i data-icon="folder-plus"></i>Установить из папки</button>
         <button class="hub-btn" type="button" data-act="install-zip"><i data-icon="file-archive"></i>Из zip</button></div>` : ""}
-      <p class="hub-hint" style="margin-top:var(--space-3)">${platform === "phone" ? "Приложения ставятся на ПК и приезжают сюда с синхронизацией." : "Или перетащите папку или zip в окно хаба. Как написать приложение с нейросетью — APP_SPEC.md: приложите его к запросу «сделай мне приложение для…»."}</p>
+      <p class="hub-hint" style="margin-top:var(--space-3)">${platform === "phone" ? "Приложения ставятся на ПК и приезжают сюда с синхронизацией." : "Перетащите папку или ZIP в «Настройки», чтобы установить приложение."}</p>
     </section>
     <section class="shell-section" id="settings-pc" hidden></section>
     <section class="shell-section"><h2 class="hub-section-title">Данные</h2>
@@ -782,7 +808,7 @@ document.addEventListener("click", e => {
   else if (d.open) openApp(d.open);
   else if (d.cardAction) {
     if (d.cardAction === "inbox") go("triage");
-    else { const c = state.cards[d.cardAction]; openApp(d.cardAction, c && c.action ? c.action : { open: "" }); }
+    else { const c = state.cards[d.cardAction]; openApp(d.cardAction, c?.action); }
   }
   else if (d.target) moveTo(Number(d.target));
   else if (d.tri === "snooze") { tri.menu ? closeSnoozeMenu() : openSnoozeMenu(); }
@@ -794,17 +820,14 @@ document.addEventListener("click", e => {
   else if (d.act === "install-folder") pickAndInstall("folder", installCtx());
   else if (d.act === "install-zip") pickAndInstall("zip", installCtx());
   else if (d.act === "theme-new") themeEditor(themeCtx());
+  else if (d.act === "theme-copy") editTheme(currentTheme(), true);
+  else if (d.act === "ai-app" || d.act === "ai-theme") showAiPrompt(d.act.slice(3), toast);
 });
 document.addEventListener("click", async e => {
   const t = e.target.closest("[data-app-remove],[data-theme-remove],[data-theme-edit],[data-app-move]");
   if (!t || !unlocked) return;
   if (t.dataset.appMove) moveApp(t.dataset.appMove, Number(t.dataset.d));
-  else if (t.dataset.themeEdit) {
-    const theme = (state.themes || []).find(x => x.id === t.dataset.themeEdit);
-    const photo = theme && await core.get("hub", `themes/${theme.id}/photo`).catch(() => null);
-    if (!(photo instanceof Blob)) { toast("Фото темы ещё не пришло с другого устройства", { tone: "warning", icon: "triangle-alert" }); return; }
-    themeEditor(themeCtx(), { theme, photo });
-  }
+  else if (t.dataset.themeEdit) editTheme(state.themes.find(x => x.id === t.dataset.themeEdit));
   else if (t.dataset.appRemove) { const a = host.apps.get(t.dataset.appRemove); if (a) uninstall(a, installCtx()); }
   else {
     const id = t.dataset.themeRemove;
@@ -816,6 +839,21 @@ document.addEventListener("click", async e => {
     toast("Тема удалена", { icon: "trash-2" });
   }
 });
+async function editTheme(theme, copy = false) {
+  if (!theme) return;
+  let photo;
+  try {
+    if (theme.photo) {
+      if (theme.custom) photo = await core.get("hub", `themes/${theme.id}/photo`);
+      else {
+        const res = await fetch(`hub/themes/${theme.id}/${theme.photo}`);
+        if (res.ok) photo = await res.blob();
+      }
+      if (!(photo instanceof Blob)) throw new Error("Фото ещё не загрузилось");
+    }
+    if (unlocked) themeEditor(themeCtx(), { theme, photo, copy });
+  } catch (err) { toast(String(err.message || err), { tone: "warning", icon: "triangle-alert" }); }
+}
 function themeCtx() {
   return {
     toast, name: userName,
@@ -834,6 +872,14 @@ function installCtx() {
     toast,
     unlocked: () => unlocked,
     openApp: id => openApp(id),
+    repetitionAt: pos => {
+      if (!pos || view.app !== "repetition" || host.apps.get("repetition")?.source !== "builtin") return false;
+      const el = document.elementFromPoint(pos.x / window.devicePixelRatio, pos.y / window.devicePixelRatio);
+      return el?.matches('iframe[data-app="repetition"]') ? el : null;
+    },
+    importRepetition: (target, files) => {
+      if (unlocked && host.frames.get("repetition")?.iframe === target) host.importRepetition(files);
+    },
     afterInstall: async p => { await state.load(); await loadCustomPhotos(); await reloadApps(p?.kind === "app" ? p.id : null); },
   };
 }

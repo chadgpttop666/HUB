@@ -362,7 +362,7 @@ await test("своя тема из фото: основа и вуаль счит
   await page.evaluate(() => window.__hubShell.go("settings"));
   await page.click('[data-act="theme-new"]');
   await page.setInputFiles("#te-file", join(root, "design-system", "themes", "mist", "photo.jpg"));
-  await page.waitForSelector("#te-save:not([disabled])");
+  await page.waitForSelector("#te-remove-photo");
   const hint = await text("dialog .hub-hint");
   assert(/основа: светлая/.test(hint), `светлое фото — светлая основа: ${hint}`);
   await page.fill("#te-name", "Мой туман");
@@ -474,6 +474,100 @@ await test("мини-окно: мысль при запертом хабе по�
   assert(await has(), "после входа — в корзине");
   const item = await page.evaluate(() => window.__hubShell.state.items.find(i => i.text.startsWith("позвонить в деканат")));
   eq(item.tags, ["учёба"], "метка сохранилась");
+});
+
+await test("на «Сегодня» открывается вся карточка, а неизменившаяся карточка сохраняется", async () => {
+  const card = page.locator('[data-card="repetition"]');
+  assert(await card.evaluate(el => {
+    window.__hubShell.state.changed("inbox");
+    return el === document.querySelector('[data-card="repetition"]');
+  }), "соседняя карточка не перерисовалась");
+  await card.click({ position: { x: 60, y: 55 } });
+  await page.waitForSelector('iframe[data-app="repetition"]:visible');
+  await page.evaluate(() => window.__hubShell.go("today"));
+  await page.locator('[data-card="inbox"]').click({ position: { x: 60, y: 55 } });
+  await page.waitForSelector("#screen-triage:visible");
+  await page.evaluate(() => window.__hubShell.go("today"));
+});
+
+await test("запросы для нейросети и APP_SPEC.md доступны из настроек", async () => {
+  await page.evaluate(() => window.__hubShell.go("settings"));
+  for (const [kind, name, expected] of [
+    ["app", "Как создать приложение с нейросетью", "manifest.json"],
+    ["theme", "Как создать тему с нейросетью", "theme.json"],
+  ]) {
+    await page.getByText(name, { exact: true }).click();
+    await page.locator(`[data-act="ai-${kind}"]`).click();
+    const prompt = page.getByRole("textbox", { name: "Текст запроса" });
+    assert((await prompt.inputValue()).includes(expected), "в запросе есть формат пакета");
+    await page.getByRole("button", { name: "Закрыть", exact: true }).click();
+  }
+  const download = await Promise.all([
+    page.waitForEvent("download"),
+    page.getByRole("link", { name: "Скачать APP_SPEC.md" }).click(),
+  ]);
+  eq(download[0].suggestedFilename(), "APP_SPEC.md", "спецификация скачивается из интерфейса");
+});
+
+await test("тему можно настроить и сохранить без фото", async () => {
+  await page.click('[data-act="theme-new"]');
+  await page.fill("#te-name", "Свой фон");
+  await page.fill("#te-bg", "#222244");
+  await page.fill("#te-color", "#d9bfff");
+  await page.locator("#te-opacity").evaluate(el => {
+    el.value = "75";
+    el.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await page.click("#te-save");
+  await waitFor(() => page.evaluate(() => window.__hubShell.state.themes[0]?.name === "Свой фон"), 4000, "тема сохранена");
+  const values = await page.evaluate(() => ["bg", "accent", "surface"].map(k => document.documentElement.style.getPropertyValue("--" + k)));
+  eq(values, ["#222244", "#d9bfff", "rgba(14,22,18,0.75)"], "настройки темы применены");
+});
+
+await test("системное перетаскивание направляет заметку в «Повторение», ZIP-пакет — в установщик", async () => {
+  const native = await browser.newPage();
+  try {
+    await native.addInitScript(() => {
+      const events = {}, invoked = [];
+      window.__dropTest = { events, invoked };
+      window.__TAURI__ = {
+        event: { listen: async (name, cb) => { events[name] = cb; } },
+        core: {
+          convertFileSrc: () => location.origin + "/hubapp/",
+          invoke: async (command, args) => {
+            invoked.push(command);
+            if (command === "hub_status") return { setupDone: true, unlocked: true, platform: "pc" };
+            if (command === "sync_status") return { state: "off" };
+            if (command === "data_dump") return { json: {}, blobs: {} };
+            if (command === "apps_list") return [{ id: "repetition", source: "builtin", manifest: { name: "Повторение" } }];
+            if (command === "dropped_package") return args.path.endsWith("theme.zip");
+            if (command === "read_dropped_file") return new TextEncoder().encode("# Теория из файла\nКонспект");
+            if (command === "package_inspect") return { kind: "theme", name: "Новая тема", errors: [], warnings: [] };
+          },
+        },
+      };
+    });
+    await native.goto(URL0);
+    await native.waitForSelector("#screen-today:visible");
+    await native.locator('[data-card="repetition"]').click({ position: { x: 60, y: 55 } });
+    await native.evaluate(() => {
+      const frame = document.querySelector('iframe[data-app="repetition"]');
+      const r = frame.getBoundingClientRect();
+      const position = { x: (r.left + r.width / 2) * devicePixelRatio, y: (r.top + r.height / 2) * devicePixelRatio };
+      window.__dropTest.position = position;
+      const payload = { paths: ["C:/notes/theory.md"], position };
+      window.__dropTest.events["tauri://drag-enter"]({ payload });
+      window.__dropTest.events["tauri://drag-drop"]({ payload });
+    });
+    const text = await native.frameLocator('iframe[data-app="repetition"]').locator("#add-full").inputValue();
+    assert(text.includes("Теория из файла"), "файл передан в «Готовые записи»");
+    assert(!(await native.evaluate(() => window.__dropTest.invoked.includes("package_inspect"))), "заметка не открыла установщик");
+    await native.evaluate(() => {
+      const { events, position } = window.__dropTest;
+      events["tauri://drag-drop"]({ payload: { paths: ["C:/Downloads/theme.zip"], position } });
+    });
+    await native.getByRole("heading", { name: "Новая тема", exact: true }).waitFor();
+  } finally { await native.close(); }
 });
 
 await test("без ошибок в консоли", async () => { eq(errors, [], "ошибки страницы"); });
