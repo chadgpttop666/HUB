@@ -214,13 +214,18 @@
            border: 1px solid var(--line); border-radius: 999px; padding: 8px 14px; outline: none; cursor: pointer; }
   select:focus-visible { border-color: var(--accent); outline: 2px solid var(--focus); }
   option { background: var(--surface-strong); color: var(--ink); }
-  .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .topic-window { --chip-row: 30px; --chip-gap: 6px; }
+  .topic-window.clamp { max-block-size: calc(2 * var(--chip-row) + var(--chip-gap)); overflow: hidden; }
+  .chips { display: flex; gap: var(--chip-gap, 6px); flex-wrap: wrap; }
+  .topic-window .chip { line-height: 16px; }
+  .topic-window.clamp .chip {
+    block-size: var(--chip-row); max-inline-size: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
   .chip { border-radius: 999px; font-size: 13px; font-weight: 700; padding: 6px 14px; background: transparent;
           color: var(--ink); border: 1px solid var(--line-soft); }
   .chip:hover { border-color: var(--accent); }
   .chip.active { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
   .chip .cn { opacity: .6; font-weight: 600; margin-left: 5px; }
-  .chips.clamp { overflow: hidden; }
   .topic-tools { display: flex; gap: 8px; align-items: center; margin-top: 8px; flex-wrap: wrap; }
   .topic-tools input { font-family: inherit; font-size: 13px; border: 1px solid var(--line); border-radius: 999px;
                        padding: 6px 14px; background: var(--card); color: var(--ink); outline: none; min-width: 200px; }
@@ -536,10 +541,10 @@ let db = { records: [], people: [], schools: [], log: [], meta: freshMeta(), pla
 
 function readKey(k) { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } }
 let dbVersion = 0;
-function saveDB() {
+function saveDB(parts = Object.keys(KEYS)) {
   dbVersion++;
   try {
-    for (const k of Object.keys(KEYS)) localStorage.setItem(KEYS[k], JSON.stringify(db[k]));
+    for (const k of parts) localStorage.setItem(KEYS[k], JSON.stringify(db[k]));
     return true;
   } catch (e) {
     toast("Не удалось сохранить: в хранилище браузера кончилось место. Сделай экспорт.");
@@ -2100,6 +2105,8 @@ function showGrid(filters) {
 }
 
 function renderBase() {
+  topicOverflow?.disconnect();
+  topicOverflow = null;
   const el = $("section-base");
   if (editor) { el.innerHTML = editorHTML(); afterEditorRender(); return; }
   const top = navTop();
@@ -2108,20 +2115,28 @@ function renderBase() {
   if (top.kind === "school" && school(top.id)) { el.innerHTML = schoolHTML(school(top.id)); return; }
   if (top.kind !== "grid") { nav = nav.filter(s => s.kind === "grid" || (s.kind === "rec" ? rec(s.id) : s.kind === "person" ? person(s.id) : school(s.id))); return renderBase(); }
   el.innerHTML = gridHTML();
-  fitTopics();
+  if (topicsOpen) filterTopics();
+  else watchTopicOverflow();
   if (addPanel) afterAddPanelRender();
 }
-// темы: свёрнуто — ровно две строки; кнопка «все темы» появляется, только если что-то не влезло
-let topicsOpen = false, topicFind = "";
-function fitTopics() {
-  const box = $("topic-chips");
-  if (!box) return;
-  if (topicsOpen) { filterTopics(); return; }
-  const first = box.querySelector(".chip");
-  if (!first) return;
-  box.style.maxHeight = (first.offsetHeight * 2 + 6) + "px";
-  const over = box.scrollHeight > box.clientHeight + 2, more = $("topic-more");
-  if (more) more.classList.toggle("hidden", !over);
+// CSS оставляет две строки. ResizeObserver получает размеры уже после расчёта раскладки.
+let topicsOpen = false, topicFind = "", topicOverflow = null;
+function watchTopicOverflow() {
+  const list = $("topic-chips"), more = $("topic-more");
+  if (!list || !more) return;
+  const clip = list.parentElement;
+  let listHeight, clipHeight;
+  topicOverflow = new ResizeObserver(entries => {
+    for (const { target, contentRect } of entries) {
+      if (target === list) listHeight = contentRect.height;
+      else clipHeight = contentRect.height;
+    }
+    if (listHeight !== undefined && clipHeight !== undefined) {
+      more.classList.toggle("hidden", listHeight <= clipHeight + 2);
+    }
+  });
+  topicOverflow.observe(list);
+  topicOverflow.observe(clip);
 }
 function filterTopics() {
   const box = $("topic-chips"), q = norm(topicFind.trim());
@@ -2129,7 +2144,6 @@ function filterTopics() {
   for (const c of box.querySelectorAll(".chip"))
     c.style.display = !q || c.classList.contains("active") || c.dataset.tname.includes(q) ? "" : "none";
 }
-window.addEventListener("resize", () => { if (!topicsOpen && $("topic-chips")) fitTopics(); });
 
 // ---------- сетка ----------
 const STAGES = [["heard", "Услышал"], ["notes", "Конспект"], ["rep", "В повторении"], ["fresh", "Ещё не начатые"], ["materials", "Материалы"]];
@@ -2187,8 +2201,8 @@ function gridHTML() {
     .filter(x => x.on || x.n)
     .sort((a, b) => b.on - a.on || b.n - a.n || a.tp.localeCompare(b.tp, "ru"));
   const chips = topicList.map(({ tp, on, n }) =>
-    `<button class="chip${on ? " active" : ""}" data-topic="${esc(tp)}" data-tname="${esc(norm(tp))}" aria-pressed="${on}">${esc(tp)}<span class="cn">${n}</span></button>`).join("");
-  const topicTools = topicList.length < 6 ? "" : topicsOpen
+    `<button class="chip${on ? " active" : ""}" data-topic="${esc(tp)}" data-tname="${esc(norm(tp))}" title="${esc(tp)}" aria-pressed="${on}">${esc(tp)}<span class="cn">${n}</span></button>`).join("");
+  const topicTools = topicsOpen
     ? `<div class="topic-tools"><input type="search" id="topic-find" placeholder="найти тему" aria-label="Найти тему" autocomplete="off" value="${esc(topicFind)}">
         <button class="btn btn-ghost btn-sm" data-topics-toggle="1">Свернуть темы ▴</button></div>`
     : `<div class="topic-tools hidden" id="topic-more"><button class="btn btn-ghost btn-sm" data-topics-toggle="1">Все темы (${topicList.length}) ▾</button></div>`;
@@ -2204,7 +2218,7 @@ function gridHTML() {
       <select id="f-stage" aria-label="Стадия"><option value="">Все стадии</option>${stageOpts}</select>
       <select id="f-sort" aria-label="Порядок">${sortOpts}</select>
     </div>
-    ${chips ? `<div class="chips${topicsOpen ? "" : " clamp"}" id="topic-chips">${chips}</div>${topicTools}` : ""}
+    ${chips || topicsOpen ? `<div class="topic-window${topicsOpen ? "" : " clamp"}"><div class="chips" id="topic-chips">${chips}</div></div>${topicTools}` : ""}
     ${matNote}
     <div class="divider"></div>
     ${list.length ? gridOf(list, t)
@@ -3520,7 +3534,13 @@ async function importData(input) {
 }
 
 // ---------- отрисовка и события ----------
+let renderedDay;
 function render() {
+  renderedDay = todayISO();
+  if (activeTab !== "base" || searchActive()) {
+    topicOverflow?.disconnect();
+    topicOverflow = null;
+  }
   // сетка «Базы» шире, чтобы влезли две колонки; страницы и повторение — узкие, текст читается короткими строками
   document.body.classList.toggle("wide", !searchActive() && activeTab === "base" && !editor && navTop().kind === "grid");
   renderHeader();
@@ -3606,7 +3626,14 @@ document.body.addEventListener("click", e => {
     if (editor) { cancelEditor(go); return; }
     go(); return;
   }
-  if (d.mode) { db.meta.settings.mode = d.mode; saveDB(); render(); return; }
+  if (d.mode) {
+    if (db.meta.settings.mode !== d.mode) {
+      db.meta.settings.mode = d.mode;
+      saveDB(["meta"]);
+      render();
+    }
+    return;
+  }
   if (d.start) { editor = null; startSession(d.start, d.scope); return; }
   if (d.snooze) { const r = rec(d.snooze); if (r) { r.snooze = addDays(todayISO(), 1); saveDB(); render(); toast(`«${r.title}» — перенесено на завтра.`); } return; }
   if (d.openHl) { let hl = null; try { hl = JSON.parse(d.hl); } catch {} navTo({ kind: "rec", id: d.openHl, hl }); return; }
@@ -4355,8 +4382,10 @@ if (window.hub) {
 
   // кнопка карточки на «Сегодня»
   hub.today.onAction(a => {
+    const tab = a?.open === "base" ? "base" : "rep";
+    if (activeTab === tab && !searchActive() && !session && !editor && renderedDay === todayISO()) return;
     clearSearch(); session = null; editor = null;
-    activeTab = a && a.open === "base" ? "base" : "rep";
+    activeTab = tab;
     render();
   });
 

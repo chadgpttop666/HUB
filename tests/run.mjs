@@ -609,6 +609,67 @@ await test("настройки открывают DevTools и проверяют
   } finally { await native.close(); }
 });
 
+await test("большая база Повторения: повторный вход сохраняет DOM, а режим пишет только метаданные", async () => {
+  const native = await browser.newPage();
+  try {
+    await native.addInitScript(() => {
+      window.__repeatWrites = [];
+      const records = Array.from({ length: 1000 }, (_, i) => ({
+        id: `rec-${i}`, title: `Теория ${i}`, updated: "2026-11-20",
+        topics: [`Тестовая тема номер ${i % 25}`],
+        questions: i < 200 ? [{ id: "q", q: "Вопрос", a: "Ответ" }] : [],
+      }));
+      const seed = { "localstorage/tb-records": records, "localstorage/tb-meta": { version: 2, inboxMarked: true } };
+      window.__TAURI__ = {
+        event: { listen: async () => {} },
+        core: {
+          convertFileSrc: () => location.origin + "/hubapp/",
+          invoke: async (command, args) => {
+            if (command === "hub_status") return { setupDone: true, unlocked: true, platform: "pc" };
+            if (command === "sync_status") return { state: "off" };
+            if (command === "data_dump") return { json: args.ns === "repetition" ? seed : {}, blobs: {} };
+            if (command === "apps_list") return [{
+              id: "repetition", source: "builtin", manifest: { name: "Повторение", card: true },
+            }];
+            if (command === "data_set" && args.ns === "repetition" && args.key.startsWith("localstorage/")) {
+              window.__repeatWrites.push(args.key);
+            }
+          },
+        },
+      };
+    });
+    await native.goto(URL0);
+    const card = native.locator('[data-card="repetition"]');
+    await card.getByRole("button", { name: "Начать — Повторение" }).waitFor();
+    const frame = await (await native.locator('iframe[data-app="repetition"]').elementHandle()).contentFrame();
+    await frame.locator("#section-rep [data-mode=topics]").waitFor({ state: "attached" });
+    await frame.evaluate(() => { window.__sameRepeatNode = document.querySelector("#section-rep").firstElementChild; });
+    await card.getByRole("button", { name: "Начать — Повторение" }).click();
+    await waitFor(() => frame.evaluate(() => hub.visible), 5000, "приложение показано");
+    await frame.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    assert(await frame.evaluate(() => window.__sameRepeatNode === document.querySelector("#section-rep").firstElementChild),
+      "действие карточки не построило ту же вкладку второй раз");
+
+    await frame.locator("[data-mode=questions]").click();
+    await waitFor(() => native.evaluate(() => window.__repeatWrites.includes("localstorage/tb-meta")), 5000, "метаданные сохранены");
+    eq(await native.evaluate(() => window.__repeatWrites), ["localstorage/tb-meta"], "смена режима пишет один ключ");
+    eq(await frame.evaluate(() => JSON.parse(localStorage.getItem("tb-meta")).settings.mode), "questions", "режим записан в метаданные");
+
+    await frame.locator("#tab-base").click();
+    await frame.locator("#topic-more").waitFor({ state: "visible" });
+    const heights = await frame.locator(".topic-window").evaluate(el => ({
+      visible: el.clientHeight, full: el.firstElementChild.clientHeight,
+    }));
+    assert(heights.visible === 66 && heights.full > heights.visible, "список ограничен двумя строками");
+    await frame.locator("#topic-more button").click();
+    await frame.locator("#topic-find").fill("номер 24");
+    eq(await frame.locator("#topic-chips button:visible").count(), 1, "поиск в полном списке сохранился");
+    await frame.locator("#topic-chips button:visible").click();
+    await frame.getByRole("button", { name: "Свернуть темы" }).click();
+    await frame.locator("#topic-more").waitFor({ state: "hidden" });
+  } finally { await native.close(); }
+});
+
 await test("без ошибок в консоли", async () => { eq(errors, [], "ошибки страницы"); });
 
 await browser.close();
