@@ -570,6 +570,45 @@ await test("системное перетаскивание направляет
   } finally { await native.close(); }
 });
 
+await test("настройки открывают DevTools и проверяют обновления через ядро", async () => {
+  const native = await browser.newPage();
+  try {
+    await native.addInitScript(() => {
+      window.__updateCalls = [];
+      window.__TAURI__ = {
+        event: { listen: async () => {} },
+        core: {
+          invoke: async command => {
+            window.__updateCalls.push(command);
+            if (command === "hub_status") return { setupDone: true, unlocked: true, platform: "pc" };
+            if (command === "hub_info") return { updatesSupported: true, version: "0.1.3" };
+            if (command === "sync_status") return { state: "off" };
+            if (command === "data_dump") return { json: {}, blobs: {} };
+            if (command === "apps_list") return [];
+            if (command === "update_check") return { version: "0.1.10", size: 12 * 1048576 };
+            if (command === "update_install") {
+              if (window.__updateCalls.filter(c => c === command).length === 1) throw "Проверка установщика не прошла";
+              return "permission";
+            }
+          },
+        },
+      };
+    });
+    await native.goto(URL0);
+    await native.waitForSelector("#screen-today:visible");
+    await native.evaluate(() => window.__hubShell.go("settings"));
+    await native.getByRole("button", { name: "Открыть DevTools" }).click();
+    assert(await native.evaluate(() => window.__updateCalls.includes("open_devtools")), "открытие DevTools передано ядру");
+    await native.getByRole("button", { name: "Проверить обновления" }).click();
+    const install = native.getByRole("button", { name: "Установить 0.1.10" });
+    await install.click();
+    await native.getByText("Проверка установщика не прошла").waitFor();
+    assert(await install.isEnabled(), "после ошибки обновление можно повторить");
+    await install.click();
+    await native.getByText("Разрешите Хабу устанавливать приложения", { exact: false }).waitFor();
+  } finally { await native.close(); }
+});
+
 await test("без ошибок в консоли", async () => { eq(errors, [], "ошибки страницы"); });
 
 await browser.close();

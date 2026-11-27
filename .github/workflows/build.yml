@@ -2,7 +2,7 @@ name: Хаб — проверка и сборка
 
 on:
   push:
-    branches: [main, master, "claude/**"]
+    branches: [main, claude/jolly-cannon-rqlv03]
     tags: ["v*"]
   pull_request:
   workflow_dispatch:
@@ -26,6 +26,18 @@ jobs:
         run: |
           npm install --no-save playwright@1.49.1
           npx playwright install --with-deps chromium
+
+      - name: Согласованность версии
+        run: |
+          node --input-type=module <<'JS'
+          import { readFileSync } from "node:fs";
+          const config = JSON.parse(readFileSync("src-tauri/tauri.conf.json"));
+          const version = readFileSync("src-tauri/Cargo.toml", "utf8").match(/^version = "([^"]+)"/m)?.[1];
+          if (config.version !== version) throw new Error("Версии Tauri и Cargo различаются");
+          if (process.env.GITHUB_REF_TYPE === "tag" && process.env.GITHUB_REF_NAME !== `v${version}`) {
+            throw new Error("Номер тега отличается от версии приложения");
+          }
+          JS
 
       - name: APP_SPEC.md свежий
         run: node scripts/app-spec.mjs --check
@@ -80,6 +92,7 @@ jobs:
 
   windows:
     name: Установщик для Windows
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v')
     needs: test
     runs-on: windows-latest
     steps:
@@ -114,6 +127,7 @@ jobs:
 
   android:
     name: APK для Android
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v')
     needs: test
     runs-on: ubuntu-latest
     env:
@@ -181,6 +195,7 @@ jobs:
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_SIGNING_CERT_SHA256: 3a11e27832b41b74f597ec6957ca1ff984e672faf80542620eda7c2c9b697470
         run: |
           APK=$(find src-tauri/gen/android/app/build/outputs/apk -name "*release*.apk" | head -1)
           echo "собран: $APK"

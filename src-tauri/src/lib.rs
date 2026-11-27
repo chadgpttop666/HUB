@@ -10,6 +10,7 @@ pub mod quick;
 pub mod rclone;
 pub mod sync;
 pub mod store;
+mod updates;
 
 use serde::Serialize;
 use serde_json::Value;
@@ -288,6 +289,7 @@ struct HubInfo {
     version: String,
     platform: &'static str,
     rclone: String,
+    updates_supported: bool,
 }
 
 #[tauri::command]
@@ -298,6 +300,15 @@ fn hub_info(app: AppHandle, paths: State<'_, Paths>) -> HubInfo {
         version: app.package_info().version.to_string(),
         platform: hubsvc::PLATFORM,
         rclone: rclone::locate().display().to_string(),
+        updates_supported: updates::SUPPORTED,
+    }
+}
+
+#[cfg(desktop)]
+#[tauri::command]
+fn open_devtools(window: WebviewWindow) {
+    if window.label() == "main" && window.state::<Store>().is_open() {
+        window.open_devtools();
     }
 }
 
@@ -394,7 +405,11 @@ pub fn run() {
             .on_window_event(desktop::on_window_event);
     }
 
+    #[cfg(target_os = "android")]
+    let builder = builder.plugin(updates::android_plugin());
+
     builder
+        .manage(updates::Updates::default())
         .manage(hubsvc::DriveAuth::default())
         .manage(DroppedFiles::default())
         .on_window_event(|window, event| {
@@ -462,6 +477,10 @@ pub fn run() {
             blob_put,
             apps_list,
             hub_info,
+            updates::update_check,
+            updates::update_install,
+            #[cfg(desktop)]
+            open_devtools,
             open_data_dir,
             notify,
             window_focused,

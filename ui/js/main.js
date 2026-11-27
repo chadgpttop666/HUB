@@ -9,6 +9,7 @@ import { pickAndInstall, uninstall, watchDrops } from "./install.js";
 import { themeEditor, greetingText } from "./themes.js";
 import { openCommand } from "./command.js";
 import { aiGuide, showAiPrompt } from "./help.js";
+import { renderUpdates } from "./updates.js";
 
 const H = window.HubUI;
 const $ = sel => document.querySelector(sel);
@@ -697,6 +698,12 @@ function renderSettings() {
       <p class="hub-hint" style="margin-top:var(--space-3)">Каждая запись — отдельный файл, зашифрованный ключом данных. Ключ открывается паролем или ключом восстановления.</p>
       ${inTauri ? `<div class="hub-btn-row" style="margin-top:var(--space-4)"><button class="hub-btn" type="button" data-act="open-data"><i data-icon="folder"></i>Открыть папку</button></div>` : ""}
     </section>
+    <section class="shell-section" id="settings-updates" hidden></section>
+    ${inTauri && platform !== "phone" ? `<section class="shell-section" id="settings-devtools">
+      <h2 class="hub-section-title">Инструменты разработчика</h2>
+      <p class="hub-muted">Для замера задержек откройте DevTools, выберите Performance, включите Screenshots и запишите переключение экранов.</p>
+      <div class="hub-btn-row"><button class="hub-btn" type="button" data-act="devtools">Открыть DevTools</button></div>
+    </section>` : ""}
     <section class="shell-section"><h2 class="hub-section-title">Клавиши</h2>
       <dl class="shell-keys">${keys.map(([ks, what]) => `<dt>${ks.map(k => `<kbd class="hub-kbd">${esc(k)}</kbd>`).join(" ")}</dt><dd>${esc(what)}</dd>`).join("")}</dl>
     </section>`;
@@ -707,8 +714,10 @@ function renderSettings() {
   if (keepConnection) syncSlot.replaceWith(syncPanel);
   else renderSyncSettings(syncSlot, syncCtx());
   const infoFields = [...el.querySelectorAll("[data-info]")];
+  const updates = $("#settings-updates");
   core.info().then(info => {
     for (const field of infoFields) field.textContent = info[field.dataset.info] || "—";
+    if (updates.isConnected && info.updatesSupported) renderUpdates(updates, info.version);
   }).catch(() => {});
   if (inTauri && platform !== "phone") {
     const pc = $("#settings-pc");
@@ -792,6 +801,11 @@ function openPalette() {
 const isTyping = t => t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName));
 document.addEventListener("keydown", e => {
   if (!unlocked) return;
+  if (e.key === "F12" && inTauri && platform !== "phone") {
+    e.preventDefault();
+    core.openDevTools().catch(err => toast(String(err.message || err), { tone: "danger", icon: "circle-alert" }));
+    return;
+  }
   const k = hotkeyOf(e);
   if (k) { e.preventDefault(); handleHotkey(k); return; }
   if (view.name === "triage") { triageKey(e); return; }
@@ -816,6 +830,7 @@ document.addEventListener("click", e => {
   else if (d.tri === "skip") step(1);
   else if (d.snooze) chooseSnooze(Number(d.snooze));
   else if (d.themeId) { state.setSetting("theme", d.themeId); }
+  else if (d.act === "devtools" && unlocked) core.openDevTools().catch(err => toast(String(err.message || err), { tone: "danger", icon: "circle-alert" }));
   else if (d.act === "open-data") core.openDataDir().catch(err => toast(`Не открылась: ${err.message || err}`, { tone: "danger" }));
   else if (d.act === "install-folder") pickAndInstall("folder", installCtx());
   else if (d.act === "install-zip") pickAndInstall("zip", installCtx());
