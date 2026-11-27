@@ -22,7 +22,7 @@ BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
 "$BT/zipalign" -f -p 4 "$IN" "$OUT.aligned"
 "$BT/apksigner" sign --ks "$KEYSTORE" --ks-pass "pass:$PASS" --ks-key-alias hub --out "$OUT" "$OUT.aligned"
 rm -f "$OUT.aligned"
-certs=$(LC_ALL=C "$BT/apksigner" verify --print-certs "$OUT")
+certs=$("$BT/apksigner" verify --print-certs "$OUT")
 fingerprint=$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' <<< "$certs")
 if [ -n "${ANDROID_SIGNING_CERT_SHA256:-}" ] && [ "$fingerprint" != "$ANDROID_SIGNING_CERT_SHA256" ]; then
   echo "Подпись APK отличается от опубликованного Хаба. Обновление поверх не установится." >&2

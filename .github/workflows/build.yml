@@ -199,13 +199,13 @@ jobs:
         run: |
           APK=$(find src-tauri/gen/android/app/build/outputs/apk -name "*release*.apk" | head -1)
           echo "собран: $APK"
-          scripts/sign-apk.sh "$APK" "Хаб.apk"
+          scripts/sign-apk.sh "$APK" "Hub.apk"
 
       - name: APK
         uses: actions/upload-artifact@v4
         with:
           name: hub-android
-          path: Хаб.apk
+          path: Hub.apk
           retention-days: 30
 
 
