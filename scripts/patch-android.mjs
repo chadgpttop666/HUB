@@ -9,7 +9,7 @@ import { join } from "node:path";
 const app = join("src-tauri", "gen", "android", "app");
 const manifestPath = join(app, "src", "main", "AndroidManifest.xml");
 let m = readFileSync(manifestPath, "utf8");
-for (const perm of ["android.permission.MANAGE_EXTERNAL_STORAGE", "android.permission.POST_NOTIFICATIONS", "android.permission.INTERNET", "android.permission.REQUEST_INSTALL_PACKAGES"]) {
+for (const perm of ["android.permission.MANAGE_EXTERNAL_STORAGE", "android.permission.POST_NOTIFICATIONS", "android.permission.INTERNET", "android.permission.REQUEST_INSTALL_PACKAGES", "android.permission.SCHEDULE_EXACT_ALARM", "android.permission.RECEIVE_BOOT_COMPLETED", "android.permission.FOREGROUND_SERVICE", "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK", "android.permission.WAKE_LOCK"]) {
   if (!m.includes(perm)) m = m.replace(/<application/, `<uses-permission android:name="${perm}" />\n    <application`);
 }
 if (!m.includes("UpdateFileProvider")) {
@@ -20,13 +20,25 @@ if (!m.includes("UpdateFileProvider")) {
     </provider>
   </application>`);
 }
+if (!m.includes("CalendarAlarmReceiver")) {
+  m = m.replace("</application>", `    <receiver android:name="local.hub.mobile.CalendarAlarmReceiver" android:exported="false">
+      <intent-filter>
+        <action android:name="android.intent.action.BOOT_COMPLETED" />
+        <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+        <action android:name="android.intent.action.TIME_SET" />
+        <action android:name="android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED" />
+      </intent-filter>
+    </receiver>
+    <service android:name="local.hub.mobile.CalendarAlarmService" android:exported="false" android:foregroundServiceType="mediaPlayback" />
+  </application>`);
+}
 writeFileSync(manifestPath, m);
 const sources = join(app, "src", "main");
 const kotlin = join(sources, "java", "local", "hub", "mobile");
 const xml = join(sources, "res", "xml");
 mkdirSync(kotlin, { recursive: true });
 mkdirSync(xml, { recursive: true });
-for (const name of ["MainActivity.kt", "SystemBars.kt", "UpdateInstaller.kt"]) {
+for (const name of ["CalendarReminders.kt", "MainActivity.kt", "SystemBars.kt", "UpdateInstaller.kt"]) {
   copyFileSync(join("src-tauri", "android", name), join(kotlin, name));
 }
 writeFileSync(join(xml, "hub_update_paths.xml"), '<paths><cache-path name="hub_updates" path="hub-updates/" /></paths>\n');

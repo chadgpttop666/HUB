@@ -8,6 +8,7 @@ pub mod hubsvc;
 pub mod packages;
 pub mod quick;
 pub mod rclone;
+mod reminders;
 pub mod sync;
 pub mod store;
 #[cfg(target_os = "android")]
@@ -45,13 +46,17 @@ async fn data_stat(store: State<'_, Store>, ns: String, key: String) -> Result<O
 }
 
 #[tauri::command]
-async fn data_set(store: State<'_, Store>, ns: String, key: String, value: Value) -> Result<(), String> {
-    store.set_json(&ns, &key, &value)
+async fn data_set(store: State<'_, Store>, reminders: State<'_, reminders::Reminders>, ns: String, key: String, value: Value) -> Result<(), String> {
+    store.set_json(&ns, &key, &value)?;
+    if ns == "calendar" && key.starts_with("events/") { reminders.changed(); }
+    Ok(())
 }
 
 #[tauri::command]
-async fn data_remove(store: State<'_, Store>, ns: String, key: String) -> Result<(), String> {
-    store.remove(&ns, &key)
+async fn data_remove(store: State<'_, Store>, reminders: State<'_, reminders::Reminders>, ns: String, key: String) -> Result<(), String> {
+    store.remove(&ns, &key)?;
+    if ns == "calendar" && key.starts_with("events/") { reminders.changed(); }
+    Ok(())
 }
 
 #[tauri::command]
@@ -410,12 +415,13 @@ pub fn run() {
     }
 
     #[cfg(target_os = "android")]
-    let builder = builder.plugin(updates::android_plugin()).plugin(system_bars::plugin());
+    let builder = builder.plugin(updates::android_plugin()).plugin(system_bars::plugin()).plugin(reminders::android_plugin());
 
     builder
         .manage(updates::Updates::default())
         .manage(hubsvc::DriveAuth::default())
         .manage(DroppedFiles::default())
+        .manage(reminders::Reminders::default())
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::DragDrop(drop) = event {
                 remember_drop(window.app_handle(), window.label(), drop);
@@ -444,6 +450,7 @@ pub fn run() {
             app.manage(desktop::Desktop::new(base.clone()));
             app.manage(paths);
             hubsvc::Hub::spawn_worker(app.handle().clone());
+            reminders::start(app.handle().clone());
 
             #[cfg(desktop)]
             {
@@ -489,6 +496,7 @@ pub fn run() {
             open_devtools,
             open_data_dir,
             notify,
+            reminders::calendar_permissions,
             window_focused,
             package_inspect,
             read_dropped_file,

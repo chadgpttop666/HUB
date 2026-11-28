@@ -321,6 +321,7 @@ impl Hub {
             });
             // Фиксируем получение и отправку до резервного копирования, даже если успела только одна стадия.
             self.checkpoint(&store, generation, &st)?;
+            if report.changed.contains("calendar") { app.state::<crate::reminders::Reminders>().changed(); }
             if !report.changed.is_empty() {
                 let _ = app.emit("hub://data-changed", json!({ "namespaces": report.changed }));
             }

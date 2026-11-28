@@ -116,7 +116,7 @@ export class AppHost {
     if (!current()) return;
     const dump = await core.dump(id);
     if (!current()) return;
-    const boot = { appId: id, data: dump.json, blobs: dump.blobs, theme: this.getTheme(), visible: this.active === id };
+    const boot = { appId: id, platform: document.documentElement.dataset.platform || "pc", data: dump.json, blobs: dump.blobs, theme: this.getTheme(), visible: this.active === id };
     const network = (app.manifest.permissions && app.manifest.permissions.network) || [];
     const prelude =
       `<meta http-equiv="Content-Security-Policy" content="${escAttr(buildCsp(base, appBase, network))}">` +
@@ -256,6 +256,12 @@ export class AppHost {
           break;
         }
         case "today.set": this.state.setCard(id, p.card && typeof p.card === "object" ? sanitizeCard(p.card) : null); if (this.onCard) this.onCard(id); reply(true); break;
+        case "calendar.permissions": {
+          if (id !== "calendar" || this.apps.get(id)?.source !== "builtin") throw new Error("Доступно встроенному календарю");
+          const request = this.active === id && ["notifications", "exact"].includes(p.request) ? p.request : "";
+          reply(await core.calendarPermissions(request));
+          break;
+        }
         case "notify": {
           const text = String(p.text || ""), title = String(p.title || "");
           const visible = document.visibilityState === "visible" && await core.windowFocused();

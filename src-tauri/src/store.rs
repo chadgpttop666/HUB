@@ -43,7 +43,8 @@ pub struct Change {
 }
 
 pub(crate) fn local_only(ns: &str, key: &str) -> bool {
-    ns == "hub" && (key == "settings-local" || key.starts_with("device/"))
+    (ns == "hub" && (key == "settings-local" || key.starts_with("device/")))
+        || (ns == "calendar" && key == "device/calendar-import")
 }
 
 fn change_id(ns: &str, key: &str) -> String {

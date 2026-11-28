@@ -2,238 +2,90 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Календарь</title>
-<style>
-  /* Только раскладка: цвета, шрифты, размеры, скругления — токены хаба. */
-  .layout { max-width: 1040px; margin: 0 auto; display: grid; gap: var(--space-6); }
-  .head { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--space-4); flex-wrap: wrap; }
-  .cols { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: var(--space-6); align-items: start; }
-  .panel { padding: var(--space-4); }
-  .month-head { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-3); }
-  .month-head .hub-section-title { flex: 1; margin: 0; }
-  .grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: var(--space-1); }
-  .wd { text-align: center; font-size: var(--font-size-xs); color: var(--text-muted); padding: var(--space-1) 0; }
-  .day { position: relative; display: grid; place-items: center; aspect-ratio: 1 / 1; min-height: var(--control-md); padding: 0;
-         border: 1px solid transparent; border-radius: var(--radius-sm); background: var(--surface-sunken); color: var(--text);
-         font-family: var(--font-body); font-size: var(--font-size-base); font-variant-numeric: tabular-nums; cursor: pointer;
-         transition: background-color var(--duration-fast) var(--ease-out), border-color var(--duration-fast) var(--ease-out); }
-  .day:hover { border-color: var(--line-soft); }
-  .day[data-out] { background: transparent; color: var(--text-faint); }
-  .day[aria-current="date"] { border-color: var(--accent); }
-  .day[aria-selected="true"] { background: var(--accent-soft); border-color: var(--accent); }
-  .dots { position: absolute; bottom: 12%; display: flex; gap: 2px; }
-  .dots i { width: 4px; height: 4px; border-radius: var(--radius-pill); background: var(--accent); }
-  .add { display: grid; grid-template-columns: minmax(0, 1fr) 96px auto; gap: var(--space-2); margin-top: var(--space-4); }
-  .time { font-variant-numeric: tabular-nums; }
-  @media (max-width: 760px) { .cols { grid-template-columns: minmax(0, 1fr); } }
-  @media (max-width: 600px) { .add { grid-template-columns: minmax(0, 1fr) 96px; } .add .hub-btn { grid-column: 1 / -1; } }
-</style>
+<link rel="stylesheet" href="calendar.css">
 </head>
 <body>
-<div class="layout">
-  <header class="head">
-    <div>
-      <h1 class="hub-page-title">Календарь</h1>
-      <p class="hub-muted" id="summary" style="margin:var(--space-1) 0 0"></p>
+<div class="calendar">
+  <header class="calendar-head">
+    <h1 class="hub-page-title">Календарь</h1>
+    <div class="calendar-actions">
+      <button class="hub-btn hub-btn--sm" type="button" id="today-btn">Сегодня</button>
+      <button class="hub-btn hub-btn--sm" type="button" id="import-btn"><i data-icon="download"></i>Импорт</button>
+      <button class="hub-btn hub-btn--primary hub-btn--icon hub-btn--sm" type="button" id="add-btn" aria-label="Добавить событие"><i data-icon="plus"></i></button>
     </div>
-    <button class="hub-btn" type="button" id="today-btn"><i data-icon="calendar-days"></i>Сегодня</button>
   </header>
-
-  <div class="cols">
-    <section class="hub-glass panel" aria-label="Месяц">
-      <div class="month-head">
-        <h2 class="hub-section-title" id="month-title"></h2>
-        <button class="hub-btn hub-btn--quiet hub-btn--icon" type="button" id="prev" aria-label="Предыдущий месяц"><i data-icon="chevron-left"></i></button>
-        <button class="hub-btn hub-btn--quiet hub-btn--icon" type="button" id="next" aria-label="Следующий месяц"><i data-icon="chevron-right"></i></button>
-      </div>
-      <div class="grid" id="grid" role="grid"></div>
-    </section>
-
-    <section class="hub-glass panel" aria-label="День">
-      <h2 class="hub-section-title" id="day-title"></h2>
-      <ul class="hub-list hub-list--divided" id="day-list"></ul>
-      <p class="hub-muted" id="day-empty" hidden style="margin:var(--space-2) 0 0">Событий нет.</p>
-      <form class="add" id="add">
-        <input class="hub-input" id="add-title" placeholder="Что" aria-label="Что" autocomplete="off">
-        <input class="hub-input time" id="add-time" type="time" aria-label="Во сколько">
-        <button class="hub-btn hub-btn--primary" type="submit"><i data-icon="plus"></i>Добавить</button>
-      </form>
-      <p class="hub-hint" id="add-hint" style="margin-top:var(--space-2)"></p>
-    </section>
+  <div class="calendar-toolbar">
+    <div class="week-nav">
+      <button class="hub-btn hub-btn--quiet hub-btn--icon hub-btn--sm" type="button" id="prev" aria-label="Предыдущая неделя"><i data-icon="chevron-left"></i></button>
+      <span id="week-title"></span>
+      <button class="hub-btn hub-btn--quiet hub-btn--icon hub-btn--sm" type="button" id="next" aria-label="Следующая неделя"><i data-icon="chevron-right"></i></button>
+    </div>
+    <div class="hub-segmented" aria-label="Вид календаря">
+      <button type="button" data-view="day">День</button>
+      <button type="button" data-view="week">Неделя</button>
+    </div>
   </div>
-
-  <section class="hub-glass panel" id="undated-box" hidden aria-label="Без даты">
+  <section id="day-view" hidden>
+    <div id="day-picker" class="day-picker" aria-label="Дни недели"></div>
+    <h2 class="day-heading" id="day-title"></h2>
+    <ul id="day-list" class="timeline"></ul>
+    <p id="day-empty" class="hub-muted" hidden>Событий нет.</p>
+  </section>
+  <section id="week-view" class="week-scroll" aria-label="Неделя по часам" hidden></section>
+  <section id="undated-box" hidden>
     <h2 class="hub-section-title">Без даты</h2>
-    <p class="hub-muted" style="margin:0 0 var(--space-2)">Пришли из корзины без даты — выберите день и нажмите «На этот день».</p>
-    <ul class="hub-list hub-list--divided" id="undated"></ul>
+    <ul id="undated" class="hub-list timeline"></ul>
   </section>
 </div>
 
-<script>
-"use strict";
-// ───────── даты ─────────
-const pad = n => String(n).padStart(2, "0");
-const iso = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-const parseIso = s => { const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d); };
-const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
-const today = () => iso(new Date());
-const fmtMonth = new Intl.DateTimeFormat("ru-RU", { month: "long", year: "numeric" });
-const fmtDay = new Intl.DateTimeFormat("ru-RU", { weekday: "long", day: "numeric", month: "long" });
-const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
-const dayName = s => s === today() ? "Сегодня" : s === iso(addDays(new Date(), 1)) ? "Завтра" : cap(fmtDay.format(parseIso(s)));
+<dialog class="hub-dialog calendar-dialog" id="event-dialog" aria-labelledby="event-title">
+  <form id="event-form">
+    <h2 class="hub-dialog__title" id="event-title">Событие</h2>
+    <label class="hub-field"><span class="hub-label">Название</span><input class="hub-input" name="title" required maxlength="180"></label>
+    <div class="form-fields">
+      <label class="hub-field"><span class="hub-label">Дата</span><input class="hub-input" name="date" type="date"></label>
+      <label class="hub-field"><span class="hub-label">Категория</span><select class="hub-input" name="category"><option value="personal">Личное</option><option value="study">Учёба</option><option value="work">Работа</option></select></label>
+      <label class="hub-field"><span class="hub-label">Начало</span><input class="hub-input" name="time" type="time"></label>
+      <label class="hub-field"><span class="hub-label">Окончание</span><input class="hub-input" name="endTime" type="time"></label>
+      <label class="hub-field"><span class="hub-label">Напоминание</span><select class="hub-input" name="reminder"><option value="">Выключено</option><option value="silent">Тихое</option><option value="normal">Обычное</option><option value="alarm">Будильник</option></select></label>
+      <label class="hub-field"><span class="hub-label">За сколько минут</span><input class="hub-input" name="minutes" type="number" min="0" max="10080" value="0" required></label>
+    </div>
+    <p id="reminder-status" class="hub-hint" role="status"></p>
+    <button class="hub-btn hub-btn--sm" id="reminder-permission" type="button" hidden>Разрешить напоминания на этом устройстве</button>
+    <label class="hub-field"><span class="hub-label">Заметка</span><textarea class="hub-textarea" name="note" rows="2" maxlength="4000"></textarea></label>
+    <p class="hub-hint hub-hint--error" id="event-error" role="alert"></p>
+    <div class="hub-dialog__actions">
+      <button class="hub-btn hub-btn--danger" id="event-delete" type="button" hidden>Удалить</button>
+      <button class="hub-btn hub-btn--quiet" type="button" data-close>Отмена</button>
+      <button class="hub-btn hub-btn--primary" type="submit">Сохранить</button>
+    </div>
+  </form>
+</dialog>
 
-// ───────── данные: событие — свой ключ «events/<id>» ─────────
-const events = new Map();
-const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-async function load() {
-  for (const k of await hub.data.keys("events/")) { const e = await hub.data.get(k); if (e) events.set(e.id, e); }
-  render();
-}
-function save(e) { events.set(e.id, e); return hub.data.set(`events/${e.id}`, e); }
-function drop(id) { events.delete(id); return hub.data.remove(`events/${id}`); }
-const onDay = d => [...events.values()].filter(e => e.date === d).sort((a, b) => (a.time || "99").localeCompare(b.time || "99"));
-
-// ───────── разбор текста из корзины: «завтра в 16:00 консультация», «25 ноября доклад» ─────────
-const MONTHS = ["январ", "феврал", "март", "апрел", "ма", "июн", "июл", "август", "сентябр", "октябр", "ноябр", "декабр"];
-const WEEK = { "понедельник": 1, "вторник": 2, "сред": 3, "четверг": 4, "пятниц": 5, "суббот": 6, "воскресень": 0 };
-function parseText(text, base = new Date()) {
-  let t = " " + text.replace(/(^|\s)#[\p{L}\p{N}_-]+/gu, " ") + " ", date = null, time = "";
-  const take = re => { const m = t.match(re); if (m) t = t.replace(m[0], " "); return m; };
-  let m;
-  // время: «16:00», «в 16.30», «в 9»; «12.01» без «в» — это дата
-  if ((m = take(/\s(?:в\s)?(\d{1,2}):(\d{2})(?=\s)/)) || (m = take(/\sв\s(\d{1,2})\.(\d{2})(?=\s)/))) time = `${pad(+m[1])}:${m[2]}`;
-  else if ((m = take(/\sв\s(\d{1,2})(?:\s?ч(?:ас(?:а|ов)?)?)?(?=\s)/))) time = `${pad(+m[1])}:00`;
-  if (take(/\sпослезавтра(?=\s)/i)) date = addDays(base, 2);
-  else if (take(/\sзавтра(?=\s)/i)) date = addDays(base, 1);
-  else if (take(/\sсегодня(?=\s)/i)) date = new Date(base);
-  else if ((m = take(/\s(\d{1,2})\.(\d{1,2})(?:\.(\d{2,4}))?(?=\s)/))) {
-    date = new Date(m[3] ? (+m[3] < 100 ? 2000 + +m[3] : +m[3]) : base.getFullYear(), +m[2] - 1, +m[1]);
-    if (!m[3] && date < addDays(base, -1)) date.setFullYear(date.getFullYear() + 1);   // «12.01» в ноябре — следующий январь
-  }
-  else if ((m = take(/\s(\d{1,2})\s([а-яё]+)(?=\s)/i)) && MONTHS.some(x => m[2].toLowerCase().startsWith(x))) {
-    const mon = MONTHS.findIndex(x => m[2].toLowerCase().startsWith(x));
-    date = new Date(base.getFullYear(), mon, +m[1]);
-    if (date < addDays(base, -1)) date.setFullYear(date.getFullYear() + 1);
-  } else if (m) { t = t + " " + m[0]; }   // «5 яблок» — не дата, вернуть в текст
-  if (!date) for (const [w, n] of Object.entries(WEEK)) {
-    const re = new RegExp(`\\s(?:в|во)\\s${w}[а-яё]*(?=\\s)`, "i");
-    if (take(re)) { const d = new Date(base); d.setDate(d.getDate() + ((n - d.getDay() + 7) % 7 || 7)); date = d; break; }
-  }
-  const title = t.replace(/\s+/g, " ").trim().replace(/^[,.—-]\s*/, "");
-  return { title: title ? cap(title) : "Событие", date: date ? iso(date) : null, time };
-}
-
-// ───────── вид ─────────
-let month = new Date(); month.setDate(1);
-let selected = today();
-const $ = id => document.getElementById(id);
-
-function render() {
-  const t = today(), todays = onDay(t);
-  $("summary").textContent = todays.length ? `сегодня ${HubUI.plural(todays.length, ["событие", "события", "событий"])}` : "сегодня событий нет";
-  // месяц
-  $("month-title").textContent = cap(fmtMonth.format(month));
-  const grid = $("grid");
-  grid.innerHTML = ["пн", "вт", "ср", "чт", "пт", "сб", "вс"].map(w => `<span class="wd">${w}</span>`).join("");
-  const first = new Date(month), shift = (first.getDay() + 6) % 7;
-  for (let i = 0; i < 42; i++) {
-    const d = addDays(first, i - shift), s = iso(d), n = onDay(s).length;
-    const b = document.createElement("button");
-    b.type = "button"; b.className = "day"; b.dataset.date = s; b.textContent = d.getDate();
-    b.setAttribute("aria-label", `${dayName(s)}${n ? `, ${HubUI.plural(n, ["событие", "события", "событий"])}` : ""}`);
-    if (d.getMonth() !== month.getMonth()) b.dataset.out = "";
-    if (s === t) b.setAttribute("aria-current", "date");
-    b.setAttribute("aria-selected", String(s === selected));
-    b.tabIndex = s === selected ? 0 : -1;
-    if (n) b.insertAdjacentHTML("beforeend", `<span class="dots">${"<i></i>".repeat(Math.min(n, 3))}</span>`);
-    grid.appendChild(b);
-    if (i === 34 && addDays(first, 35 - shift).getMonth() !== month.getMonth()) break;   // пятая неделя хватает
-  }
-  // день
-  $("day-title").textContent = dayName(selected);
-  const list = onDay(selected);
-  $("day-empty").hidden = list.length > 0;
-  $("day-list").innerHTML = "";
-  for (const e of list) $("day-list").appendChild(row(e, false));
-  // без даты
-  const undated = [...events.values()].filter(e => !e.date);
-  $("undated-box").hidden = !undated.length;
-  $("undated").innerHTML = "";
-  for (const e of undated) $("undated").appendChild(row(e, true));
-  HubUI.icons(document.body);
-  card();
-}
-
-function row(e, undated) {
-  const li = document.createElement("li");
-  li.innerHTML = `<div class="hub-row">
-    <span class="hub-row__lead time">${e.time || "—"}</span>
-    <span class="hub-row__body"><span class="hub-row__title"></span>${e.note ? `<span class="hub-row__meta"></span>` : ""}</span>
-    <span class="hub-row__trail">${undated ? `<button class="hub-btn hub-btn--sm" type="button" data-act="place">На этот день</button>` : ""}
-      <button class="hub-btn hub-btn--quiet hub-btn--icon hub-btn--sm" type="button" data-act="del" aria-label="Удалить"><i data-icon="trash-2"></i></button></span></div>`;
-  li.querySelector(".hub-row__title").textContent = e.title;
-  if (e.note) li.querySelector(".hub-row__meta").textContent = e.note;
-  li.querySelector("[data-act=del]").addEventListener("click", () => {
-    drop(e.id); render();
-    HubUI.toast("Удалено", { icon: "trash-2", action: "Отменить", onAction: () => { save(e); render(); } });
-  });
-  const place = li.querySelector("[data-act=place]");
-  if (place) place.addEventListener("click", () => { save(Object.assign({}, e, { date: selected })); render(); });
-  return li;
-}
-
-// карточка на «Сегодня»: только данные — хаб рисует её сам
-function card() {
-  const t = today(), now = `${pad(new Date().getHours())}:${pad(new Date().getMinutes())}`;
-  const todays = onDay(t), next = todays.find(e => !e.time || e.time >= now);
-  const tomorrow = onDay(iso(addDays(new Date(), 1)))[0];
-  const later = tomorrow ? `завтра — ${tomorrow.title.toLowerCase()}${tomorrow.time ? ` в ${tomorrow.time}` : ""}` : "завтра ничего";
-  if (!todays.length) hub.today.set({ main: "Сегодня событий нет", note: later, done: true });
-  else hub.today.set({
-    main: HubUI.plural(todays.length, ["событие сегодня", "события сегодня", "событий сегодня"]),
-    note: next ? `ближайшее: ${next.time ? next.time + " " : ""}${next.title.toLowerCase()}` : `на сегодня всё · ${later}`,
-    action: { label: "Открыть", open: "today" },
-  });
-}
-
-// ───────── действия ─────────
-$("grid").addEventListener("click", e => { const b = e.target.closest(".day"); if (!b) return; selected = b.dataset.date; if (b.dataset.out !== undefined) { const d = parseIso(selected); month = new Date(d.getFullYear(), d.getMonth(), 1); } render(); $("grid").querySelector(`[data-date="${selected}"]`).focus(); });
-$("grid").addEventListener("keydown", e => {
-  const step = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 }[e.key];
-  if (!step) return;
-  e.preventDefault();
-  const d = addDays(parseIso(selected), step);
-  selected = iso(d);
-  if (d.getMonth() !== month.getMonth() || d.getFullYear() !== month.getFullYear()) month = new Date(d.getFullYear(), d.getMonth(), 1);
-  render();
-  $("grid").querySelector(`[data-date="${selected}"]`).focus();
-});
-$("prev").addEventListener("click", () => { month = new Date(month.getFullYear(), month.getMonth() - 1, 1); render(); });
-$("next").addEventListener("click", () => { month = new Date(month.getFullYear(), month.getMonth() + 1, 1); render(); });
-$("today-btn").addEventListener("click", () => { selected = today(); month = new Date(); month.setDate(1); render(); });
-$("add").addEventListener("submit", e => {
-  e.preventDefault();
-  const title = $("add-title").value.trim();
-  if (!title) { $("add-hint").textContent = "Напишите, что за событие"; return; }
-  const p = parseText(title, parseIso(selected));
-  save({ id: uid(), title: p.title, date: p.date || selected, time: $("add-time").value || p.time, note: "", created: Date.now() });
-  $("add-title").value = ""; $("add-time").value = ""; $("add-hint").textContent = "";
-  render();
-});
-hub.today.onAction(() => { selected = today(); month = new Date(); month.setDate(1); render(); });
-
-// элемент корзины → событие; дата и время — из текста, если есть
-hub.inbox.onItem(async item => {
-  const p = parseText(item.text);
-  await save({ id: uid(), title: p.title, date: p.date, time: p.time, note: "", created: Date.now() });
-  if (p.date) { selected = p.date; const d = parseIso(p.date); month = new Date(d.getFullYear(), d.getMonth(), 1); }
-  render();
-  HubUI.toast(p.date ? `${dayName(p.date)}${p.time ? `, ${p.time}` : ""}: ${p.title}` : `Без даты: ${p.title}`, { icon: "calendar" });
-});
-
-window.__calendar = { parseText };   // для проверок
-load();
-setInterval(card, 10 * 60e3);
-</script>
+<dialog class="hub-dialog calendar-dialog import-dialog" id="import-dialog" aria-labelledby="import-title">
+  <h2 class="hub-dialog__title" id="import-title">Импорт расписания</h2>
+  <p class="hub-dialog__body">Скопируйте запрос, приложите расписания и допишите свои дела в чате с нейросетью. Вставьте её ответ сюда.</p>
+  <p class="hub-hint" id="import-zone"></p>
+  <details id="import-context"><summary>Добавить в запрос текущую неделю и записи из Корзины</summary><div id="import-context-list"></div></details>
+  <button type="button" class="hub-btn hub-btn--sm" id="copy-prompt"><i data-icon="copy"></i>Скопировать промпт</button>
+  <textarea class="hub-textarea" id="prompt-text" aria-label="Промпт" rows="6" readonly hidden></textarea>
+  <label class="hub-field"><span class="hub-label">Ответ нейросети</span><textarea class="hub-textarea" id="import-text" rows="5" placeholder="Вставьте сюда ответ целиком"></textarea></label>
+  <div class="import-buttons">
+    <label class="hub-btn hub-btn--sm import-file">Загрузить файл<input id="import-file" type="file" accept=".json,.txt,application/json,text/plain"></label>
+    <button class="hub-btn hub-btn--sm" type="button" id="import-preview">Предпросмотр</button>
+  </div>
+  <div id="import-results"></div>
+  <p class="hub-hint" id="import-status" aria-live="polite"></p>
+  <button class="hub-btn hub-btn--sm" id="import-permission" type="button" hidden>Разрешить напоминания на этом устройстве</button>
+  <div class="hub-dialog__actions">
+    <button class="hub-btn hub-btn--sm" type="button" id="import-undo" hidden>Отменить последний импорт</button>
+    <button class="hub-btn hub-btn--quiet" type="button" data-close>Закрыть</button>
+    <button class="hub-btn hub-btn--primary" type="button" id="import-apply" disabled>Добавить выбранное</button>
+  </div>
+</dialog>
+<script src="model.js"></script>
+<script src="calendar.js"></script>
 </body>
 </html>

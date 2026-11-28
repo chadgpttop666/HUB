@@ -165,6 +165,8 @@
   var hub = {
     __ready: true,
     appId: appId,
+    platform: boot.platform || "pc",
+    calendar: appId === "calendar" ? { permissions: function (request) { return call("calendar.permissions", { request: request || "" }); } } : undefined,
     get visible() { return visible; },
     version: 1,
     data: data,

@@ -1,8 +1,8 @@
 {
   "id": "calendar",
   "name": "Календарь",
-  "version": "1.0.0",
-  "description": "События по дням; из корзины — «завтра в 16:00 консультация»",
+  "version": "2.0.0",
+  "description": "Лента дня, неделя по часам, импорт расписаний и напоминания",
   "icon": "calendar",
   "entry": "index.html",
   "card": true,

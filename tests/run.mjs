@@ -358,6 +358,48 @@ await test("календарь (написан по APP_SPEC.md): разбор �
   await shot("18-calendar");
 });
 
+await test("расписание: предпросмотр ответа ИИ, шкала времени, мобильная лента и отмена импорта", async () => {
+  await page.evaluate(() => window.__hubShell.openApp("calendar"));
+  const cal = page.frameLocator("iframe[data-app=calendar]");
+  const date = await cal.locator("#day-picker button[aria-pressed=true]").getAttribute("data-date");
+  await cal.getByRole("button", { name: "Импорт", exact: true }).click();
+  await cal.locator("#import-context summary").click();
+  await cal.locator("#import-context-list label").filter({ hasText: "Консультация" }).locator("input").check();
+  await cal.getByRole("button", { name: "Скопировать промпт" }).click();
+  assert((await cal.locator("#prompt-text").inputValue()).includes("Консультация"), "в запросе есть выбранное событие из Корзины");
+  const timeZone = await cal.locator("#import-zone").innerText().then(s => s.split(" · ")[1]);
+  const first = { title: "Новый семинар", date, time: "09:00", endTime: "12:00", category: "study", reminder: { kind: "normal", minutes: 30 } };
+  const second = { title: "Сдать отчёт", date, time: "10:30", endTime: "11:00", reminder: { kind: "alarm", minutes: 5 } };
+  const answer = { version: 1, timeZone, events: [first, second, first, { title: "Уточнить дату", time: "11:00" }] };
+  await cal.locator("#import-text").fill(JSON.stringify(answer));
+  await cal.getByRole("button", { name: "Предпросмотр" }).click();
+  eq(await cal.locator("#import-results input:disabled").count(), 2, "дубль и событие без даты исключены");
+  assert((await cal.locator("#import-results").innerText()).includes("Пересечение по времени"), "предпросмотр предупреждает о пересечении");
+  await cal.getByRole("button", { name: "Добавить выбранное" }).click();
+  await cal.getByText(/Сохранено: 2/).waitFor();
+  await cal.getByRole("button", { name: "Закрыть", exact: true }).click();
+  await cal.locator("#week-view:not([hidden])").waitFor();
+  const firstBlock = cal.locator(".week-event").filter({ hasText: "Новый семинар" });
+  const secondBlock = cal.locator(".week-event").filter({ hasText: "Сдать отчёт" });
+  const [a, b] = await Promise.all([firstBlock.boundingBox(), secondBlock.boundingBox()]);
+  eq(Math.round(a.height / b.height), 6, "длина карточки совпадает с длительностью события");
+  assert(b.x > a.x && b.y > a.y, "пересекающиеся события стоят рядом в нужных часах");
+  await shot("18a-calendar-week");
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  try {
+    await cal.locator("#day-view:not([hidden])").waitFor();
+    assert((await cal.locator("#day-list").innerText()).includes("Будильник"), "в ленте отмечен будильник");
+    await shot("18b-calendar-day");
+    await cal.getByRole("button", { name: "Импорт", exact: true }).click();
+    await cal.getByRole("button", { name: "Отменить последний импорт" }).click();
+    await cal.getByText(/Отменено: 2/).waitFor();
+    await cal.getByRole("button", { name: "Закрыть", exact: true }).click();
+    assert(!(await cal.locator("#day-list").innerText()).includes("Новый семинар"), "добавленные события удалены");
+    assert((await cal.locator("#day-list").innerText()).includes("Консультация"), "прежнее событие сохранено");
+  } finally { await page.setViewportSize({ width: 1366, height: 860 }); }
+});
+
 await test("своя тема из фото: основа и вуаль считаются, тема применяется и удаляется", async () => {
   await page.evaluate(() => window.__hubShell.go("settings"));
   await page.click('[data-act="theme-new"]');
@@ -684,6 +726,7 @@ await test("настройки Android видны при скрытых пане
     const tab = native.locator('#navbar [data-go="settings"]');
     await tab.click();
     await native.locator("#set-name").waitFor();
+    eq(await native.getByRole("heading", { name: "Клавиши", exact: true }).count(), 0, "раздел клавиш скрыт на Android");
     const checkLayout = () => native.evaluate(() => {
       const rect = id => document.getElementById(id).getBoundingClientRect();
       const root = document.documentElement;

@@ -728,9 +728,9 @@ function renderSettings() {
       <p class="hub-muted">Для замера задержек откройте DevTools, выберите Performance, включите Screenshots и запишите переключение экранов.</p>
       <div class="hub-btn-row"><button class="hub-btn" type="button" data-act="devtools">Открыть DevTools</button></div>
     </section>` : ""}
-    <section class="shell-section"><h2 class="hub-section-title">Клавиши</h2>
+    ${platform !== "phone" ? `<section class="shell-section"><h2 class="hub-section-title">Клавиши</h2>
       <dl class="shell-keys">${keys.map(([ks, what]) => `<dt>${ks.map(k => `<kbd class="hub-kbd">${esc(k)}</kbd>`).join(" ")}</dt><dd>${esc(what)}</dd>`).join("")}</dl>
-    </section>`;
+    </section>` : ""}`;
   H.icons(el);
   const nm = $("#set-name");
   nm.addEventListener("change", () => { if (nm.value.trim() === userName()) return; state.setSetting("name", nm.value.trim()); applyTheme(); renderHello(); toast("Сохранено", { icon: "check" }); });

@@ -30,6 +30,11 @@ class MainActivity : TauriActivity() {
         ViewCompat.requestApplyInsets(content)
     }
 
+    override fun onResume() {
+        super.onResume()
+        CalendarSchedule.reschedule(this)
+    }
+
     fun setBarColor(color: Int) {
         // Android 15+ рисует прозрачную статусную строку поверх фона корневого View.
         val content = findViewById<View>(android.R.id.content)
