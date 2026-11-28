@@ -134,15 +134,20 @@ jobs:
             if (!$process.WaitForExit(90000)) { $process.Kill(); throw "Таймаут установщика $path" }
             if ($process.ExitCode -ne 0) { throw "Код выхода установщика $($process.ExitCode)" }
           }
+          function Installed-Version {
+            $version = (Get-Item -LiteralPath $executable).VersionInfo
+            return '{0}.{1}.{2}' -f $version.FileMajorPart, $version.FileMinorPart, $version.FileBuildPart
+          }
           Run-Installer $base "/S /D=$destination"
+          if ((Installed-Version) -ne '0.1.7') { throw 'Исходная версия не установилась' }
           $data = Join-Path $env:APPDATA 'local.hub.desktop'
           New-Item -ItemType Directory -Force $data | Out-Null
           $marker = Join-Path $data 'update-test.txt'
           Set-Content -Path $marker -Value 'keep'
-          Run-Installer $setup "/S /UPDATE /R /D=$destination"
-          if ((Get-FileHash $executable).Hash -ne (Get-FileHash 'src-tauri/target/release/hub.exe').Hash) {
-            throw 'Исполняемый файл не обновился по существующему пути'
-          }
+          Run-Installer $setup '/S /UPDATE /R'
+          $expected = (Get-Content src-tauri/tauri.conf.json -Raw | ConvertFrom-Json).version
+          $installed = Installed-Version
+          if ($installed -ne $expected) { throw "В каталоге установки версия $installed вместо $expected" }
           if ((Get-Content -Raw $marker).Trim() -ne 'keep') { throw 'Данные пользователя потеряны' }
           for ($i = 0; $i -lt 40; $i++) {
             if (Get-Process hub -ErrorAction SilentlyContinue | Where-Object Path -eq $executable) { exit 0 }
