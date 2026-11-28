@@ -6,9 +6,13 @@ import { core } from "./core.js";
 
 const NS = "hub";
 const queues = new Map();
-function persist(key, value) {
+function persist(key, value, revisions) {
   const prev = queues.get(key) || Promise.resolve();
-  const next = prev.then(() => (value === undefined ? core.remove(NS, key) : core.set(NS, key, value)));
+  const next = prev.then(async () => {
+    const basis = revisions.get(key) || {};
+    const saved = value === undefined ? await core.remove(NS, key, basis) : await core.set(NS, key, value, basis);
+    if (saved && typeof saved === "object") revisions.set(key, saved);
+  });
   queues.set(key, next.catch(() => {}));
   return next;
 }
@@ -27,19 +31,29 @@ export class HubState extends EventTarget {
     this.settings = { theme: "forest" };
     this.local = { autolock: 15 };   // настройки только этого устройства
     this.conflicts = [];             // { id, ns, key, ts, dev, value, note }
+    this.revisions = new Map();
+    this.resolved = new Map();
     this.folders = [];               // описания помеченных папок (общие для устройств)
     this.themes = [];                // свои темы (themes/<id>)
     this.onError = null;
   }
   async load() {
-    const { json } = await core.dump(NS);
+    const { json, basis } = await core.dump(NS);
+    this.revisions = new Map(Object.entries(basis || {}));
     this.items = []; this.deliveries = []; this.cards = {}; this.conflicts = []; this.folders = []; this.themes = [];
     for (const [k, v] of Object.entries(json)) {
       if (!v) continue;
       if (k.startsWith("inbox/")) this.items.push(v);
       else if (k.startsWith("deliveries/")) this.deliveries.push(v);
       else if (k.startsWith("cards/")) this.cards[k.slice(6)] = v;
-      else if (k.startsWith("conflicts/")) this.conflicts.push(Object.assign({ id: k.slice(10) }, v));
+      else if (k.startsWith("conflicts/")) {
+        const id = k.slice(10);
+        if (this.resolved.has(id)) {
+          if (this.resolved.get(id) === JSON.stringify(v.basis)) continue;
+          this.resolved.delete(id);
+        }
+        this.conflicts.push(Object.assign({ id }, v));
+      }
       else if (k.startsWith("sync-folders/")) this.folders.push(v);
       else if (k.startsWith("themes/") && !k.slice(7).includes("/")) this.themes.push(Object.assign({}, v, { id: k.slice(7), custom: true }));
     }
@@ -51,11 +65,12 @@ export class HubState extends EventTarget {
       for (const x of json[old]) if (x && x.id && !list.some(y => y.id === x.id)) { list.push(x); await core.set(NS, prefix + x.id, x); }
       await core.remove(NS, old);
     }
+    for (const id of this.resolved.keys()) if (!json[`conflicts/${id}`]) this.resolved.delete(id);
     this.conflicts.sort((a, b) => (b.at || 0) - (a.at || 0));
   }
   changed(what) { this.dispatchEvent(new CustomEvent("change", { detail: what })); }
   save(key, value) {
-    return persist(key, value).catch(e => { if (this.onError) this.onError(e); throw e; });
+    return persist(key, value, this.revisions).catch(e => { if (this.onError) this.onError(e); throw e; });
   }
   saveItem(item) { return this.save(`inbox/${item.id}`, item); }
   dropItem(id) { return this.save(`inbox/${id}`, undefined); }
@@ -148,9 +163,22 @@ export class HubState extends EventTarget {
   }
 
   /* конфликты синхронизации: вернуть проигравшую версию или забыть о ней */
-  async restoreConflict(id) {
+  async restoreConflict(id, stamp) {
     const c = this.conflicts.find(x => x.id === id);
-    if (!c) return;
+    if (!c) throw new Error("Конфликт уже закрыт");
+    if (c.variants) {
+      const version = c.variants.find(v => JSON.stringify([v.ts, v.dev]) === stamp);
+      if (!version) throw new Error("Конфликт изменился. Выберите версию снова.");
+      if (version.del) await core.remove(c.ns, c.key, c.basis);
+      else {
+        const value = version.blob ? await core.conflictBlob(id, version.blob, version.mime) : version.json;
+        await core.set(c.ns, c.key, value, c.basis);
+      }
+      this.resolved.set(id, JSON.stringify(c.basis));
+      this.conflicts = this.conflicts.filter(x => x.id !== id);
+      this.changed("conflicts");
+      return c;
+    }
     if (c.value === null || c.value === undefined) await core.remove(c.ns, c.key);
     else await core.set(c.ns, c.key, c.value);
     await this.dropConflict(id);

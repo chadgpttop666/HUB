@@ -86,7 +86,7 @@ export class AppHost {
     iframe.hidden = true;
     iframe.dataset.app = id;
     this.container.appendChild(iframe);
-    const f = { iframe, loaded: false, inboxReady: false, sent: new Set(), queue: Promise.resolve() };
+    const f = { iframe, loaded: false, inboxReady: false, sent: new Set(), queue: Promise.resolve(), documents: new Map(), session: 0 };
     this.frames.set(id, f);
     this.reload(id);
     return f;
@@ -114,9 +114,13 @@ export class AppHost {
     const html = await res.text();
     const current = () => this.frames.get(id) === f && f.load === load;
     if (!current()) return;
+    await f.queue;
     const dump = await core.dump(id);
     if (!current()) return;
-    const boot = { appId: id, platform: document.documentElement.dataset.platform || "pc", data: dump.json, blobs: dump.blobs, theme: this.getTheme(), visible: this.active === id };
+    const session = ++f.session;
+    f.documents.set(session, new Map(Object.entries(dump.basis || {})));
+    f.documents.delete(session - 2);
+    const boot = { appId: id, session, platform: document.documentElement.dataset.platform || "pc", data: dump.json, blobs: dump.blobs, theme: this.getTheme(), visible: this.active === id };
     const network = (app.manifest.permissions && app.manifest.permissions.network) || [];
     const prelude =
       `<meta http-equiv="Content-Security-Policy" content="${escAttr(buildCsp(base, appBase, network))}">` +
@@ -224,7 +228,7 @@ export class AppHost {
     if (!m || m.__hub !== 1 || typeof m.method !== "string") return;
     const reply = (result, error) => {
       if (!m.id) return;
-      e.source.postMessage({ __hub: 1, reply: m.id, result, error: error ? String(error.message || error) : undefined }, "*");
+      e.source.postMessage({ __hub: 1, session: m.session, reply: m.id, result, error: error ? String(error.message || error) : undefined }, "*");
     };
     const p = m.params || {};
     try {
@@ -232,7 +236,14 @@ export class AppHost {
         case "data.get": reply(await core.get(id, String(p.key))); break;
         case "data.set":
         case "data.remove": {
-          const job = f.queue.then(() => m.method === "data.set" ? core.set(id, String(p.key), p.value) : core.remove(id, String(p.key)));
+          const revisions = f.documents.get(m.session);
+          if (!revisions) { reply(undefined, "Страница приложения уже обновилась"); break; }
+          const key = String(p.key);
+          const job = f.queue.then(async () => {
+            const basis = revisions.get(key) || {};
+            const saved = m.method === "data.set" ? await core.set(id, key, p.value, basis) : await core.remove(id, key, basis);
+            if (saved && typeof saved === "object") revisions.set(key, saved);
+          });
           f.queue = job.catch(() => {});
           try { await job; reply(true); }
           catch (err) {

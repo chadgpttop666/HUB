@@ -20,6 +20,7 @@ use serde_json::Value;
 use std::fs;
 use std::path::{Component, Path, PathBuf};
 use store::{Dump, Stat, Store};
+use sync::Clock;
 use tauri::ipc::{InvokeBody, Request, Response};
 use tauri::{AppHandle, Manager, State, WebviewWindow};
 
@@ -46,17 +47,17 @@ async fn data_stat(store: State<'_, Store>, ns: String, key: String) -> Result<O
 }
 
 #[tauri::command]
-async fn data_set(store: State<'_, Store>, reminders: State<'_, reminders::Reminders>, ns: String, key: String, value: Value) -> Result<(), String> {
-    store.set_json(&ns, &key, &value)?;
+async fn data_set(store: State<'_, Store>, reminders: State<'_, reminders::Reminders>, ns: String, key: String, value: Value, basis: Option<Clock>) -> Result<Option<Clock>, String> {
+    let revision = store.set_json_from(&ns, &key, &value, basis)?;
     if ns == "calendar" && key.starts_with("events/") { reminders.changed(); }
-    Ok(())
+    Ok(revision)
 }
 
 #[tauri::command]
-async fn data_remove(store: State<'_, Store>, reminders: State<'_, reminders::Reminders>, ns: String, key: String) -> Result<(), String> {
-    store.remove(&ns, &key)?;
+async fn data_remove(store: State<'_, Store>, reminders: State<'_, reminders::Reminders>, ns: String, key: String, basis: Option<Clock>) -> Result<Option<Clock>, String> {
+    let revision = store.remove_from(&ns, &key, basis)?;
     if ns == "calendar" && key.starts_with("events/") { reminders.changed(); }
-    Ok(())
+    Ok(revision)
 }
 
 #[tauri::command]
@@ -69,17 +70,29 @@ async fn blob_get(store: State<'_, Store>, ns: String, key: String) -> Result<Re
 
 /// Тело запроса — сами байты; пространство, ключ и тип — в заголовках hub-ns, hub-key, hub-type (ключ и тип — encodeURIComponent).
 #[tauri::command]
-async fn blob_put(store: State<'_, Store>, request: Request<'_>) -> Result<(), String> {
+async fn blob_put(store: State<'_, Store>, request: Request<'_>) -> Result<Option<Clock>, String> {
     let header = |name: &str| -> Result<String, String> {
         let raw = request.headers().get(name).ok_or(format!("нет заголовка {name}"))?;
         let s = raw.to_str().map_err(|e| e.to_string())?;
         percent_decode(s).ok_or(format!("заголовок {name} не читается"))
     };
     let (ns, key, mime) = (header("hub-ns")?, header("hub-key")?, header("hub-type").unwrap_or_default());
+    let basis = if request.headers().contains_key("hub-basis") {
+        Some(serde_json::from_str(&header("hub-basis")?).map_err(|_| "Версия данных не читается")?)
+    } else { None };
     match request.body() {
-        InvokeBody::Raw(bytes) => store.set_blob(&ns, &key, &mime, bytes),
+        InvokeBody::Raw(bytes) => store.set_blob_from(&ns, &key, &mime, bytes, basis),
         InvokeBody::Json(_) => Err("ожидались байты".into()),
     }
+}
+
+#[tauri::command]
+async fn data_conflict_blob(hub: State<'_, hubsvc::Hub>, store: State<'_, Store>, id: String, sha: String) -> Result<Response, String> {
+    let conflict = store.get_json("hub", &format!("conflicts/{id}"))?.ok_or("Конфликт уже закрыт")?;
+    if !conflict["variants"].as_array().is_some_and(|v| v.iter().any(|op| op["blob"].as_str() == Some(&sha))) {
+        return Err("Версия файла больше недоступна в этом конфликте".into());
+    }
+    hub.conflict_blob(&store, &sha).map(Response::new)
 }
 
 /* ───────── приложения ───────── */
@@ -484,6 +497,7 @@ pub fn run() {
             data_stat,
             data_set,
             data_remove,
+            data_conflict_blob,
             blob_get,
             blob_put,
             apps_list,

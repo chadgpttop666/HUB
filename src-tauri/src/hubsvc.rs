@@ -178,6 +178,8 @@ impl Hub {
         if state.device.is_empty() {
             state.device = sync::new_device_id(PLATFORM);
         }
+        state.attach(store);
+        sync::absorb(store, &mut state)?;
         let target: Option<Target> = match sync::load_sealed::<Target>(&dir.join("target.json"), key)? {
             t if t.kind.is_empty() => None,
             t => Some(t),
@@ -201,7 +203,7 @@ impl Hub {
         let dir = self.sync_dir();
         if let Some(st) = rt.state.as_mut() {
             st.key_upload_pending = rt.keys_pending;
-            sync::absorb(store, st);
+            sync::absorb(store, st)?;
             sync::checkpoint(store, st, &dir.join("state.json"), &key)?;
         }
         sync::save_sealed(&dir.join("target.json"), &key, &rt.target.clone().unwrap_or_default())?;
@@ -215,6 +217,15 @@ impl Hub {
             rt.rclone = Some(Rclone::with_crypt(&target, &store.data_key()?)?);
         }
         Ok(())
+    }
+
+    pub(crate) fn conflict_blob(&self, store: &Store, sha: &str) -> Result<Vec<u8>, String> {
+        let r = {
+            let mut rt = self.rt();
+            self.rclone(store, &mut rt)?;
+            rt.rclone.as_ref().ok_or("Синхронизация не настроена")?.clone()
+        };
+        sync::read_remote_blob(&r, sha).map_err(|e| e.message)
     }
 
     fn folder_defs(store: &Store) -> Vec<FolderDef> {
@@ -360,7 +371,6 @@ impl Hub {
         {
             let mut rt = self.rt();
             if rt.generation == generation {
-                sync::absorb(&store, &mut st);
                 rt.progress.observe(&store, &st);
                 rt.state = Some(st);
                 if let Err(err) = self.save_runtime(&store, &mut rt) {

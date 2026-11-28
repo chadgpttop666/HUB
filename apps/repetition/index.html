@@ -529,6 +529,7 @@ const qR = (q, day) => q.s == null ? 0 : retr(daysBetween(q.last, day), q.s);
 
 // ---------- хранилище ----------
 const KEYS = { records: "tb-records", people: "tb-people", schools: "tb-schools", log: "tb-log", meta: "tb-meta", plan: "tb-plan" };
+const RECORD_PREFIX = "tb-record/";
 const OLD = { items: "spaced-repetition-items", mats: "spaced-repetition-materials", stats: "spaced-repetition-stats" };
 const DISCIPLINES = ["философия", "социология", "политология", "экономика", "право", "другое"];
 const RET_MIN = 0.7, RET_MAX = 0.97;
@@ -540,11 +541,58 @@ function freshMeta() {
 let db = { records: [], people: [], schools: [], log: [], meta: freshMeta(), plan: null };
 
 function readKey(k) { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } }
+function storedRecordKeys() {
+  return Object.keys(localStorage).filter(k => k.startsWith(RECORD_PREFIX)).sort();
+}
+const recordKey = id => RECORD_PREFIX + "r-" + encodeURIComponent(id);
+let savedRecords = new Map();
+const savedParts = new Map();
+
+// Старый массив служит основой. Первая правка или удаление перекрывают только свою
+// карточку. Позднее подключившееся устройство не перезапишет эти правки старым массивом.
+function loadRecords(keys = storedRecordKeys()) {
+  const legacy = readKey(KEYS.records);
+  const records = new Map();
+  for (const [index, value] of (Array.isArray(legacy) ? legacy : []).entries()) {
+    const id = String(value.id || `legacy-${index}`);
+    records.set(recordKey(id), { ...value, id });
+  }
+  for (const key of keys) {
+    const entry = readKey(key);
+    if (!entry) continue;
+    if (entry.deleted) records.delete(key);
+    else if (entry.record && recordKey(entry.record.id) === key) records.set(key, entry.record);
+  }
+  return [...records.values()];
+}
+
+function saveRecords() {
+  const current = new Set();
+  for (const record of db.records) {
+    const key = recordKey(record.id);
+    const value = JSON.stringify({ record });
+    current.add(key);
+    if (savedRecords.get(key) === value) continue;
+    localStorage.setItem(key, value);
+    savedRecords.set(key, value);
+  }
+  for (const key of savedRecords.keys()) {
+    if (current.has(key)) continue;
+    localStorage.setItem(key, '{"deleted":true}');
+    savedRecords.delete(key);
+  }
+}
 let dbVersion = 0;
 function saveDB(parts = Object.keys(KEYS)) {
   dbVersion++;
   try {
-    for (const k of parts) localStorage.setItem(KEYS[k], JSON.stringify(db[k]));
+    for (const k of parts) {
+      if (k === "records") { saveRecords(); continue; }
+      const value = JSON.stringify(db[k]);
+      if (savedParts.get(k) === value) continue;
+      localStorage.setItem(KEYS[k], value);
+      savedParts.set(k, value);
+    }
     return true;
   } catch (e) {
     toast("Не удалось сохранить: в хранилище браузера кончилось место. Сделай экспорт.");
@@ -579,9 +627,13 @@ function setDB(parts) {
 // загрузка: новая база → иначе перенос из прежней версии → иначе пусто
 function loadDB() {
   const meta = readKey(KEYS.meta);
-  if (meta && meta.version === 2) {
-    setDB({ records: readKey(KEYS.records) || [], people: readKey(KEYS.people) || [],
+  const recordKeys = storedRecordKeys();
+  const records = loadRecords(recordKeys);
+  if ((meta && meta.version === 2) || records.length || recordKeys.length) {
+    setDB({ records, people: readKey(KEYS.people) || [],
             schools: readKey(KEYS.schools) || [], log: readKey(KEYS.log) || [], meta, plan: readKey(KEYS.plan) });
+    savedRecords = new Map(db.records.map(record => [recordKey(record.id), JSON.stringify({ record })]));
+    for (const k of Object.keys(KEYS)) if (k !== "records") savedParts.set(k, JSON.stringify(db[k]));
     if (!db.meta.inboxMarked) {
       const n = markOldMaterials(readKey(OLD.mats));
       db.meta.inboxMarked = true; saveDB();
@@ -1650,6 +1702,7 @@ function storageChars() {
   const size = k => { const v = localStorage.getItem(k); return v === null ? 0 : v.length + k.length; };
   let n = 0, old = 0;
   for (const k of Object.values(KEYS)) n += size(k);
+  for (const k of storedRecordKeys()) n += size(k);
   for (const k of Object.values(OLD)) old += size(k);
   return { n, old };
 }

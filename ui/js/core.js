@@ -16,15 +16,20 @@ const tauriCore = {
     const buf = await T.core.invoke("blob_get", { ns, key });
     return new Blob([buf], { type: st.type || "application/octet-stream" });
   },
-  async set(ns, key, value) {
+  async set(ns, key, value, basis) {
     if (value instanceof Blob) {
       const bytes = new Uint8Array(await value.arrayBuffer());
       return T.core.invoke("blob_put", bytes, { headers: {
-        "hub-ns": ns, "hub-key": encodeURIComponent(key), "hub-type": encodeURIComponent(value.type || "") } });
+        "hub-ns": ns, "hub-key": encodeURIComponent(key), "hub-type": encodeURIComponent(value.type || ""),
+        ...(basis ? { "hub-basis": encodeURIComponent(JSON.stringify(basis)) } : {}) } });
     }
-    return T.core.invoke("data_set", { ns, key, value });
+    return T.core.invoke("data_set", { ns, key, value, basis });
   },
-  async remove(ns, key) { return T.core.invoke("data_remove", { ns, key }); },
+  async remove(ns, key, basis) { return T.core.invoke("data_remove", { ns, key, basis }); },
+  async conflictBlob(id, sha, mime) {
+    const bytes = await T.core.invoke("data_conflict_blob", { id, sha });
+    return new Blob([bytes], { type: mime || "application/octet-stream" });
+  },
   appBase() { return T.core.convertFileSrc("", "hubapp"); },
   async notify(title, body) { try { await T.core.invoke("notify", { title, body }); } catch (e) { console.warn(e); } },
   async info() { return T.core.invoke("hub_info"); },

@@ -76,6 +76,29 @@ export function syncPill(dataConflicts, style) {
 
 /* ───────── настройки ───────── */
 
+function conflictVariant(c, v, current) {
+  const value = v.json;
+  const title = value?.record?.title || value?.title || value?.name || (v.del || value?.deleted ? "Запись удалена" : v.blob ? "Файл" : "Версия записи");
+  const detail = value?.record?.body || value?.text || value?.body;
+  return `<div class="shell-conflict-version">
+    <strong>${esc(title)}</strong><span class="hub-muted">${esc(when(v.ts))} · ${esc(v.dev)}${current ? " · сейчас в приложении" : ""}</span>
+    ${detail ? `<p class="shell-conflict-excerpt">${esc(String(detail).slice(0, 240))}</p>` : ""}
+    ${Object.hasOwn(v, "json") && !value?.deleted ? `<details class="shell-details"><summary>Посмотреть данные</summary><pre class="shell-pre">${esc(JSON.stringify(value, null, 2))}</pre></details>` : ""}
+    <button class="hub-btn hub-btn--sm" type="button" data-conflict-restore="${esc(c.id)}" data-conflict-version="${esc(JSON.stringify([v.ts, v.dev]))}">${current ? "Оставить текущую" : "Выбрать эту версию"}</button>
+  </div>`;
+}
+
+function conflictRow(c, ctx) {
+  const title = `${esc(ctx.appName(c.ns))} · ${esc(c.key)}`;
+  if (c.variants) return `<li class="shell-conflict"><strong>${title}</strong>
+    <div class="shell-conflict-versions">${c.variants.map((v, i) => conflictVariant(c, v, i === c.variants.length - 1)).join("")}</div></li>`;
+  return `<li><div class="hub-row"><span class="hub-row__lead"><i data-icon="git-compare-arrows"></i></span>
+    <span class="hub-row__body"><span class="hub-row__title">${title}</span>
+    <span class="hub-row__meta">${esc(c.note || "")}${c.ts ? ` · ${esc(when(c.ts))}` : ""}${c.dev ? ` · ${esc(c.dev)}` : ""}</span></span>
+    <span class="hub-row__trail"><button class="hub-btn hub-btn--sm" type="button" data-conflict-restore="${esc(c.id)}">Вернуть эту</button>
+    <button class="hub-btn hub-btn--sm hub-btn--quiet" type="button" data-conflict-drop="${esc(c.id)}">Убрать</button></span></div></li>`;
+}
+
 export function renderSyncSettings(el, ctx) {
   const { state, platform } = ctx;
   const st = syncStatus;
@@ -116,13 +139,8 @@ export function renderSyncSettings(el, ctx) {
     </section>
 
     ${conflicts.length ? `<section class="shell-section" id="sync-conflicts"><h2 class="hub-section-title">Конфликты данных</h2>
-      <p class="hub-muted" style="margin:0 0 var(--space-3)">Одно и то же правили на двух устройствах. Осталась более поздняя правка; другая сохранена здесь.</p>
-      <ul class="hub-list hub-list--divided hub-glass" style="padding:var(--space-1) var(--space-2)">${conflicts.map(c => `
-        <li><div class="hub-row"><span class="hub-row__lead"><i data-icon="git-compare-arrows"></i></span>
-          <span class="hub-row__body"><span class="hub-row__title">${esc(ctx.appName(c.ns))} · ${esc(c.key)}</span>
-          <span class="hub-row__meta">${esc(c.note || "")}${c.ts ? ` · ${esc(when(c.ts))}` : ""}${c.dev ? ` · ${esc(c.dev)}` : ""}</span></span>
-          <span class="hub-row__trail"><button class="hub-btn hub-btn--sm" type="button" data-conflict-restore="${esc(c.id)}">Вернуть эту</button>
-          <button class="hub-btn hub-btn--sm hub-btn--quiet" type="button" data-conflict-drop="${esc(c.id)}">Убрать</button></span></div></li>`).join("")}</ul>
+      <p class="hub-muted" style="margin:0 0 var(--space-3)">Одну запись изменили независимо на разных устройствах. Сравните версии и выберите, какую сохранить.</p>
+      <ul class="hub-list hub-list--divided hub-glass" style="padding:var(--space-1) var(--space-2)">${conflicts.map(c => conflictRow(c, ctx)).join("")}</ul>
     </section>` : ""}
 
     ${inTauri && st.configured ? `<section class="shell-section" id="folders"><h2 class="hub-section-title">Помеченные папки</h2>
@@ -385,7 +403,18 @@ function wire(el, ctx) {
             out.textContent = `remote   = <ваш drive>:${r.remote}\npassword = ${r.password}\npassword2 = ${r.password2}\n\n(в rclone config — «Yes type in my own password» для обоих)`;
           } catch (err) { toast(String(err.message || err), { tone: "danger", icon: "circle-alert" }); }
         });
-      } else if (d.conflictRestore) { const c = await state.restoreConflict(d.conflictRestore); toast("Версия возвращена", { icon: "undo-2" }); ctx.afterRestore(c); }
+      } else if (d.conflictRestore) {
+        const choices = b.closest("li").querySelectorAll("button");
+        choices.forEach(button => { button.disabled = true; });
+        b.setAttribute("aria-busy", "true");
+        try {
+          const c = await state.restoreConflict(d.conflictRestore, d.conflictVersion);
+          toast("Версия сохранена", { icon: "check" }); ctx.afterRestore(c);
+        } finally {
+          choices.forEach(button => { button.disabled = false; });
+          b.removeAttribute("aria-busy");
+        }
+      }
       else if (d.conflictDrop) { await state.dropConflict(d.conflictDrop); }
       else if (d.folderAdd) {
         const path = await askPath("Какую папку синхронизировать", "Полный путь к папке. В неё ляжет файл-метка .hubsync.", ctx);

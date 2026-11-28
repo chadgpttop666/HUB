@@ -14,6 +14,7 @@
   try { delete window.__HUB_BOOT__; } catch (e) { window.__HUB_BOOT__ = undefined; }
   var host = window.parent;
   var appId = boot.appId || "app";
+  var session = boot.session;
   var visible = boot.visible !== false;
 
   /* ───────── связь с хабом ───────── */
@@ -22,7 +23,7 @@
     return new Promise(function (resolve, reject) {
       var id = ++seq;
       waiting[id] = { resolve: resolve, reject: reject };
-      host.postMessage({ __hub: 1, id: id, method: method, params: params || {} }, "*", transfer || []);
+      host.postMessage({ __hub: 1, session: session, id: id, method: method, params: params || {} }, "*", transfer || []);
     });
   }
   function send(method, params) { host.postMessage({ __hub: 1, method: method, params: params || {} }, "*"); }
@@ -41,6 +42,7 @@
     var m = e.data;
     if (!m || m.__hub !== 1) return;
     if (m.reply) {
+      if (m.session !== session) return;
       var w = waiting[m.reply];
       if (!w) return;
       delete waiting[m.reply];

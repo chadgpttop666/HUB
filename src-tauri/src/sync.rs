@@ -2,8 +2,8 @@
 //!
 //! **Данные хаба и приложений** — журналами, как в диздоке: каждое устройство пишет только свой
 //! журнал `hub/changes-<устройство>/<номер>.json` и читает чужие, поэтому файлы на Drive не конфликтуют.
-//! Запись журнала — «ключ стал таким-то в момент ts». Спор об одном ключе решает время изменения,
-//! а проигравшая версия не пропадает: она ложится в `hub/conflicts/…` и видна в «Настройках».
+//! Запись журнала содержит правку и версии, которые видел её автор. Независимые правки
+//! одного ключа видны в «Настройках», пока пользователь не выберет версию.
 //!
 //! **Помеченные папки** (Obsidian и др.) — `rclone bisync` между папкой и `folders/<id>` на Drive,
 //! со стоп-краном против массового удаления, пробным прогоном перед первой синхронизацией и
@@ -36,6 +36,11 @@ pub struct State {
     pub seen: BTreeMap<String, u64>,
     /// ключ → (время, устройство) последней известной версии
     pub versions: BTreeMap<String, (u64, String)>,
+    #[serde(default)]
+    contexts: BTreeMap<String, Clock>,
+    /// Значения дублируются в состоянии только для записей с несколькими версиями.
+    #[serde(default)]
+    branches: BTreeMap<String, Vec<Op>>,
     /// ключи, изменённые здесь и ещё не отправленные: ключ → время
     pub dirty: BTreeMap<String, u64>,
     /// загруженные двоичные значения (sha256)
@@ -85,6 +90,72 @@ fn split_id(id: &str) -> (&str, &str) {
     id.split_once(SEP).unwrap_or((id, ""))
 }
 
+pub type Clock = BTreeMap<String, u64>;
+
+#[derive(Clone, Debug)]
+pub(crate) struct Revision {
+    pub ts: u64,
+    pub dev: String,
+    pub context: Option<Clock>,
+}
+
+impl Revision {
+    pub fn clock(&self) -> Clock {
+        let mut clock = Clock::new();
+        self.include_in(&mut clock);
+        clock
+    }
+
+    pub fn include_in(&self, clock: &mut Clock) {
+        if let Some(context) = &self.context {
+            for (dev, ts) in context {
+                let seen = clock.entry(dev.clone()).or_default();
+                *seen = (*seen).max(*ts);
+            }
+        }
+        let seen = clock.entry(self.dev.clone()).or_default();
+        *seen = (*seen).max(self.ts);
+    }
+
+    pub fn in_clock(&self, clock: &Clock) -> bool {
+        clock.get(&self.dev).is_some_and(|ts| *ts >= self.ts)
+    }
+
+    fn covers(&self, other: &Self) -> bool {
+        (self.dev == other.dev && self.ts >= other.ts)
+            || self.context.as_ref().is_some_and(|clock| other.in_clock(clock))
+    }
+
+    fn stamp(&self) -> (u64, &str) { (self.ts, &self.dev) }
+
+    fn supersedes(&self, other: &Self) -> bool {
+        self.covers(other) || (!other.covers(self) && self.context.is_none() && other.context.is_none() && self.stamp() > other.stamp())
+    }
+}
+
+impl State {
+    fn revision(&self, id: &str) -> Option<Revision> {
+        let (ts, dev) = self.versions.get(id)?;
+        let mut revision = Revision { ts: *ts, dev: dev.clone(), context: self.contexts.get(id).cloned() };
+        if let Some(heads) = self.branches.get(id) {
+            let winner = heads.last().expect("головная версия");
+            let mut clock = revision.clock();
+            for head in heads.iter().filter(|op| op.same_value(winner)) {
+                head.revision().include_in(&mut clock);
+            }
+            revision.context = Some(clock);
+        }
+        Some(revision)
+    }
+
+    pub(crate) fn attach(&self, store: &Store) {
+        store.init_revisions(&self.device, self.versions.keys().filter_map(|id| {
+            let (ns, key) = split_id(id);
+            Some((ns.into(), key.into(), self.revision(id)?))
+        }));
+    }
+}
+
 /* ───────── журнал ───────── */
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -95,12 +166,47 @@ pub struct Op {
     pub dev: String,
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub del: bool,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default, deserialize_with = "present_json", skip_serializing_if = "Option::is_none")]
     pub json: Option<Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub blob: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub mime: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub context: Option<Clock>,
+}
+
+fn present_json<'de, D: serde::Deserializer<'de>>(d: D) -> Result<Option<Value>, D::Error> {
+    Value::deserialize(d).map(Some)
+}
+
+impl Op {
+    fn revision(&self) -> Revision {
+        Revision { ts: self.ts, dev: self.dev.clone(), context: self.context.clone() }
+    }
+
+    fn stamp(&self) -> (u64, &str) { (self.ts, &self.dev) }
+
+    fn same_value(&self, other: &Self) -> bool {
+        self.del == other.del && self.json == other.json && self.blob == other.blob && self.mime == other.mime
+    }
+
+    pub(crate) fn read(store: &Store, ns: &str, key: &str, rev: Revision) -> Result<(Self, Option<Vec<u8>>), String> {
+        let mut op = Self { ns: ns.into(), key: key.into(), ts: rev.ts, dev: rev.dev, context: rev.context,
+            del: false, json: None, blob: None, mime: None };
+        let mut bytes = None;
+        match store.stat(ns, key)? {
+            None => op.del = true,
+            Some(stat) if stat.kind == "json" => op.json = store.get_json(ns, key)?,
+            Some(stat) => {
+                let content = store.get_blob(ns, key)?.ok_or("Не удалось прочитать двоичные данные")?;
+                op.blob = Some(format!("{:x}", Sha256::digest(&content)));
+                op.mime = stat.mime;
+                bytes = Some(content);
+            }
+        }
+        Ok((op, bytes))
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -126,15 +232,32 @@ fn crypt(path: &str) -> String {
 }
 
 /// Отметить изменения, накопленные хранилищем: они уйдут в журнал.
-pub fn absorb(store: &Store, st: &mut State) {
+pub fn absorb(store: &Store, st: &mut State) -> Result<bool, String> {
+    let _g = store.mutation_guard();
+    let mut conflicts_changed = false;
     for change in store.changes() {
         let id = id_of(&change.ns, &change.key);
         if st.versions.get(&id).is_some_and(|(ts, dev)| *ts == change.ts && *dev == st.device) {
             continue;
         }
-        st.dirty.insert(id.clone(), change.ts);
-        st.versions.insert(id, (change.ts, st.device.clone()));
+        let context = change.context.or_else(|| st.revision(&id).map(|r| r.clock())).unwrap_or_default();
+        let revision = Revision { ts: change.ts, dev: st.device.clone(), context: Some(context) };
+        let old = st.branches.get(&id).cloned().unwrap_or_else(|| {
+            change.previous.into_iter().collect()
+        });
+        if old.is_empty() {
+            st.versions.insert(id.clone(), (revision.ts, revision.dev.clone()));
+            st.contexts.insert(id.clone(), revision.context.clone().unwrap_or_default());
+            store.set_revision(&change.ns, &change.key, revision);
+        } else {
+            let (op, _) = Op::read(store, &change.ns, &change.key, revision)?;
+            let heads = add_head(old, op);
+            conflicts_changed |= update_conflict(store, &id, &heads, st.branches.contains_key(&id))?;
+            save_heads(store, st, &id, heads);
+        }
+        st.dirty.insert(id, change.ts);
     }
+    Ok(conflicts_changed)
 }
 
 pub fn pending_info(store: &Store, st: &State) -> (usize, u64) {
@@ -156,6 +279,7 @@ pub fn checkpoint(store: &Store, st: &State, path: &Path, key: &DataKey) -> Resu
 
 /// Первое устройство: всё, что уже есть в хабе, — в журнал.
 pub fn bootstrap(store: &Store, st: &mut State) -> Result<(), String> {
+    absorb(store, st)?;
     let ts = now_ms();
     for ns in store.namespaces() {
         for (key, _) in store.keys(&ns)? {
@@ -163,11 +287,14 @@ pub fn bootstrap(store: &Store, st: &mut State) -> Result<(), String> {
                 continue;
             }
             let id = id_of(&ns, &key);
+            if st.versions.contains_key(&id) { continue; }
             st.dirty.insert(id.clone(), ts);
+            st.contexts.insert(id.clone(), Clock::new());
             st.versions.insert(id, (ts, st.device.clone()));
         }
     }
     st.bootstrapped = true;
+    st.attach(store);
     Ok(())
 }
 
@@ -181,8 +308,12 @@ pub enum ExchangeStep {
 #[cfg(test)]
 fn sync_hub(store: &Store, r: &Rclone, st: &mut State) -> Result<Report, SyncError> {
     let mut report = Report::default();
-    exchange(store, r, st, &mut report, |_, _| Ok(()))?;
-    store.acknowledge_changes(|c| st.versions.get(&id_of(&c.ns, &c.key)).is_some_and(|(ts, dev)| *ts == c.ts && *dev == st.device)).unwrap();
+    exchange(store, r, st, &mut report, |step, st| {
+        if matches!(step, ExchangeStep::ReserveSequence) {
+            store.acknowledge_changes(|c| st.versions.get(&id_of(&c.ns, &c.key)).is_some_and(|(ts, dev)| *ts == c.ts && *dev == st.device)).map_err(SyncError::msg)?;
+        }
+        Ok(())
+    })?;
     Ok(report)
 }
 
@@ -193,19 +324,17 @@ pub fn exchange(
     report: &mut Report,
     mut progress: impl FnMut(ExchangeStep, &State) -> Result<(), SyncError>,
 ) -> Result<(), SyncError> {
-    absorb(store, st);
-    progress(ExchangeStep::Receiving, st)?;
-    let received = pull(store, r, st, report);
-    if report.applied > 0 {
-        st.last_received = Some(Transfer { at: now_ms(), count: report.applied });
-    }
-    received?;
-    absorb(store, st); // конфликты и правки во время загрузки входят в этот проход
+    if absorb(store, st).map_err(SyncError::msg)? { report.changed.insert("hub".into()); }
+    // Сначала публикуем свои версии, даже если после чтения они станут конфликтными.
     if !st.dirty.is_empty() {
         progress(ExchangeStep::Sending, st)?;
         push(store, r, st, report, |st| progress(ExchangeStep::ReserveSequence, st))?;
-        st.last_sent = Some(Transfer { at: now_ms(), count: report.pushed });
+        if report.pushed > 0 { st.last_sent = Some(Transfer { at: now_ms(), count: report.pushed }); }
     }
+    progress(ExchangeStep::Receiving, st)?;
+    let received = pull(store, r, st, report);
+    if report.applied > 0 { st.last_received = Some(Transfer { at: now_ms(), count: report.applied }); }
+    received?;
     st.last_sync = Some(now_ms());
     Ok(())
 }
@@ -253,73 +382,143 @@ fn pull(store: &Store, r: &Rclone, st: &mut State, rep: &mut Report) -> Result<(
     }).collect();
     segments.sort_unstable();
     segments.dedup();
-    for (dev, seq) in segments {
+    let mut deferred = BTreeSet::new();
+    'segments: for (dev, seq) in segments {
+        if deferred.contains(dev) { continue; }
         let o = r.run(&["cat", &crypt(&format!("hub/changes-{dev}/{seq:08}.json"))], None);
         if !o.ok {
             return Err(SyncError::from_output(&o));
         }
         let seg: Segment = serde_json::from_slice(&o.stdout).map_err(|e| SyncError::msg(format!("Журнал {dev}/{seq} не читается: {e}")))?;
-        absorb(store, st);
-        for op in &seg.ops {
-            apply(store, r, st, op, rep)?;
+        for op in seg.ops {
+            if !apply(store, r, st, op, rep)? {
+                // Правка с этого устройства появилась уже после отправки. Повторим
+                // сегмент после её публикации, не пропуская ни одну версию.
+                deferred.insert(dev);
+                continue 'segments;
+            }
         }
         st.seen.insert(dev.into(), seq);
     }
     Ok(())
 }
 
-fn newer(a: &(u64, String), b: &(u64, String)) -> bool {
-    a.0 > b.0 || (a.0 == b.0 && a.1 > b.1)
-}
-
-/// Записать проигравшую версию, чтобы её можно было вернуть.
-fn keep_conflict(store: &Store, ns: &str, key: &str, value: Option<Value>, ts: u64, dev: &str, note: &str) -> Result<(), SyncError> {
-    let id = format!("conflicts/{}-{}", now_ms(), &Sha256::digest(format!("{ns}/{key}/{ts}/{dev}"))[..4].iter().map(|b| format!("{b:02x}")).collect::<String>());
-    store
-        .set_json("hub", &id, &json!({ "ns": ns, "key": key, "ts": ts, "dev": dev, "value": value, "note": note, "at": now_ms() }))
-        .map_err(SyncError::msg)
-}
-
-pub fn apply(store: &Store, r: &Rclone, st: &mut State, op: &Op, rep: &mut Report) -> Result<(), SyncError> {
-    if local_only(&op.ns, &op.key) {
-        return Ok(());
+fn add_head(mut heads: Vec<Op>, op: Op) -> Vec<Op> {
+    let revision = op.revision();
+    if heads.iter().any(|head| head.revision().supersedes(&revision)) {
+        return heads;
     }
+    heads.retain(|head| !revision.supersedes(&head.revision()));
+    heads.push(op);
+    heads.sort_by(|a, b| a.stamp().cmp(&b.stamp()));
+    heads
+}
+
+fn conflict_key(id: &str) -> String {
+    format!("conflicts/causal/{:x}", Sha256::digest(id))
+}
+
+fn update_conflict(store: &Store, id: &str, heads: &[Op], was_branched: bool) -> Result<bool, String> {
+    let winner = heads.last().expect("должна остаться хотя бы одна версия");
+    if heads.iter().all(|head| head.same_value(winner)) {
+        if !was_branched { return Ok(false); }
+        let key = conflict_key(id);
+        let existed = store.stat("hub", &key)?.is_some();
+        store.remove_quiet("hub", &key)?;
+        return Ok(existed);
+    }
+    let mut basis = Clock::new();
+    for head in heads { head.revision().include_in(&mut basis); }
+    let value = json!({ "ns": winner.ns, "key": winner.key, "at": winner.ts, "basis": basis, "variants": heads });
+    store.set_json_quiet("hub", &conflict_key(id), &value)?;
+    Ok(true)
+}
+
+fn save_heads(store: &Store, st: &mut State, id: &str, heads: Vec<Op>) {
+    let winner = heads.last().expect("должна остаться хотя бы одна версия");
+    let (ns, key) = (winner.ns.clone(), winner.key.clone());
+    st.versions.insert(id.into(), (winner.ts, winner.dev.clone()));
+    if let Some(context) = &winner.context { st.contexts.insert(id.into(), context.clone()); }
+    else { st.contexts.remove(id); }
+    if heads.len() > 1 { st.branches.insert(id.into(), heads); }
+    else { st.branches.remove(id); }
+    store.set_revision(&ns, &key, st.revision(id).expect("сохранённая версия"));
+}
+
+pub(crate) fn read_remote_blob(r: &Rclone, sha: &str) -> Result<Vec<u8>, SyncError> {
+    if sha.len() != 64 || !sha.bytes().all(|b| b.is_ascii_hexdigit()) {
+        return Err(SyncError::msg("Некорректная ссылка на двоичные данные"));
+    }
+    let o = r.run(&["cat", &crypt(&format!("hub/blobs/{sha}"))], None);
+    if !o.ok { return Err(SyncError::from_output(&o)); }
+    if format!("{:x}", Sha256::digest(&o.stdout)) != sha {
+        return Err(SyncError::msg("Содержимое файла не совпадает с журналом синхронизации"));
+    }
+    Ok(o.stdout)
+}
+
+fn apply(store: &Store, r: &Rclone, st: &mut State, op: Op, rep: &mut Report) -> Result<bool, SyncError> {
+    if local_only(&op.ns, &op.key) { return Ok(true); }
     let id = id_of(&op.ns, &op.key);
-    let incoming = (op.ts, op.dev.clone());
-    let current = st.versions.get(&id).cloned();
-    let locally_dirty = st.dirty.contains_key(&id);
-    let wins = current.as_ref().map(|c| newer(&incoming, c)).unwrap_or(true);
-    if !wins {
-        // своя версия новее; если она ещё не отправлена — чужая проиграла в споре, сохраняем её
-        if locally_dirty && current.as_ref() != Some(&incoming) {
-            keep_conflict(store, &op.ns, &op.key, op.json.clone(), op.ts, &op.dev, "версия с другого устройства, старее этой")?;
-            rep.conflicts += 1;
+    let ns = op.ns.clone();
+    let key = op.key.clone();
+    let can_apply = || !st.dirty.contains_key(&id) && store.pending_at(&ns, &key).is_none();
+    let lock = store.mutation_guard();
+    if !can_apply() { return Ok(false); }
+    let current = st.revision(&id);
+    let incoming = op.revision();
+    let heads = if let Some(heads) = st.branches.get(&id) {
+        if heads.iter().any(|head| head.revision().supersedes(&incoming)) { return Ok(true); }
+        add_head(heads.clone(), op)
+    } else if let Some(revision) = &current {
+        if revision.supersedes(&incoming) { return Ok(true); }
+        if incoming.supersedes(revision) { vec![op] }
+        else {
+            // Если процесс оборвался после записи конфликта, файл уже содержит
+            // исходную версию, даже если видимое значение успело смениться.
+            let saved = store.get_json("hub", &conflict_key(&id)).map_err(SyncError::msg)?
+                .and_then(|v| serde_json::from_value::<Vec<Op>>(v["variants"].clone()).ok())
+                .and_then(|ops| ops.into_iter().find(|v| v.stamp() == revision.stamp()));
+            let previous = match saved {
+                Some(saved) => saved,
+                None => Op::read(store, &ns, &key, revision.clone()).map_err(SyncError::msg)?.0,
+            };
+            add_head(vec![previous], op)
         }
-        return Ok(());
+    } else { vec![op] };
+    let winner = heads.last().expect("должна остаться хотя бы одна версия");
+    let replace = current.as_ref().map(Revision::stamp) != Some(winner.stamp());
+    let mut lock = Some(lock);
+    let bytes = if replace {
+        if let Some(sha) = &winner.blob {
+            // Загрузка файла не блокирует запись из интерфейса.
+            drop(lock.take());
+            let bytes = read_remote_blob(r, sha)?;
+            lock = Some(store.mutation_guard());
+            if !can_apply() { return Ok(false); }
+            Some(bytes)
+        } else { None }
+    } else { None };
+    let _lock = lock;
+    let was_branched = st.branches.contains_key(&id);
+    if update_conflict(store, &id, &heads, was_branched).map_err(SyncError::msg)? {
+        rep.changed.insert("hub".into());
+        if heads.iter().any(|head| !head.same_value(winner)) { rep.conflicts += 1; }
     }
-    if locally_dirty {
-        let mine = store.get_json(&op.ns, &op.key).ok().flatten();
-        let (ts, dev) = current.clone().unwrap_or((0, st.device.clone()));
-        keep_conflict(store, &op.ns, &op.key, mine, ts, &dev, "версия с этого устройства, старее пришедшей")?;
-        rep.conflicts += 1;
-        st.dirty.remove(&id);
-    }
-    if op.del {
-        store.remove_quiet(&op.ns, &op.key).map_err(SyncError::msg)?;
-    } else if let Some(v) = &op.json {
-        store.set_json_quiet(&op.ns, &op.key, v).map_err(SyncError::msg)?;
-    } else if let Some(sha) = &op.blob {
-        let o = r.run(&["cat", &crypt(&format!("hub/blobs/{sha}"))], None);
-        if !o.ok {
-            return Err(SyncError::from_output(&o));
+    if replace {
+        if winner.del {
+            store.remove_quiet(&ns, &key).map_err(SyncError::msg)?;
+        } else if let Some(value) = &winner.json {
+            store.set_json_quiet(&ns, &key, value).map_err(SyncError::msg)?;
+        } else if let (Some(sha), Some(bytes)) = (&winner.blob, bytes) {
+            store.set_blob_quiet(&ns, &key, winner.mime.as_deref().unwrap_or(""), &bytes).map_err(SyncError::msg)?;
+            st.blobs.insert(sha.clone());
         }
-        store.set_blob_quiet(&op.ns, &op.key, op.mime.as_deref().unwrap_or(""), &o.stdout).map_err(SyncError::msg)?;
-        st.blobs.insert(sha.clone());
+        rep.applied += 1;
+        rep.changed.insert(ns);
     }
-    st.versions.insert(id, incoming);
-    rep.applied += 1;
-    rep.changed.insert(op.ns.clone());
-    Ok(())
+    save_heads(store, st, &id, heads);
+    Ok(true)
 }
 
 fn push(
@@ -327,29 +526,26 @@ fn push(
     reserve_sequence: impl FnOnce(&State) -> Result<(), SyncError>,
 ) -> Result<(), SyncError> {
     let mut ops = Vec::new();
-    let pending: Vec<(String, u64)> = st.dirty.iter().map(|(k, v)| (k.clone(), *v)).collect();
-    for (id, ts) in &pending {
+    let mut sent = Vec::new();
+    for (id, ts) in &st.dirty {
         let (ns, key) = split_id(id);
-        let mut op = Op { ns: ns.into(), key: key.into(), ts: *ts, dev: st.device.clone(), del: false, json: None, blob: None, mime: None };
-        match store.stat(ns, key).map_err(SyncError::msg)? {
-            None => op.del = true,
-            Some(s) if s.kind == "json" => op.json = store.get_json(ns, key).map_err(SyncError::msg)?,
-            Some(s) => {
-                let bytes = store.get_blob(ns, key).map_err(SyncError::msg)?.unwrap_or_default();
-                let sha: String = Sha256::digest(&bytes).iter().map(|b| format!("{b:02x}")).collect();
-                if !st.blobs.contains(&sha) {
-                    let o = r.run(&["rcat", &crypt(&format!("hub/blobs/{sha}"))], Some(&bytes));
-                    if !o.ok {
-                        return Err(SyncError::from_output(&o));
-                    }
-                    st.blobs.insert(sha.clone());
-                }
-                op.blob = Some(sha);
-                op.mime = s.mime;
+        let (op, bytes) = {
+            let _g = store.mutation_guard();
+            if store.pending_at(ns, key).is_some_and(|pending| pending != *ts) { continue; }
+            let rev = Revision { ts: *ts, dev: st.device.clone(), context: st.contexts.get(id).cloned() };
+            Op::read(store, ns, key, rev).map_err(SyncError::msg)?
+        };
+        if let (Some(sha), Some(bytes)) = (&op.blob, bytes) {
+            if !st.blobs.contains(sha) {
+                let o = r.run(&["rcat", &crypt(&format!("hub/blobs/{sha}"))], Some(&bytes));
+                if !o.ok { return Err(SyncError::from_output(&o)); }
+                st.blobs.insert(sha.clone());
             }
         }
         ops.push(op);
+        sent.push(id.clone());
     }
+    if ops.is_empty() { return Ok(()); }
     // Номер резервируется на диске до отправки. После прерывания не перезапишем уже загруженный сегмент.
     st.seq += 1;
     reserve_sequence(st)?;
@@ -360,11 +556,7 @@ fn push(
     if !o.ok {
         return Err(SyncError::from_output(&o));
     }
-    for (id, ts) in pending {
-        if st.dirty.get(&id) == Some(&ts) {
-            st.dirty.remove(&id);
-        }
-    }
+    for id in sent { st.dirty.remove(&id); }
     rep.pushed = seg.ops.len();
     Ok(())
 }
@@ -656,7 +848,9 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let store = Store::new(dir.path().join("data"));
         store.set_key(Some(key.clone()));
-        Dev { store, st: State { device: name.into(), ..Default::default() }, _dir: dir }
+        let st = State { device: name.into(), ..Default::default() };
+        st.attach(&store);
+        Dev { store, st, _dir: dir }
     }
 
     fn rc(drive: &Path, key: &DataKey) -> Option<Rclone> {
@@ -709,10 +903,11 @@ mod tests {
         sync_hub(&pc.store, &r, &mut pc.st).unwrap();
         let want = json!([{"title": "Кант"}, {"title": "с телефона"}]);
         assert_eq!(pc.store.get_json("repetition", "localstorage/tb-records").unwrap(), Some(want.clone()));
-        assert_eq!(ph.store.get_json("repetition", "localstorage/tb-records").unwrap(), Some(want));
+        assert_eq!(ph.store.get_json("repetition", "localstorage/tb-records").unwrap(), Some(want.clone()));
         let conflicts: Vec<_> = pc.store.dump("hub").unwrap().json.into_iter().filter(|(k, _)| k.starts_with("conflicts/")).collect();
         assert_eq!(conflicts.len(), 1, "конфликт виден и на ПК");
-        assert_eq!(conflicts[0].1["value"], json!([{"title": "Кант"}, {"title": "с ПК"}]));
+        assert_eq!(conflicts[0].1["variants"][0]["json"], json!([{"title": "Кант"}, {"title": "с ПК"}]));
+        assert_eq!(conflicts[0].1["variants"][1]["json"], want);
 
         // ничего нового — ничего не отправляется
         let rep = sync_hub(&pc.store, &r, &mut pc.st).unwrap();
@@ -723,6 +918,92 @@ mod tests {
         assert!(!snapshot(&r, &mut pc.st, "hub", "hub").unwrap());
         let o = r.run(&["lsf", "--dirs-only", &crypt("snapshots/hub/")], None);
         assert_eq!(o.text().trim(), format!("{}/", today()));
+    }
+
+    #[test]
+    fn both_devices_upload_before_reading_then_resolve() {
+        let drive = tempfile::tempdir().unwrap();
+        let key = DataKey::random();
+        let Some(r) = rc(drive.path(), &key) else { return };
+        let mut pc = dev("pc", &key);
+        let mut phone = dev("phone", &key);
+        let ns = "repetition";
+        let card_a = "localstorage/tb-record/r-a";
+        let card_b = "localstorage/tb-record/r-b";
+        let same = "localstorage/tb-record/r-same";
+        let conflict = conflict_key(&id_of(ns, same));
+
+        pc.store.set_json(ns, same, &json!({"record": {"title": "До правок"}})).unwrap();
+        sync_hub(&pc.store, &r, &mut pc.st).unwrap();
+        sync_hub(&phone.store, &r, &mut phone.st).unwrap();
+        pc.store.set_json(ns, card_a, &json!({"record": {"title": "ПК"}})).unwrap();
+        phone.store.set_json(ns, card_b, &json!({"record": {"title": "Телефон"}})).unwrap();
+        pc.store.set_json(ns, same, &Value::Null).unwrap();
+        phone.store.remove(ns, same).unwrap();
+
+        for device in [&mut pc, &mut phone] {
+            let mut report = Report::default();
+            let err = exchange(&device.store, &r, &mut device.st, &mut report, |step, st| match step {
+                ExchangeStep::ReserveSequence => checkpoint(&device.store, st, &device._dir.path().join("state.json"), &key).map_err(SyncError::msg),
+                ExchangeStep::Receiving => Err(SyncError::msg("получение ещё не началось")),
+                ExchangeStep::Sending => Ok(()),
+            }).unwrap_err();
+            assert_eq!(err.message, "получение ещё не началось");
+            assert_eq!(report.pushed, 2);
+            assert!(device.st.dirty.is_empty());
+        }
+
+        for device in [&mut pc, &mut phone] {
+            assert_eq!(sync_hub(&device.store, &r, &mut device.st).unwrap().conflicts, 1);
+            assert!(device.store.get_json(ns, card_a).unwrap().is_some());
+            assert!(device.store.get_json(ns, card_b).unwrap().is_some());
+        }
+        let available = pc.store.get_json("hub", &conflict).unwrap().unwrap();
+        assert_eq!(phone.store.get_json("hub", &conflict).unwrap(), Some(available.clone()));
+        let versions = available["variants"].as_array().unwrap();
+        assert!(versions.iter().any(|v| v.get("json") == Some(&Value::Null)));
+        assert!(versions.iter().any(|v| v["del"] == true));
+
+        let state_path = pc._dir.path().join("state.json");
+        checkpoint(&pc.store, &pc.st, &state_path, &key).unwrap();
+        pc.st = load_sealed(&state_path, &key).unwrap();
+        pc.st.attach(&pc.store);
+        let basis = serde_json::from_value(available["basis"].clone()).unwrap();
+        pc.store.set_json_from(ns, same, &Value::Null, Some(basis)).unwrap();
+        sync_hub(&pc.store, &r, &mut pc.st).unwrap();
+        sync_hub(&phone.store, &r, &mut phone.st).unwrap();
+        phone.st.seen.clear(); // Повторное чтение прежних операций после выбора.
+        sync_hub(&phone.store, &r, &mut phone.st).unwrap();
+        for device in [&pc, &phone] {
+            assert_eq!(device.store.get_json(ns, same).unwrap(), Some(Value::Null));
+            assert_eq!(device.store.get_json("hub", &conflict).unwrap(), None);
+        }
+    }
+
+    #[test]
+    fn stale_editor_preserves_received_value() {
+        let drive = tempfile::tempdir().unwrap();
+        let key = DataKey::random();
+        let Some(r) = rc(drive.path(), &key) else { return };
+        let mut pc = dev("pc", &key);
+        let mut phone = dev("phone", &key);
+        let (ns, name) = ("calendar", "events/lesson");
+        pc.store.set_json(ns, name, &json!("первая версия")).unwrap();
+        sync_hub(&pc.store, &r, &mut pc.st).unwrap();
+        sync_hub(&phone.store, &r, &mut phone.st).unwrap();
+        let basis = phone.store.dump(ns).unwrap().basis.remove(name).unwrap();
+        pc.store.set_json(ns, name, &json!("правка ПК")).unwrap();
+        sync_hub(&pc.store, &r, &mut pc.st).unwrap();
+        assert_eq!(sync_hub(&phone.store, &r, &mut phone.st).unwrap().conflicts, 0);
+
+        phone.store.set_json_from(ns, name, &json!("правка открытой формы"), Some(basis)).unwrap();
+        sync_hub(&phone.store, &r, &mut phone.st).unwrap();
+        sync_hub(&pc.store, &r, &mut pc.st).unwrap();
+        let conflict = conflict_key(&id_of(ns, name));
+        let own = phone.store.get_json("hub", &conflict).unwrap().unwrap();
+        assert_eq!(pc.store.get_json("hub", &conflict).unwrap(), Some(own.clone()));
+        assert_eq!(own["variants"][0]["json"], "правка ПК");
+        assert_eq!(own["variants"][1]["json"], "правка открытой формы");
     }
 
     #[test]

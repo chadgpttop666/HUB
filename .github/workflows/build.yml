@@ -210,7 +210,7 @@ jobs:
 
       - name: Проект Android
         run: |
-          npx tauri icon src-tauri/icons/source.png
+          npx tauri icon src-tauri/icons/android-icon.json
           npx tauri android init --ci
 
       - name: rclone для Android (из исходников, NDK)

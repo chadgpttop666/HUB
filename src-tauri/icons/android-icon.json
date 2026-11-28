@@ -1,0 +1,5 @@
+{
+  "default": "source.png",
+  "bg_color": "#F5EFE4",
+  "android_fg": "android-foreground.svg"
+}

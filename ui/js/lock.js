@@ -315,7 +315,7 @@ export function runLock() {
       el.innerHTML = `<main class="hub-lock${phone ? " hub-lock--phone" : ""}" aria-label="Вход в хаб">
           <div class="hub-lock__clock">${hm(now)}</div>
           <div class="hub-lock__date">${esc(fmtLong.format(now))}</div>
-          <h1 class="hub-lock__greet"><span>${esc(greet())}</span></h1>
+          <h1 class="hub-lock__greet"><span>${phone ? '<img class="shell-brand" src="favicon.svg" alt="" width="24" height="24">' : ""}${esc(greet())}</span></h1>
           <form class="hub-lock__form"${mode === "lock" ? " hidden" : ""}>
             <div class="hub-lock__row">
               <input class="hub-input hub-input--line hub-input--secret" type="password" placeholder="Пароль" aria-label="Пароль" autocomplete="current-password"${msg && tone === "danger" ? ' aria-invalid="true"' : ""}>

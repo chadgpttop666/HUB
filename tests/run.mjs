@@ -147,7 +147,7 @@ await test("разбор: удалить и отменить, отложить �
 
 await test("приложение забирает элемент после окна «Отменить» и делает из него запись", async () => {
   await waitFor(async () => (await page.evaluate(() => window.__hubShell.state.deliveries.length)) === 0, 9000, "доставка забрана");
-  const titles = await appFrame().evaluate(() => JSON.parse(localStorage.getItem("tb-records")).map(r => r.title));
+  const titles = await appFrame().evaluate(() => loadRecords().map(r => r.title));
   eq(titles, ["Категорический императив Канта"], "запись в базе повторения (метка вырезана)");
   await waitFor(async () => (await page.evaluate(() => (window.__hubShell.state.cards.repetition || {}).main)) === "Нет вопросов к повторению", 4000, "карточка обновилась");
 });
@@ -242,7 +242,7 @@ await test("перезапуск: экран входа, неверный пар
 
 await test("данные приложения переживают перезагрузку хаба", async () => {
   await page.keyboard.press("Alt+1");
-  await waitFor(async () => appFrame() && (await appFrame().evaluate(() => JSON.parse(localStorage.getItem("tb-records") || "[]").length)) === 1, 6000, "запись на месте");
+  await waitFor(async () => appFrame() && (await appFrame().evaluate(() => loadRecords().length)) === 1, 6000, "запись на месте");
 });
 
 await test("«Повторение»: экспорт (скачивание из песочницы) и импорт файла обратно", async () => {
@@ -254,7 +254,7 @@ await test("«Повторение»: экспорт (скачивание из 
   await fr.evaluate(() => { db.records = []; saveDB(); render(); });
   await fr.setInputFiles("#file-import", file);
   await fr.locator("#modal-btns button", { hasText: "Заменить оба" }).click();
-  await waitFor(async () => (await fr.evaluate(() => JSON.parse(localStorage.getItem("tb-records")).length)) === 1, 4000, "запись вернулась из архива");
+  await waitFor(async () => (await fr.evaluate(() => loadRecords().length)) === 1, 4000, "запись вернулась из архива");
 });
 
 await test("тема: «Туман» перекрашивает хаб и приложение", async () => {
@@ -788,12 +788,14 @@ await test("большая база Повторения: повторный в�
   try {
     await native.addInitScript(() => {
       window.__repeatWrites = [];
+      window.__repeatBases = [];
       const records = Array.from({ length: 1000 }, (_, i) => ({
         id: `rec-${i}`, title: `Теория ${i}`, updated: "2026-11-20",
         topics: [`Тестовая тема номер ${i % 25}`],
         questions: i < 200 ? [{ id: "q", q: "Вопрос", a: "Ответ" }] : [],
       }));
       const seed = { "localstorage/tb-records": records, "localstorage/tb-meta": { version: 2, inboxMarked: true } };
+      const basis = { "localstorage/tb-record%2Fr-rec-0": { pc: 10 } };
       window.__TAURI__ = {
         event: { listen: async () => {} },
         core: {
@@ -801,12 +803,15 @@ await test("большая база Повторения: повторный в�
           invoke: async (command, args) => {
             if (command === "hub_status") return { setupDone: true, unlocked: true, platform: "pc" };
             if (command === "sync_status") return { state: "off" };
-            if (command === "data_dump") return { json: args.ns === "repetition" ? seed : {}, blobs: {} };
+            if (command === "data_dump") return { json: args.ns === "repetition" ? structuredClone(seed) : {}, blobs: {}, basis: { ...basis } };
             if (command === "apps_list") return [{
               id: "repetition", source: "builtin", manifest: { name: "Повторение", card: true },
             }];
             if (command === "data_set" && args.ns === "repetition" && args.key.startsWith("localstorage/")) {
               window.__repeatWrites.push(args.key);
+              window.__repeatBases.push(args.basis);
+              seed[args.key] = args.value;
+              return (basis[args.key] = { pc: 11 });
             }
           },
         },
@@ -841,6 +846,55 @@ await test("большая база Повторения: повторный в�
     await frame.locator("#topic-chips button:visible").click();
     await frame.getByRole("button", { name: "Свернуть темы" }).click();
     await frame.locator("#topic-more").waitFor({ state: "hidden" });
+
+    await frame.evaluate(() => { db.records[0].title = "Карточка изменена"; db.records.splice(1, 1); saveDB(); });
+    await waitFor(() => native.evaluate(() => window.__repeatWrites.length >= 3), 5000, "отдельные правки карточек сохранены");
+    eq(await native.evaluate(() => window.__repeatWrites.slice(1)), ["localstorage/tb-record%2Fr-rec-0", "localstorage/tb-record%2Fr-rec-1"], "изменение и удаление пишут по одному ключу");
+    eq(await native.evaluate(() => window.__repeatBases[1]), { pc: 10 }, "запись содержит версию из открытого приложения");
+    await frame.evaluate(() => { db.records[0].title = "Карточка изменена ещё раз"; saveDB(); });
+    await waitFor(() => native.evaluate(() => window.__repeatWrites.length === 4), 5000, "следующая правка сохранена");
+    eq(await native.evaluate(() => window.__repeatBases[3]), { pc: 11 }, "вторая запись учитывает предыдущую локальную правку");
+    await native.evaluate(() => window.__hubShell.host.reload("repetition"));
+    await waitFor(() => frame.evaluate(() => db.records[0].title === "Карточка изменена ещё раз"), 5000, "правка поверх старой базы загрузилась");
+    eq(await frame.evaluate(() => [db.records.length, db.records.some(r => r.id === "rec-1")]), [999, false], "старый массив не вернул удалённую карточку");
+  } finally { await native.close(); }
+});
+
+await test("конфликт данных показывает обе версии, выбор отправляет сведения об обеих", async () => {
+  const native = await browser.newPage({ viewport: { width: 390, height: 844 } });
+  try {
+    await native.addInitScript(() => {
+      const conflict = {
+        ns: "repetition", key: "cards/example", at: 1700000000002,
+        basis: { pc: 1700000000001, phone: 1700000000002 },
+        variants: [{ dev: "pc", ts: 1700000000001, json: { record: { title: "Карточка с ПК", body: "Исходный конспект" } } },
+          { dev: "phone", ts: 1700000000002, del: true }],
+      };
+      window.__TAURI__ = {
+        event: { listen: async () => {} },
+        core: {
+          convertFileSrc: () => location.origin + "/hubapp/",
+          invoke: async (command, args) => {
+            if (command === "hub_status") return { setupDone: true, unlocked: true, platform: "phone" };
+            if (command === "sync_status") return { state: "idle", configured: true, folders: [] };
+            if (command === "apps_list") return [];
+            if (command === "data_dump") return { json: args.ns === "hub" ? { "conflicts/causal/example": conflict } : {}, blobs: {} };
+            if (command === "data_set" && args.ns === "repetition") window.__resolution = args;
+          },
+        },
+      };
+    });
+    await native.goto(URL0);
+    await native.locator('#navbar [data-go="settings"]').click();
+    const panel = native.locator("#sync-conflicts");
+    await panel.getByText("Карточка с ПК", { exact: true }).waitFor();
+    await panel.getByText("Запись удалена").waitFor();
+    await panel.getByRole("button", { name: "Выбрать эту версию" }).click();
+    await panel.waitFor({ state: "hidden" });
+    eq(await native.evaluate(() => window.__resolution), {
+      ns: "repetition", key: "cards/example", value: { record: { title: "Карточка с ПК", body: "Исходный конспект" } },
+      basis: { pc: 1700000000001, phone: 1700000000002 },
+    }, "выбор отправлен с обеими версиями конфликта");
   } finally { await native.close(); }
 });
 

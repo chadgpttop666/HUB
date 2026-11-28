@@ -1,0 +1,24 @@
+:root {
+  --hub-bg: #F5EFE4;
+  --hub-text: #292C23;
+  --hub-a: #82934A;
+  --hub-b: #344524;
+  --hub-line: #566A37;
+  --hub-center1: #EFE7BB;
+  --hub-center2: #C4C486;
+  --hub-orbit: #DCD4AA;
+  --hub-wave: #A8B183;
+  --hub-wave2: #D9DBC3;
+}
+[data-theme="dark"] {
+  --hub-bg: #243322;
+  --hub-text: #FAF4E7;
+  --hub-a: #B1BE78;
+  --hub-b: #71864A;
+  --hub-line: #91A65C;
+  --hub-center1: #FFF4D6;
+  --hub-center2: #D8D4A0;
+  --hub-orbit: #E5DBB5;
+  --hub-wave: #435737;
+  --hub-wave2: #33482E;
+}
