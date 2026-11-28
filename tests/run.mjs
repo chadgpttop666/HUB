@@ -609,15 +609,55 @@ await test("настройки открывают DevTools и проверяют
   } finally { await native.close(); }
 });
 
+await test("окно 540×360 сохраняет кнопки Windows и обновляет Хаб одним нажатием", async () => {
+  const native = await browser.newPage({ viewport: { width: 540, height: 360 } });
+  try {
+    await native.addInitScript(() => {
+      window.__updates = [];
+      window.__TAURI__ = {
+        window: {},
+        event: { listen: async () => {} },
+        core: { invoke: async command => {
+          if (command === "hub_status") return { setupDone: true, unlocked: false, platform: "pc" };
+          if (command === "hub_info") return { version: "0.1.8", updatesSupported: true, updateMode: "windows" };
+          if (command === "data_dump") return { json: { settings: { name: "Тест" } }, blobs: {} };
+          if (command === "apps_list") return [];
+          if (command === "sync_status") return { configured: false };
+          if (command === "update_check" || command === "update_install") {
+            window.__updates.push(command);
+            return command === "update_check" ? { version: "0.1.9", size: 1048576 } : "started";
+          }
+        } },
+      };
+    });
+    await native.goto(URL0);
+    await native.locator(".hub-lock").waitFor();
+    await native.keyboard.press("Enter");
+    const password = native.getByLabel("Пароль", { exact: true });
+    await password.waitFor();
+    const bounds = await password.boundingBox();
+    assert(bounds.y > 36 && bounds.y + bounds.height < 360, "поле пароля помещается в начальном окне");
+    assert(await native.getByRole("button", { name: "Развернуть" }).isVisible(), "доступно разворачивание");
+    await password.fill("пароль хаба");
+    await password.press("Enter");
+    await native.locator('#navbar [data-go="settings"]').click();
+    await native.getByRole("button", { name: "Обновить Хаб" }).click();
+    await native.getByText("Устанавливаем обновление. Хаб откроется снова.", { exact: true }).waitFor();
+    eq(await native.evaluate(() => window.__updates), ["update_check", "update_install"], "одно нажатие проверяет версию и запускает обновление");
+  } finally { await native.close(); }
+});
+
 await test("настройки Android видны при скрытых панелях ПК, показывают причину ошибки и открывают сохранённую пару после пароля", async () => {
-  const native = await browser.newPage({ viewport: { width: 390, height: 740 }, isMobile: true, hasTouch: true });
+  const native = await browser.newPage({
+    viewport: { width: 390, height: 740 }, isMobile: true, hasTouch: true, userAgent: "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36",
+  });
   try {
     await native.addInitScript(() => {
       const events = {};
       const folder = { id: "notes", name: "Заметки", path: "/storage/emulated/0/Documents/Notes", started: true, mode: "two-way" };
       const status = { configured: true, kind: "drive", state: "error", message: "Доступ к Google Drive отозван", folders: [folder] };
       window.__syncTest = {
-        checks: 0, copied: [],
+        checks: 0, copied: [], colors: [],
         status: update => events["hub://sync"]({ payload: { ...status, ...update } }),
       };
       Object.defineProperty(navigator, "clipboard", { value: { writeText: async value => window.__syncTest.copied.push(value) } });
@@ -626,7 +666,8 @@ await test("настройки Android видны при скрытых пане
         core: {
           invoke: async (command, args) => {
             if (command === "hub_status") return { setupDone: true, unlocked: true, platform: "phone" };
-            if (command === "hub_info") return { version: "0.1.7" };
+            if (command === "hub_info") return { version: "0.1.8" };
+            if (command === "set_system_bar_color") window.__syncTest.colors.push(args.color);
             if (command === "sync_status") return status;
             if (command === "data_dump") return { json: { settings: { name: "Тест" }, "sync-folders/notes": folder }, blobs: {} };
             if (command === "apps_list") return [];
@@ -651,12 +692,24 @@ await test("настройки Android видны при скрытых пане
         && rect("navbar").bottom === innerHeight;
     });
     assert(await checkLayout(), "настройки занимают область между шапкой и нижней панелью");
+    await native.evaluate(() => window.__hubShell.state.setSetting("theme", "mist"));
+    await native.waitForFunction(() => window.__syncTest.colors.at(-1) === "#ece8e0");
     await native.setViewportSize({ width: 740, height: 342 });
     assert(await checkLayout(), "в альбомной ориентации у Android остаётся мобильная раскладка");
     await native.setViewportSize({ width: 390, height: 740 });
     await native.locator("#appbar-sync").getByText("Ошибка синхр.").click();
     const state = native.locator("#sync-state");
     assert((await state.innerText()).includes("Доступ к Google Drive отозван"), "показана причина из ядра");
+    await native.evaluate(() => window.__syncTest.status({
+      state: "running", phase: "send", pending: 2, lastReceived: { at: Date.now(), count: 1 },
+    }));
+    assert((await state.innerText()).includes("Отправка местных изменений"), "виден текущий этап");
+    eq(await native.locator("#sync-pending").innerText(), "2 изменения", "видна очередь");
+    assert((await native.locator("#sync-received").innerText()).includes("1 изменение"), "видна последняя загрузка");
+    await native.evaluate(() => window.__syncTest.status({
+      state: "error", phase: "send", pending: 2, problem: { code: "timeout", message: "Drive не ответил вовремя" }, retryAt: Date.now() + 60000,
+    }));
+    assert((await state.innerText()).includes("Drive не ответил вовремя. Автоповтор после"), "видна причина и время повтора");
     await native.evaluate(() => window.__syncTest.status({ state: "idle", message: "" }));
     assert((await state.innerText()).includes("Ожидает первой синхронизации"), "без успешной попытки статус показывает ожидание");
     await native.evaluate(() => window.__syncTest.status({

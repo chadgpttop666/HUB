@@ -147,10 +147,15 @@ try {
 
   await test("Обратно: мысль с телефона доходит до ПК, ПК перечитывает данные", async () => {
     const t1 = await phone.js(async () => { window.__hubShell.state.add("ответ с телефона"); return Date.now(); });
-    await phone.until(async t1 => { const s = await window.__hubShell.core.syncStatus(); return s.state === "idle" && s.lastSync > t1 + 500; }, 30000, "телефон отправил", t1);
-    await sleep(1500);
-    await pc.js(async () => { await window.__hubShell.core.syncNow(); return true; });
-    await pc.until(async () => window.__hubShell.state.items.some(i => i.text === "ответ с телефона"), 30000, "ПК получил");
+    await phone.until(async t1 => {
+      const s = await window.__hubShell.core.syncStatus();
+      return s.lastSent?.at > t1 && s.lastSent.count > 0 && s.pending === 0;
+    }, 30000, "телефон отправил", t1);
+    await pc.js(async () => { window.dispatchEvent(new Event("focus")); return true; });
+    await pc.until(async t1 => {
+      const status = await window.__hubShell.core.syncStatus();
+      return status.lastReceived?.at > t1 && window.__hubShell.state.items.some(i => i.text === "ответ с телефона");
+    }, 40000, "ПК получил автоматически", t1);
   });
 
   await test("ПК: замок и вход", async () => {

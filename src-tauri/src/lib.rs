@@ -10,6 +10,8 @@ pub mod quick;
 pub mod rclone;
 pub mod sync;
 pub mod store;
+#[cfg(target_os = "android")]
+mod system_bars;
 mod updates;
 
 use serde::Serialize;
@@ -290,6 +292,7 @@ struct HubInfo {
     platform: &'static str,
     rclone: String,
     updates_supported: bool,
+    update_mode: &'static str,
 }
 
 #[tauri::command]
@@ -301,6 +304,7 @@ fn hub_info(app: AppHandle, paths: State<'_, Paths>) -> HubInfo {
         platform: hubsvc::PLATFORM,
         rclone: rclone::locate().display().to_string(),
         updates_supported: updates::SUPPORTED,
+        update_mode: if cfg!(windows) { "windows" } else { "android" },
     }
 }
 
@@ -406,7 +410,7 @@ pub fn run() {
     }
 
     #[cfg(target_os = "android")]
-    let builder = builder.plugin(updates::android_plugin());
+    let builder = builder.plugin(updates::android_plugin()).plugin(system_bars::plugin());
 
     builder
         .manage(updates::Updates::default())
@@ -434,7 +438,7 @@ pub fn run() {
             let paths = Paths { data: base.join("data"), apps: base.join("apps") };
             fs::create_dir_all(&paths.data)?;
             fs::create_dir_all(&paths.apps)?;
-            app.manage(Store::new(paths.data.clone()));
+            app.manage(Store::with_outbox(paths.data.clone(), base.join("sync/outbox")));
             app.manage(hubsvc::Hub::new(base.clone()));
             #[cfg(desktop)]
             app.manage(desktop::Desktop::new(base.clone()));
@@ -477,6 +481,8 @@ pub fn run() {
             blob_put,
             apps_list,
             hub_info,
+            #[cfg(target_os = "android")]
+            system_bars::set_system_bar_color,
             updates::update_check,
             updates::update_install,
             #[cfg(desktop)]
@@ -499,6 +505,7 @@ pub fn run() {
             hubsvc::lock,
             hubsvc::sync_status,
             hubsvc::sync_now,
+            hubsvc::sync_activity,
             hubsvc::drive_authorize,
             hubsvc::drive_cancel,
             hubsvc::sync_connect,

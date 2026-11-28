@@ -112,9 +112,15 @@ impl Output {
     }
     pub fn err(&self) -> String {
         let s = self.stderr.trim();
-        let lower = s.to_ascii_lowercase();
-        if ["quota exceeded", "ratelimitexceeded", "rate limit exceeded"].iter().any(|m| lower.contains(m)) {
-            return "Google Drive исчерпал квоту. Проверьте лимиты Google Drive API в своём проекте Google Cloud".into();
+        match self.problem() {
+            "quota" => return "Google Drive ограничил запросы или исчерпал квоту. Проверьте лимиты Google Drive API в своём проекте Google Cloud.".into(),
+            "authorization" => return "Google отклонил вход. Подключите Drive заново с прежними Client ID и Client Secret и тем же аккаунтом.".into(),
+            "access" => return "Google Drive запретил доступ. Проверьте аккаунт, права и включён ли Google Drive API в вашем проекте.".into(),
+            "network" => return "Нет связи с Google Drive. Проверьте подключение к интернету.".into(),
+            "timeout" => return "Google Drive не ответил вовремя. Попробуйте ещё раз при устойчивом подключении.".into(),
+            "space" => return "Закончилось место на диске устройства или в Google Drive.".into(),
+            "local-access" => return "Хабу не хватает прав доступа к файлам на этом устройстве. Проверьте разрешения и путь к папке.".into(),
+            _ => {}
         }
         let last = s.lines().filter(|l| l.contains("ERROR") || l.contains("Failed") || l.contains("error")).last().unwrap_or(s.lines().last().unwrap_or(""));
         if last.is_empty() { format!("rclone завершился с кодом {}", self.code) } else { last.to_string() }
@@ -123,12 +129,39 @@ impl Output {
         matches!(self.code, 3 | 4)
     }
 
-    /// Похоже на «нет интернета», а не на ошибку
+    pub fn problem(&self) -> &'static str {
+        classify_error(&self.stderr)
+    }
+
+    /// Похоже на сетевую ошибку.
     pub fn offline(&self) -> bool {
-        let s = self.stderr.to_lowercase();
-        ["no such host", "dial tcp", "network is unreachable", "i/o timeout", "connection refused", "temporary failure in name resolution", "tls handshake timeout"]
-            .iter()
-            .any(|m| s.contains(m))
+        self.problem() == "network"
+    }
+}
+
+pub fn classify_error(message: &str) -> &'static str {
+    let s = message.to_ascii_lowercase();
+    let has = |parts: &[&str]| parts.iter().any(|part| s.contains(part));
+    if has(&["storagequotaexceeded", "storage quota", "no space left", "disk full", "недостаточно места"]) {
+        "space"
+    } else if has(&["quota exceeded", "ratelimitexceeded", "rate limit exceeded", "userratelimitexceeded", "dailylimitexceeded", "too many requests", "error 429", "квоту"]) {
+        "quota"
+    } else if has(&["invalid_grant", "invalid_client", "unauthorized_client", "invalid credentials", "token expired", "token has been expired", "error 401", "неверный oauth"]) {
+        "authorization"
+    } else if has(&["error 403", "insufficientpermissions", "accessnotconfigured", "accessdenied", "insufficient authentication scopes"]) {
+        "access"
+    } else if has(&["permission denied", "operation not permitted", "access is denied", "отказано в доступе"]) {
+        "local-access"
+    } else if has(&["timeout", "deadline exceeded", "timed out", "время ожидания истекло"]) {
+        "timeout"
+    } else if has(&["no such host", "network is unreachable", "connection refused", "connection reset", "temporary failure in name resolution", "нет связи с"]) {
+        "network"
+    } else if has(&["не запустился", "rclone завершился"]) {
+        "rclone"
+    } else if s.starts_with("журнал") {
+        "journal"
+    } else {
+        "unknown"
     }
 }
 

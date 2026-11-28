@@ -136,7 +136,7 @@ pub fn on_window_event(window: &tauri::Window, event: &WindowEvent) {
         ("main", WindowEvent::CloseRequested { api, .. }) => {
             let d = app.state::<Desktop>();
             if !d.get().close_to_tray {
-                app.state::<Hub>().flush(&app.state::<Store>());
+                let _ = app.state::<Hub>().flush(&app.state::<Store>());
                 // спрятанное мини-окно не должно держать хаб запущенным
                 if let Some(m) = app.get_webview_window(MINI) {
                     let _ = m.destroy();
@@ -199,7 +199,7 @@ pub fn tray(app: &AppHandle) -> tauri::Result<()> {
 }
 
 fn quit(app: &AppHandle) {
-    app.state::<Hub>().flush(&app.state::<Store>());
+    let _ = app.state::<Hub>().flush(&app.state::<Store>());
     app.exit(0);
 }
 

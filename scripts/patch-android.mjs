@@ -26,7 +26,7 @@ const kotlin = join(sources, "java", "local", "hub", "mobile");
 const xml = join(sources, "res", "xml");
 mkdirSync(kotlin, { recursive: true });
 mkdirSync(xml, { recursive: true });
-for (const name of ["MainActivity.kt", "UpdateInstaller.kt"]) {
+for (const name of ["MainActivity.kt", "SystemBars.kt", "UpdateInstaller.kt"]) {
   copyFileSync(join("src-tauri", "android", name), join(kotlin, name));
 }
 writeFileSync(join(xml, "hub_update_paths.xml"), '<paths><cache-path name="hub_updates" path="hub-updates/" /></paths>\n');

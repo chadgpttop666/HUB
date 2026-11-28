@@ -66,7 +66,8 @@
 .shell-app-tile:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 
 html[data-phone-layout] { --shell-titlebar: 0px; --shell-navbar-height: 80px; }
-html[data-phone-layout] :is(.shell-titlebar, .hub-rail, .hub-shell__top, .shell-desktop, .shell-hint-keys) { display: none; }
+html[data-phone-layout]:not([data-native-window]) .shell-titlebar,
+html[data-phone-layout] :is(.shell-titlebar__toggles, .hub-rail, .hub-shell__top, .shell-desktop, .shell-hint-keys) { display: none; }
 html[data-phone-layout] .shell-navbar { display: flex; position: fixed; left: 0; right: 0; bottom: 0; height: var(--shell-navbar-height);
   -webkit-backdrop-filter: none; backdrop-filter: none; }
 html[data-phone-layout]:is([data-view="app"], [data-view="none"]) .shell-navbar { display: none; }
@@ -100,6 +101,16 @@ html[data-phone-layout] #settings-sync .hub-row__body { overflow-wrap: anywhere;
 .shell-drive-copy { display: grid; gap: var(--space-3); margin-top: var(--space-4); }
 .shell-drive-copy .hub-btn { justify-self: start; }
 
+@media (max-height: 480px) {
+  .shell-lock .hub-lock { position: relative; min-height: 100%; padding: var(--space-2) var(--space-4) var(--space-8); }
+  .shell-lock .hub-lock__clock { font-size: var(--font-size-5xl); }
+  .shell-lock .hub-lock__date { margin: var(--space-1) 0 var(--space-3); }
+  .shell-lock .hub-lock__greet { font-size: var(--font-size-2xl); }
+  .shell-lock .hub-lock__form { margin-top: var(--space-3); }
+  .shell-lock .hub-lock__hint { bottom: var(--space-2); }
+  .shell-setup__body, .shell-setup__bar { margin-top: var(--space-4); }
+}
+
 /* поле пароля со своей кнопкой «показать» (встроенная кнопка WebView2 скрыта) */
 input::-ms-reveal, input::-ms-clear { display: none; }
 .shell-secret { position: relative; display: block; flex: 1; min-width: 0; }
@@ -111,7 +122,7 @@ input::-ms-reveal, input::-ms-clear { display: none; }
 
 /* ───────── заголовок окна (ПК) ─────────
    Системная рамка выключена (decorations: false), заголовок рисует хаб — прозрачный, поверх фото темы. */
-:root { --shell-titlebar: 36px; }
+:root, html[data-native-window][data-phone-layout] { --shell-titlebar: 36px; }
 .shell-titlebar { position: fixed; top: 0; left: 0; right: 0; height: var(--shell-titlebar); z-index: var(--z-shell);
   display: flex; align-items: center; gap: var(--space-2); padding: 0 0 0 var(--space-4); user-select: none;
   font-family: var(--font-body); font-size: var(--font-size-sm); color: var(--text-muted); }

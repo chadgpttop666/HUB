@@ -118,6 +118,38 @@ jobs:
       - name: Сборка
         run: npx tauri build
 
+      - name: Тихое обновление поверх 0.1.7
+        shell: pwsh
+        run: |
+          $base = Join-Path $env:RUNNER_TEMP 'Hub-0.1.7-setup.exe'
+          Invoke-WebRequest 'https://github.com/chadgpttop666/HUB/releases/download/v0.1.7/Hub-0.1.7-windows-x64-setup.exe' -OutFile $base
+          if ((Get-FileHash $base).Hash -ne '82BB64994D4340BFB751BB2E166AB29E982FD526ED3D17B63910A8BC1C34D71E') {
+            throw 'Не совпал SHA-256 предыдущего установщика'
+          }
+          $setup = (Get-ChildItem src-tauri/target/release/bundle/nsis/*-setup.exe | Select-Object -First 1).FullName
+          $destination = Join-Path $env:RUNNER_TEMP 'Hub-update-test'
+          $executable = Join-Path $destination 'hub.exe'
+          function Run-Installer($path, $arguments) {
+            $process = Start-Process -FilePath $path -ArgumentList $arguments -PassThru
+            if (!$process.WaitForExit(90000)) { $process.Kill(); throw "Таймаут установщика $path" }
+            if ($process.ExitCode -ne 0) { throw "Код выхода установщика $($process.ExitCode)" }
+          }
+          Run-Installer $base "/S /D=$destination"
+          $data = Join-Path $env:APPDATA 'local.hub.desktop'
+          New-Item -ItemType Directory -Force $data | Out-Null
+          $marker = Join-Path $data 'update-test.txt'
+          Set-Content -Path $marker -Value 'keep'
+          Run-Installer $setup "/S /UPDATE /R /D=$destination"
+          if ((Get-FileHash $executable).Hash -ne (Get-FileHash 'src-tauri/target/release/hub.exe').Hash) {
+            throw 'Исполняемый файл не обновился по существующему пути'
+          }
+          if ((Get-Content -Raw $marker).Trim() -ne 'keep') { throw 'Данные пользователя потеряны' }
+          for ($i = 0; $i -lt 40; $i++) {
+            if (Get-Process hub -ErrorAction SilentlyContinue | Where-Object Path -eq $executable) { exit 0 }
+            Start-Sleep -Milliseconds 500
+          }
+          throw 'Хаб не открылся после обновления'
+
       - name: Установщик
         uses: actions/upload-artifact@v4
         with:

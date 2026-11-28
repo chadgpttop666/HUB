@@ -271,8 +271,11 @@ pub async fn update_install(
 #[cfg(windows)]
 fn install(app: AppHandle, file: std::path::PathBuf) -> Result<&'static str, String> {
     app.state::<crate::hubsvc::Hub>()
-        .flush(&app.state::<crate::store::Store>());
+        .flush(&app.state::<crate::store::Store>())
+        .map_err(|e| format!("Хаб не смог сохранить состояние перед обновлением: {e}"))?;
+    // NSIS обновляет установленную копию на месте и заново открывает Хаб.
     std::process::Command::new(file)
+        .args(["/S", "/UPDATE", "/R"])
         .spawn()
         .map_err(|e| format!("Не удалось открыть установщик: {e}"))?;
     app.exit(0);
@@ -298,7 +301,8 @@ fn install(app: AppHandle, file: std::path::PathBuf) -> Result<&'static str, Str
     }
 
     app.state::<crate::hubsvc::Hub>()
-        .flush(&app.state::<crate::store::Store>());
+        .flush(&app.state::<crate::store::Store>())
+        .map_err(|e| format!("Хаб не смог сохранить состояние перед обновлением: {e}"))?;
     let filename = file
         .file_name()
         .and_then(|p| p.to_str())

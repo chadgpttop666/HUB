@@ -14,11 +14,14 @@
 //! Каждое изменение через обычные set/remove попадает в список для синхронизации (`take_changes`).
 
 use crate::crypto::{self, DataKey};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
+use std::collections::BTreeMap;
 use serde_json::{Map, Value};
 use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Mutex, RwLock};
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -26,15 +29,29 @@ pub struct Store {
     root: PathBuf,
     lock: Mutex<()>,
     key: RwLock<Option<DataKey>>,
-    changes: Mutex<Vec<Change>>,
+    outbox: Option<PathBuf>,
+    changes: Mutex<BTreeMap<String, Change>>,
+    last_change: AtomicU64,
 }
 
 /// Изменение ключа: для журнала синхронизации.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Change {
     pub ns: String,
     pub key: String,
     pub ts: u64,
+}
+
+pub(crate) fn local_only(ns: &str, key: &str) -> bool {
+    ns == "hub" && (key == "settings-local" || key.starts_with("device/"))
+}
+
+fn change_id(ns: &str, key: &str) -> String {
+    let mut hash = Sha256::new();
+    hash.update(ns);
+    hash.update([0]);
+    hash.update(key);
+    format!("{:x}", hash.finalize())
 }
 
 pub fn now_ms() -> u64 {
@@ -129,7 +146,7 @@ fn with_ext(base: &Path, ext: &str) -> PathBuf {
     PathBuf::from(s)
 }
 
-fn write_atomic(path: &Path, bytes: &[u8]) -> Result<(), String> {
+pub(crate) fn write_atomic(path: &Path, bytes: &[u8]) -> Result<(), String> {
     let dir = path.parent().ok_or("нет папки")?;
     fs::create_dir_all(dir).map_err(|e| format!("папка {}: {e}", dir.display()))?;
     let tmp = with_ext(path, ".tmp");
@@ -154,7 +171,35 @@ fn remove_if_exists(path: &Path) -> Result<(), String> {
 
 impl Store {
     pub fn new(root: PathBuf) -> Self {
-        Store { root, lock: Mutex::new(()), key: RwLock::new(None), changes: Mutex::new(Vec::new()) }
+        Store { root, lock: Mutex::new(()), key: RwLock::new(None), outbox: None, changes: Mutex::default(), last_change: AtomicU64::new(0) }
+    }
+
+    pub fn with_outbox(root: PathBuf, outbox: PathBuf) -> Self {
+        Self { outbox: Some(outbox), ..Self::new(root) }
+    }
+
+    /// После входа восстанавливаем правки, подтверждённые перед закрытием процесса.
+    pub fn load_outbox(&self) -> Result<(), String> {
+        let Some(dir) = &self.outbox else { return Ok(()) };
+        let entries = match fs::read_dir(dir) {
+            Ok(entries) => entries,
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(()),
+            Err(e) => return Err(format!("Очередь синхронизации: {e}")),
+        };
+        let data_key = self.data_key()?;
+        let mut changes = self.changes.lock().unwrap_or_else(|e| e.into_inner());
+        for entry in entries {
+            let path = entry.map_err(|e| e.to_string())?.path();
+            if path.extension().and_then(|ext| ext.to_str()) != Some("sealed") {
+                continue;
+            }
+            let bytes = fs::read(path).map_err(|e| format!("Очередь синхронизации: {e}"))?;
+            let change: Change = serde_json::from_slice(&crypto::open(&data_key, &bytes)?).map_err(|e| e.to_string())?;
+            let id = change_id(&change.ns, &change.key);
+            self.last_change.fetch_max(change.ts, Ordering::Relaxed);
+            changes.entry(id).or_insert(change);
+        }
+        Ok(())
     }
 
     pub fn set_key(&self, key: Option<DataKey>) {
@@ -182,19 +227,45 @@ impl Store {
         }
     }
 
-    fn record(&self, ns: &str, key: &str) {
-        self.changes.lock().unwrap_or_else(|e| e.into_inner()).push(Change { ns: ns.into(), key: key.into(), ts: now_ms() });
+    fn record(&self, ns: &str, key: &str) -> Result<(), String> {
+        if local_only(ns, key) {
+            return Ok(());
+        }
+        let id = change_id(ns, key);
+        let mut changes = self.changes.lock().unwrap_or_else(|e| e.into_inner());
+        let ts = now_ms().max(self.last_change.load(Ordering::Relaxed).saturating_add(1));
+        self.last_change.store(ts, Ordering::Relaxed);
+        let change = Change { ns: ns.into(), key: key.into(), ts };
+        // Даже при ошибке диска сохраняем правку для повтора в текущем сеансе.
+        changes.insert(id.clone(), change.clone());
+        if let Some(dir) = &self.outbox {
+            let bytes = serde_json::to_vec(&change).map_err(|e| e.to_string())?;
+            write_atomic(&dir.join(format!("{id}.sealed")), &self.seal(&bytes)?)?;
+        }
+        Ok(())
     }
 
-    /// Сколько изменений ждёт и когда было последнее (мс) — чтобы синхронизировать после паузы в правках.
-    pub fn pending_changes(&self) -> (usize, u64) {
-        let c = self.changes.lock().unwrap_or_else(|e| e.into_inner());
-        (c.len(), c.last().map(|x| x.ts).unwrap_or(0))
+    pub(crate) fn changes(&self) -> Vec<Change> {
+        self.changes.lock().unwrap_or_else(|e| e.into_inner()).values().cloned().collect()
     }
 
-    /// Изменения с прошлого вызова (для журнала синхронизации).
-    pub fn take_changes(&self) -> Vec<Change> {
-        std::mem::take(&mut *self.changes.lock().unwrap_or_else(|e| e.into_inner()))
+    /// Маркер можно снять только после записи состояния журнала на диск.
+    pub(crate) fn acknowledge_changes(&self, included: impl Fn(&Change) -> bool) -> Result<(), String> {
+        let mut changes = self.changes.lock().unwrap_or_else(|e| e.into_inner());
+        let mut result = Ok(());
+        changes.retain(|id, change| {
+            if !included(change) {
+                return true;
+            }
+            if let Some(dir) = &self.outbox {
+                if let Err(e) = remove_if_exists(&dir.join(format!("{id}.sealed"))) {
+                    result = Err(e);
+                    return true;
+                }
+            }
+            false
+        });
+        result
     }
 
     pub fn root(&self) -> &Path {
@@ -228,13 +299,15 @@ impl Store {
     }
 
     pub fn set_json(&self, ns: &str, key: &str, value: &Value) -> Result<(), String> {
-        self.set_json_quiet(ns, key, value)?;
-        self.record(ns, key);
-        Ok(())
+        self.write_json(ns, key, value, true)
     }
 
     /// Запись без отметки для синхронизации — так применяются изменения с других устройств.
     pub fn set_json_quiet(&self, ns: &str, key: &str, value: &Value) -> Result<(), String> {
+        self.write_json(ns, key, value, false)
+    }
+
+    fn write_json(&self, ns: &str, key: &str, value: &Value, track: bool) -> Result<(), String> {
         let base = self.key_base(ns, key)?;
         let compact = serde_json::to_vec(value).map_err(|e| e.to_string())?;
         // маленькие файлы — с отступами, чтобы их было удобно читать глазами
@@ -243,22 +316,28 @@ impl Store {
         let _g = self.guard();
         write_atomic(&with_ext(&base, ".json"), &bytes)?;
         remove_if_exists(&with_ext(&base, ".bin"))?;
-        remove_if_exists(&with_ext(&base, ".type"))
-    }
-
-    pub fn set_blob(&self, ns: &str, key: &str, mime: &str, bytes: &[u8]) -> Result<(), String> {
-        self.set_blob_quiet(ns, key, mime, bytes)?;
-        self.record(ns, key);
+        remove_if_exists(&with_ext(&base, ".type"))?;
+        if track { self.record(ns, key)?; }
         Ok(())
     }
 
+    pub fn set_blob(&self, ns: &str, key: &str, mime: &str, bytes: &[u8]) -> Result<(), String> {
+        self.write_blob(ns, key, mime, bytes, true)
+    }
+
     pub fn set_blob_quiet(&self, ns: &str, key: &str, mime: &str, bytes: &[u8]) -> Result<(), String> {
+        self.write_blob(ns, key, mime, bytes, false)
+    }
+
+    fn write_blob(&self, ns: &str, key: &str, mime: &str, bytes: &[u8], track: bool) -> Result<(), String> {
         let base = self.key_base(ns, key)?;
         let sealed = self.seal(bytes)?;
         let _g = self.guard();
         write_atomic(&with_ext(&base, ".bin"), &sealed)?;
         write_atomic(&with_ext(&base, ".type"), mime.as_bytes())?;
-        remove_if_exists(&with_ext(&base, ".json"))
+        remove_if_exists(&with_ext(&base, ".json"))?;
+        if track { self.record(ns, key)?; }
+        Ok(())
     }
 
     pub fn get_json(&self, ns: &str, key: &str) -> Result<Option<Value>, String> {
@@ -292,12 +371,14 @@ impl Store {
     }
 
     pub fn remove(&self, ns: &str, key: &str) -> Result<(), String> {
-        self.remove_quiet(ns, key)?;
-        self.record(ns, key);
-        Ok(())
+        self.remove_value(ns, key, true)
     }
 
     pub fn remove_quiet(&self, ns: &str, key: &str) -> Result<(), String> {
+        self.remove_value(ns, key, false)
+    }
+
+    fn remove_value(&self, ns: &str, key: &str, track: bool) -> Result<(), String> {
         self.data_key()?;
         let base = self.key_base(ns, key)?;
         let ns_dir = self.ns_dir(ns)?;
@@ -313,6 +394,7 @@ impl Store {
             }
             dir = d.parent().map(Path::to_path_buf);
         }
+        if track { self.record(ns, key)?; }
         Ok(())
     }
 
@@ -529,9 +611,10 @@ mod tests {
         s.set_json("hub", "a", &json!(1)).unwrap();
         s.set_json_quiet("hub", "b", &json!(2)).unwrap();
         s.remove("hub", "a").unwrap();
-        let ch: Vec<_> = s.take_changes().into_iter().map(|c| (c.ns, c.key)).collect();
-        assert_eq!(ch, vec![("hub".into(), "a".into()), ("hub".into(), "a".into())]);
-        assert!(s.take_changes().is_empty());
+        let ch: Vec<_> = s.changes().into_iter().map(|c| (c.ns, c.key)).collect();
+        assert_eq!(ch, vec![("hub".into(), "a".into())]);
+        s.acknowledge_changes(|_| true).unwrap();
+        assert!(s.changes().is_empty());
         assert_eq!(s.namespaces(), vec!["hub".to_string()]);
     }
 }

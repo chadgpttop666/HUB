@@ -20,7 +20,7 @@ use std::path::{Path, PathBuf};
 
 use crate::crypto::{self, DataKey};
 use crate::rclone::{Rclone, CRYPT};
-use crate::store::{now_ms, Store};
+use crate::store::{local_only, now_ms, write_atomic, Store};
 
 pub const SNAPSHOTS_KEEP: usize = 30;
 const SEP: char = '\u{1}';
@@ -42,8 +42,20 @@ pub struct State {
     pub blobs: BTreeSet<String>,
     pub bootstrapped: bool,
     pub last_sync: Option<u64>,
+    #[serde(default)]
+    pub last_sent: Option<Transfer>,
+    #[serde(default)]
+    pub key_upload_pending: bool,
+    #[serde(default)]
+    pub last_received: Option<Transfer>,
     /// папка (или "hub") → день последнего снимка
     pub snapshot_days: BTreeMap<String, String>,
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
+pub struct Transfer {
+    pub at: u64,
+    pub count: usize,
 }
 
 pub fn load_sealed<T: for<'de> Deserialize<'de> + Default>(path: &Path, key: &DataKey) -> Result<T, String> {
@@ -56,12 +68,7 @@ pub fn load_sealed<T: for<'de> Deserialize<'de> + Default>(path: &Path, key: &Da
 
 pub fn save_sealed<T: Serialize>(path: &Path, key: &DataKey, value: &T) -> Result<(), String> {
     let bytes = crypto::seal(key, &serde_json::to_vec(value).map_err(|e| e.to_string())?);
-    if let Some(d) = path.parent() {
-        fs::create_dir_all(d).map_err(|e| e.to_string())?;
-    }
-    let tmp = path.with_extension("tmp");
-    fs::write(&tmp, bytes).map_err(|e| e.to_string())?;
-    fs::rename(&tmp, path).map_err(|e| e.to_string())
+    write_atomic(path, &bytes)
 }
 
 pub fn new_device_id(prefix: &str) -> String {
@@ -76,11 +83,6 @@ fn id_of(ns: &str, key: &str) -> String {
 
 fn split_id(id: &str) -> (&str, &str) {
     id.split_once(SEP).unwrap_or((id, ""))
-}
-
-/// Ключи, которые не синхронизируются: у каждого устройства свои.
-fn local_only(ns: &str, key: &str) -> bool {
-    ns == "hub" && (key == "settings-local" || key.starts_with("device/"))
 }
 
 /* ───────── журнал ───────── */
@@ -125,14 +127,31 @@ fn crypt(path: &str) -> String {
 
 /// Отметить изменения, накопленные хранилищем: они уйдут в журнал.
 pub fn absorb(store: &Store, st: &mut State) {
-    for c in store.take_changes() {
-        if local_only(&c.ns, &c.key) {
+    for change in store.changes() {
+        let id = id_of(&change.ns, &change.key);
+        if st.versions.get(&id).is_some_and(|(ts, dev)| *ts == change.ts && *dev == st.device) {
             continue;
         }
-        let id = id_of(&c.ns, &c.key);
-        st.dirty.insert(id.clone(), c.ts);
-        st.versions.insert(id, (c.ts, st.device.clone()));
+        st.dirty.insert(id.clone(), change.ts);
+        st.versions.insert(id, (change.ts, st.device.clone()));
     }
+}
+
+pub fn pending_info(store: &Store, st: &State) -> (usize, u64) {
+    let mut count = st.dirty.len();
+    let mut last = st.dirty.values().copied().max().unwrap_or(0);
+    for change in store.changes() {
+        if !st.dirty.contains_key(&id_of(&change.ns, &change.key)) {
+            count += 1;
+        }
+        last = last.max(change.ts);
+    }
+    (count, last)
+}
+
+pub fn checkpoint(store: &Store, st: &State, path: &Path, key: &DataKey) -> Result<(), String> {
+    save_sealed(path, key, st)?;
+    store.acknowledge_changes(|c| st.versions.get(&id_of(&c.ns, &c.key)).is_some_and(|(ts, dev)| *ts == c.ts && *dev == st.device))
 }
 
 /// Первое устройство: всё, что уже есть в хабе, — в журнал.
@@ -152,14 +171,43 @@ pub fn bootstrap(store: &Store, st: &mut State) -> Result<(), String> {
     Ok(())
 }
 
-pub fn sync_hub(store: &Store, r: &Rclone, st: &mut State) -> Result<Report, SyncError> {
-    let mut rep = Report::default();
+#[derive(Clone, Copy)]
+pub enum ExchangeStep {
+    Receiving,
+    Sending,
+    ReserveSequence,
+}
+
+#[cfg(test)]
+fn sync_hub(store: &Store, r: &Rclone, st: &mut State) -> Result<Report, SyncError> {
+    let mut report = Report::default();
+    exchange(store, r, st, &mut report, |_, _| Ok(()))?;
+    store.acknowledge_changes(|c| st.versions.get(&id_of(&c.ns, &c.key)).is_some_and(|(ts, dev)| *ts == c.ts && *dev == st.device)).unwrap();
+    Ok(report)
+}
+
+pub fn exchange(
+    store: &Store,
+    r: &Rclone,
+    st: &mut State,
+    report: &mut Report,
+    mut progress: impl FnMut(ExchangeStep, &State) -> Result<(), SyncError>,
+) -> Result<(), SyncError> {
     absorb(store, st);
-    pull(store, r, st, &mut rep)?;
-    absorb(store, st); // конфликты, найденные при разборе чужих журналов, — тоже в журнал
-    push(store, r, st, &mut rep)?;
+    progress(ExchangeStep::Receiving, st)?;
+    let received = pull(store, r, st, report);
+    if report.applied > 0 {
+        st.last_received = Some(Transfer { at: now_ms(), count: report.applied });
+    }
+    received?;
+    absorb(store, st); // конфликты и правки во время загрузки входят в этот проход
+    if !st.dirty.is_empty() {
+        progress(ExchangeStep::Sending, st)?;
+        push(store, r, st, report, |st| progress(ExchangeStep::ReserveSequence, st))?;
+        st.last_sent = Some(Transfer { at: now_ms(), count: report.pushed });
+    }
     st.last_sync = Some(now_ms());
-    Ok(rep)
+    Ok(())
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -168,61 +216,54 @@ pub struct SyncError {
     /// offline | error | needs-resync | safety-abort | locked
     pub kind: String,
     pub message: String,
+    #[serde(default)]
+    pub code: String,
 }
 
 impl SyncError {
     pub fn from_output(o: &crate::rclone::Output) -> Self {
-        if o.offline() {
-            return SyncError { kind: "offline".into(), message: "нет связи с Drive".into() };
-        }
-        let s = &o.stderr;
-        if s.contains("Safety abort") || s.contains("too many deletes") {
-            let line = s.lines().find(|l| l.contains("Safety abort") || l.contains("too many deletes")).unwrap_or("").to_string();
-            return SyncError { kind: "safety-abort".into(), message: line };
+        let s = o.stderr.to_ascii_lowercase();
+        if s.contains("safety abort") || s.contains("too many deletes") {
+            return Self { kind: "safety-abort".into(), message: "Стоп-кран остановил массовое удаление. Проверьте файлы перед продолжением.".into(), code: "safety-abort".into() };
         }
         if s.contains("--resync") {
-            return SyncError { kind: "needs-resync".into(), message: o.err() };
+            return Self { kind: "needs-resync".into(), message: o.err(), code: "needs-resync".into() };
         }
-        SyncError { kind: "error".into(), message: o.err() }
+        let code = o.problem();
+        Self { kind: if code == "network" { "offline" } else { "error" }.into(), message: o.err(), code: code.into() }
     }
     pub fn msg(m: impl Into<String>) -> Self {
-        SyncError { kind: "error".into(), message: m.into() }
+        let message = m.into();
+        let code = crate::rclone::classify_error(&message);
+        SyncError { kind: if code == "network" { "offline" } else { "error" }.into(), message, code: code.into() }
     }
 }
 
 fn pull(store: &Store, r: &Rclone, st: &mut State, rep: &mut Report) -> Result<(), SyncError> {
-    let o = r.run(&["lsf", "--dirs-only", &crypt("hub/")], None);
+    let o = r.run(&["lsf", "--recursive", "--files-only", "--include", "/changes-*/*.json", &crypt("hub/")], None);
     if !o.ok {
-        if o.not_found() {
-            return Ok(());
-        }
-        return Err(SyncError::from_output(&o));
+        return if o.not_found() { Ok(()) } else { Err(SyncError::from_output(&o)) };
     }
-    let devices: Vec<String> = o
-        .text()
-        .lines()
-        .filter_map(|l| l.trim_end_matches('/').strip_prefix("changes-").map(str::to_string))
-        .filter(|d| *d != st.device)
-        .collect();
-    for dev in devices {
-        let o = r.run(&["lsf", "--files-only", &crypt(&format!("hub/changes-{dev}/"))], None);
+    let listing = o.text();
+    let mut segments: Vec<(&str, u64)> = listing.lines().filter_map(|line| {
+        let (dir, file) = line.split_once('/')?;
+        let device = dir.strip_prefix("changes-")?;
+        let seq = file.strip_suffix(".json")?.parse().ok()?;
+        (device != st.device && seq > st.seen.get(device).copied().unwrap_or(0)).then_some((device, seq))
+    }).collect();
+    segments.sort_unstable();
+    segments.dedup();
+    for (dev, seq) in segments {
+        let o = r.run(&["cat", &crypt(&format!("hub/changes-{dev}/{seq:08}.json"))], None);
         if !o.ok {
             return Err(SyncError::from_output(&o));
         }
-        let seen = st.seen.get(&dev).copied().unwrap_or(0);
-        let mut seqs: Vec<u64> = o.text().lines().filter_map(|l| l.strip_suffix(".json")?.parse().ok()).filter(|&n| n > seen).collect();
-        seqs.sort_unstable();
-        for seq in seqs {
-            let o = r.run(&["cat", &crypt(&format!("hub/changes-{dev}/{seq:08}.json"))], None);
-            if !o.ok {
-                return Err(SyncError::from_output(&o));
-            }
-            let seg: Segment = serde_json::from_slice(&o.stdout).map_err(|e| SyncError::msg(format!("журнал {dev}/{seq} не читается: {e}")))?;
-            for op in &seg.ops {
-                apply(store, r, st, op, rep)?;
-            }
-            st.seen.insert(dev.clone(), seq);
+        let seg: Segment = serde_json::from_slice(&o.stdout).map_err(|e| SyncError::msg(format!("Журнал {dev}/{seq} не читается: {e}")))?;
+        absorb(store, st);
+        for op in &seg.ops {
+            apply(store, r, st, op, rep)?;
         }
+        st.seen.insert(dev.into(), seq);
     }
     Ok(())
 }
@@ -281,10 +322,10 @@ pub fn apply(store: &Store, r: &Rclone, st: &mut State, op: &Op, rep: &mut Repor
     Ok(())
 }
 
-fn push(store: &Store, r: &Rclone, st: &mut State, rep: &mut Report) -> Result<(), SyncError> {
-    if st.dirty.is_empty() {
-        return Ok(());
-    }
+fn push(
+    store: &Store, r: &Rclone, st: &mut State, rep: &mut Report,
+    reserve_sequence: impl FnOnce(&State) -> Result<(), SyncError>,
+) -> Result<(), SyncError> {
     let mut ops = Vec::new();
     let pending: Vec<(String, u64)> = st.dirty.iter().map(|(k, v)| (k.clone(), *v)).collect();
     for (id, ts) in &pending {
@@ -309,14 +350,16 @@ fn push(store: &Store, r: &Rclone, st: &mut State, rep: &mut Report) -> Result<(
         }
         ops.push(op);
     }
-    let seq = st.seq + 1;
+    // Номер резервируется на диске до отправки. После прерывания не перезапишем уже загруженный сегмент.
+    st.seq += 1;
+    reserve_sequence(st)?;
+    let seq = st.seq;
     let seg = Segment { v: 1, dev: st.device.clone(), seq, ops };
     let bytes = serde_json::to_vec(&seg).map_err(|e| SyncError::msg(e.to_string()))?;
     let o = r.run(&["rcat", &crypt(&format!("hub/changes-{}/{seq:08}.json", st.device))], Some(&bytes));
     if !o.ok {
         return Err(SyncError::from_output(&o));
     }
-    st.seq = seq;
     for (id, ts) in pending {
         if st.dirty.get(&id) == Some(&ts) {
             st.dirty.remove(&id);
@@ -634,7 +677,6 @@ mod tests {
         pc.store.set_json("hub", "inbox/a", &json!({"text": "мысль с ПК"})).unwrap();
         pc.store.set_json("repetition", "localstorage/tb-records", &json!([{"title": "Кант"}])).unwrap();
         pc.store.set_blob("repetition", "indexeddb/media/files_blobs/s1/blob", "video/mp4", &[0u8, 1, 2, 250, 251]).unwrap();
-        pc.store.take_changes();
         bootstrap(&pc.store, &mut pc.st).unwrap();
         let rep = sync_hub(&pc.store, &r, &mut pc.st).unwrap();
         assert_eq!(rep.pushed, 3);
@@ -681,6 +723,53 @@ mod tests {
         assert!(!snapshot(&r, &mut pc.st, "hub", "hub").unwrap());
         let o = r.run(&["lsf", "--dirs-only", &crypt("snapshots/hub/")], None);
         assert_eq!(o.text().trim(), format!("{}/", today()));
+    }
+
+    #[test]
+    fn pending_edits_and_sequence_survive_restart() {
+        let root = tempfile::tempdir().unwrap();
+        let drive = tempfile::tempdir().unwrap();
+        let key = DataKey::random();
+        let Some(rclone) = rc(drive.path(), &key) else { return };
+        let data = root.path().join("data");
+        let outbox = root.path().join("outbox");
+        let state_path = root.path().join("state.json");
+        let first = Store::with_outbox(data.clone(), outbox.clone());
+        first.set_key(Some(key.clone()));
+        let initial = State { device: "phone".into(), bootstrapped: true, ..Default::default() };
+        checkpoint(&first, &initial, &state_path, &key).unwrap();
+        first.set_json("hub", "inbox/retained", &json!({"text": "до перезапуска"})).unwrap();
+        let marker = fs::read_dir(&outbox).unwrap().next().unwrap().unwrap().path();
+        assert!(crypto::is_sealed(&fs::read(marker).unwrap()));
+        drop(first);
+
+        let resumed = Store::with_outbox(data, outbox);
+        resumed.set_key(Some(key.clone()));
+        resumed.load_outbox().unwrap();
+        assert_eq!(resumed.changes().len(), 1);
+        let mut state = load_sealed(&state_path, &key).unwrap();
+        let mut report = Report::default();
+        let interrupted = exchange(&resumed, &rclone, &mut state, &mut report, |step, st| {
+            if matches!(step, ExchangeStep::Receiving | ExchangeStep::ReserveSequence) {
+                checkpoint(&resumed, st, &state_path, &key).map_err(SyncError::msg)?;
+            }
+            if matches!(step, ExchangeStep::ReserveSequence) {
+                return Err(SyncError::msg("прерывание перед отправкой"));
+            }
+            Ok(())
+        });
+        assert!(interrupted.is_err());
+        assert_eq!(resumed.changes().len(), 0);
+        let mut restored: State = load_sealed(&state_path, &key).unwrap();
+        assert_eq!(restored.dirty.len(), 1);
+        assert_eq!(restored.seq, 1);
+        assert_eq!(sync_hub(&resumed, &rclone, &mut restored).unwrap().pushed, 1);
+        assert_eq!(restored.seq, 2);
+        assert_eq!(restored.last_sent.unwrap().count, 1);
+        let mut receiver = dev("pc", &key);
+        assert_eq!(sync_hub(&receiver.store, &rclone, &mut receiver.st).unwrap().applied, 1);
+        assert_eq!(receiver.st.last_received.unwrap().count, 1);
+        assert_eq!(receiver.store.get_json("hub", "inbox/retained").unwrap(), Some(json!({"text": "до перезапуска"})));
     }
 
     #[test]

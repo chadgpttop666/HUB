@@ -2,6 +2,7 @@
 //!
 //! Файлы устройства (в папке данных приложения, рядом с data/):
 //!   keys.json         запертый ключ данных (пароль и ключ восстановления); сам по себе бесполезен
+//!   sync/outbox/     подтверждённые правки до записи в журнал — зашифрованы
 //!   sync/state.json   журналы, версии, номер устройства — зашифровано ключом данных
 //!   sync/target.json  куда синхронизировать и токен Drive — зашифровано
 //!   sync/folders.json где на этом устройстве лежат помеченные папки — зашифровано
@@ -23,8 +24,10 @@ use crate::store::{now_ms, Store};
 use crate::sync::{self, FolderDef, SyncError};
 
 pub const PLATFORM: &str = if cfg!(any(target_os = "android", target_os = "ios")) { "phone" } else { "pc" };
-const IDLE_SYNC_MS: u64 = 5 * 60 * 1000;
-const QUIET_AFTER_EDIT_MS: u64 = 4000;
+const FOREGROUND_SYNC_MS: u64 = 30 * 1000;
+const BACKGROUND_SYNC_MS: u64 = 5 * 60 * 1000;
+const QUIET_AFTER_EDIT_MS: u64 = 2000;
+const MIN_RESUME_CHECK_MS: u64 = 5000;
 const RETRY_MS: u64 = 60 * 1000;
 
 #[derive(Serialize, Deserialize, Default, Clone, Debug)]
@@ -45,17 +48,51 @@ struct Runtime {
     target: Option<Target>,
     folders: BTreeMap<String, LocalFolder>,
     rclone: Option<Rclone>,
-    status: String,
-    message: String,
+    progress: SyncProgress,
     keys_pending: bool,
-    last_try: u64,
+    last_maintenance: u64,
+    generation: u64,
+    device: String,
 }
 
 pub struct Hub {
     base: PathBuf,
     rt: Mutex<Runtime>,
-    wake: (Mutex<bool>, Condvar),
+    wake: (Mutex<Wake>, Condvar),
+    foreground: AtomicBool,
     busy: AtomicBool,
+}
+
+#[derive(Default)]
+struct Wake {
+    manual: bool,
+    activity: bool,
+}
+
+#[derive(Clone, Default, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SyncProgress {
+    /// off | idle | running | offline | error
+    state: String,
+    phase: &'static str,
+    detail: String,
+    problem: Option<SyncError>,
+    maintenance_problem: Option<SyncError>,
+    last_sync: Option<u64>,
+    last_sent: Option<sync::Transfer>,
+    last_received: Option<sync::Transfer>,
+    last_attempt: Option<u64>,
+    retry_at: Option<u64>,
+    pending: usize,
+}
+
+impl SyncProgress {
+    fn observe(&mut self, store: &Store, st: &sync::State) {
+        self.last_sync = st.last_sync;
+        self.last_sent = st.last_sent;
+        self.last_received = st.last_received;
+        self.pending = sync::pending_info(store, st).0;
+    }
 }
 
 #[derive(Serialize, Clone)]
@@ -76,17 +113,15 @@ pub struct FolderStatus {
 pub struct SyncStatus {
     pub configured: bool,
     pub kind: String,
-    /// off | idle | running | offline | error
-    pub state: String,
-    pub message: String,
-    pub last_sync: Option<u64>,
+    #[serde(flatten)]
+    progress: SyncProgress,
     pub device: String,
     pub folders: Vec<FolderStatus>,
 }
 
 impl Hub {
     pub fn new(base: PathBuf) -> Self {
-        Hub { base, rt: Mutex::new(Runtime::default()), wake: (Mutex::new(false), Condvar::new()), busy: AtomicBool::new(false) }
+        Hub { base, rt: Mutex::new(Runtime::default()), wake: (Mutex::default(), Condvar::new()), foreground: AtomicBool::new(true), busy: AtomicBool::new(false) }
     }
     fn keys_path(&self) -> PathBuf {
         self.base.join("keys.json")
@@ -107,17 +142,19 @@ impl Hub {
     }
     /// Номер этого устройства (известен, когда хаб открыт); иначе — «pc»/«phone».
     pub fn device(&self) -> String {
-        self.rt().state.as_ref().map(|s| s.device.clone()).filter(|d| !d.is_empty()).unwrap_or_else(|| PLATFORM.to_string())
+        let rt = self.rt();
+        if rt.device.is_empty() { PLATFORM.into() } else { rt.device.clone() }
     }
     pub fn quick(&self) -> crate::quick::Quick {
         crate::quick::Quick::new(&self.base)
     }
     /// Сохранить состояние синхронизации перед выходом из программы.
-    pub fn flush(&self, store: &Store) {
+    pub fn flush(&self, store: &Store) -> Result<(), String> {
         if store.is_open() {
             let mut rt = self.rt();
-            let _ = self.save_runtime(store, &mut rt);
+            self.save_runtime(store, &mut rt)?;
         }
+        Ok(())
     }
     /// После входа: ключ корзины на месте, мысли из мини-окна, оставленные при запертом хабе, — в корзине.
     fn opened(&self, store: &Store) {
@@ -129,12 +166,13 @@ impl Hub {
     }
     pub fn poke(&self) {
         let (m, c) = &self.wake;
-        *m.lock().unwrap_or_else(|e| e.into_inner()) = true;
+        m.lock().unwrap_or_else(|e| e.into_inner()).manual = true;
         c.notify_all();
     }
 
     /// После входа: состояние синхронизации этого устройства.
-    fn open_runtime(&self, key: &DataKey) -> Result<(), String> {
+    fn open_runtime(&self, store: &Store, key: &DataKey) -> Result<(), String> {
+        store.load_outbox()?;
         let dir = self.sync_dir();
         let mut state: sync::State = sync::load_sealed(&dir.join("state.json"), key)?;
         if state.device.is_empty() {
@@ -146,12 +184,15 @@ impl Hub {
         };
         let folders: BTreeMap<String, LocalFolder> = sync::load_sealed(&dir.join("folders.json"), key)?;
         let mut rt = self.rt();
+        rt.generation += 1;
+        rt.device = state.device.clone();
+        rt.keys_pending = state.key_upload_pending;
+        rt.progress = SyncProgress { state: "idle".into(), ..Default::default() };
+        rt.progress.observe(store, &state);
         rt.state = Some(state);
         rt.target = target;
         rt.folders = folders;
         rt.rclone = None;
-        rt.status = "idle".into();
-        rt.message.clear();
         Ok(())
     }
 
@@ -159,8 +200,9 @@ impl Hub {
         let key = store.data_key()?;
         let dir = self.sync_dir();
         if let Some(st) = rt.state.as_mut() {
+            st.key_upload_pending = rt.keys_pending;
             sync::absorb(store, st);
-            sync::save_sealed(&dir.join("state.json"), &key, st)?;
+            sync::checkpoint(store, st, &dir.join("state.json"), &key)?;
         }
         sync::save_sealed(&dir.join("target.json"), &key, &rt.target.clone().unwrap_or_default())?;
         sync::save_sealed(&dir.join("folders.json"), &key, &rt.folders)?;
@@ -187,10 +229,14 @@ impl Hub {
             (SyncStatus {
                 configured: rt.target.is_some(),
                 kind: rt.target.as_ref().map(|t| t.kind.clone()).unwrap_or_default(),
-                state: if rt.target.is_none() { "off".into() } else { rt.status.clone() },
-                message: rt.message.clone(),
-                last_sync: rt.state.as_ref().and_then(|s| s.last_sync),
-                device: rt.state.as_ref().map(|s| s.device.clone()).unwrap_or_default(),
+                progress: if rt.target.is_none() {
+                    SyncProgress { state: "off".into(), ..Default::default() }
+                } else {
+                    let mut progress = rt.progress.clone();
+                    if let Some(st) = &rt.state { progress.observe(store, st); }
+                    progress
+                },
+                device: rt.device.clone(),
                 folders: vec![],
             }, rt.folders.clone())
         };
@@ -214,138 +260,201 @@ impl Hub {
         status
     }
 
-    /// Один проход: данные хаба, снимок, ключи, папки.
-    pub fn run_once(&self, app: &AppHandle) {
-        let store = app.state::<Store>();
-        if !store.is_open() || self.busy.swap(true, Ordering::SeqCst) {
-            return;
-        }
-        let emit_status = |h: &Hub| {
-            let _ = app.emit("hub://sync", h.status(&store));
+    fn phase(
+        &self, app: &AppHandle, generation: u64, st: &sync::State, phase: &'static str, detail: String,
+    ) -> Result<(), SyncError> {
+        let progress = {
+            let mut rt = self.rt();
+            if rt.generation != generation {
+                return Err(SyncError::msg("Сеанс синхронизации завершён"));
+            }
+            rt.progress.observe(&app.state::<Store>(), st);
+            rt.progress.phase = phase;
+            rt.progress.detail = detail;
+            rt.progress.clone()
         };
-        {
-            let mut rt = self.rt();
-            if rt.target.is_none() || rt.state.is_none() {
-                self.busy.store(false, Ordering::SeqCst);
-                return;
-            }
-            rt.status = "running".into();
-            rt.last_try = now_ms();
+        let _ = app.emit("hub://sync-progress", progress);
+        Ok(())
+    }
+
+    fn checkpoint(&self, store: &Store, generation: u64, st: &sync::State) -> Result<(), SyncError> {
+        let rt = self.rt();
+        if rt.generation != generation {
+            return Err(SyncError::msg("Сеанс синхронизации завершён"));
         }
-        emit_status(self);
-        let result = (|| -> Result<(), SyncError> {
+        let key = store.data_key().map_err(SyncError::msg)?;
+        sync::checkpoint(store, st, &self.sync_dir().join("state.json"), &key).map_err(SyncError::msg)
+    }
+
+    fn run_once(&self, app: &AppHandle, maintenance: bool) {
+        let store = app.state::<Store>();
+        let (generation, mut st) = {
             let mut rt = self.rt();
-            self.rclone(&store, &mut rt).map_err(SyncError::msg)?;
-            let r = rt.rclone.as_ref().expect("rclone есть").clone();
-            let mut st = rt.state.take().expect("состояние есть");
-            drop(rt);
-            let mut res = (|| {
-                if !st.bootstrapped {
-                    sync::bootstrap(&store, &mut st).map_err(SyncError::msg)?;
+            if !store.is_open() || rt.target.is_none() { return; }
+            let Some(st) = rt.state.take() else { return };
+            self.busy.store(true, Ordering::SeqCst);
+            rt.progress.state = "running".into();
+            rt.progress.problem = None;
+            rt.progress.last_attempt = Some(now_ms());
+            rt.progress.retry_at = None;
+            (rt.generation, st)
+        };
+        let mut report = sync::Report::default();
+        let mut result = (|| {
+            self.phase(app, generation, &st, "prepare", String::new())?;
+            let r = {
+                let mut rt = self.rt();
+                if rt.generation != generation { return Err(SyncError::msg("Сеанс синхронизации завершён")); }
+                self.rclone(&store, &mut rt).map_err(SyncError::msg)?;
+                rt.rclone.as_ref().expect("rclone есть").clone()
+            };
+            if !st.bootstrapped {
+                sync::bootstrap(&store, &mut st).map_err(SyncError::msg)?;
+            }
+            let exchange = sync::exchange(&store, &r, &mut st, &mut report, |step, st| match step {
+                sync::ExchangeStep::Receiving => {
+                    self.checkpoint(&store, generation, st)?;
+                    self.phase(app, generation, st, "receive", String::new())
                 }
-                let rep = sync::sync_hub(&store, &r, &mut st)?;
-                if !rep.changed.is_empty() {
-                    let _ = app.emit("hub://data-changed", json!({ "namespaces": rep.changed }));
-                }
-                let _ = sync::snapshot(&r, &mut st, "hub", "hub");
-                Ok::<_, SyncError>(rep)
-            })();
-            // ключи на Drive (после смены пароля или первого подключения)
-            let keys_pending = self.rt().keys_pending;
-            if res.is_ok() && keys_pending {
-                let target = self.rt().target.clone();
-                if let (Some(kf), Some(t)) = (self.read_keys(), target) {
-                    let upload = (|| {
-                        let base = Rclone::base(&t).map_err(SyncError::msg)?;
-                        let json = serde_json::to_vec_pretty(&kf).map_err(|e| SyncError::msg(e.to_string()))?;
-                        let o = base.run(&["rcat", &rclone::base_path(&t, "keys.json")], Some(&json));
-                        if o.ok { Ok(()) } else { Err(SyncError::from_output(&o)) }
-                    })();
-                    match upload {
-                        Ok(()) => self.rt().keys_pending = false,
-                        Err(e) => res = Err(e),
-                    }
+                sync::ExchangeStep::Sending => self.phase(app, generation, st, "send", String::new()),
+                sync::ExchangeStep::ReserveSequence => self.checkpoint(&store, generation, st),
+            });
+            // Фиксируем получение и отправку до резервного копирования, даже если успела только одна стадия.
+            self.checkpoint(&store, generation, &st)?;
+            if !report.changed.is_empty() {
+                let _ = app.emit("hub://data-changed", json!({ "namespaces": report.changed }));
+            }
+            exchange?;
+
+            let key_target = {
+                let rt = self.rt();
+                if rt.generation != generation { return Ok(()); }
+                rt.keys_pending.then(|| rt.target.clone()).flatten()
+            };
+            if let Some(target) = key_target {
+                self.phase(app, generation, &st, "keys", String::new())?;
+                let kf = self.read_keys().ok_or_else(|| SyncError::msg("Локальный файл ключей не читается"))?;
+                let base = Rclone::base(&target).map_err(SyncError::msg)?;
+                let json = serde_json::to_vec_pretty(&kf).map_err(|e| SyncError::msg(e.to_string()))?;
+                let o = base.run(&["rcat", &rclone::base_path(&target, "keys.json")], Some(&json));
+                if !o.ok { return Err(SyncError::from_output(&o)); }
+                let mut rt = self.rt();
+                if rt.generation == generation {
+                    // Если одновременно сменили пароль, следующий проход должен загрузить новый файл.
+                    rt.keys_pending = self.read_keys().and_then(|current| serde_json::to_vec_pretty(&current).ok()).as_deref() != Some(json.as_slice());
+                    st.key_upload_pending = rt.keys_pending;
                 }
             }
-            // папки
-            let defs = if res.is_ok() { Self::folder_defs(&store) } else { vec![] };
-            let wd = self.sync_dir().join("bisync");
-            for def in defs {
-                let lf = self.rt().folders.get(&def.id).cloned();
-                let Some(mut lf) = lf else { continue };
-                if !lf.started || lf.path.is_empty() || lf.problem.as_ref().map(|p| p.kind != "offline" && p.kind != "error").unwrap_or(false) {
-                    continue; // ждёт пробного прогона или решения человека (стоп-кран, пересинхронизация)
+
+            if maintenance {
+                let maintenance_problem = self.maintain(app, &store, generation, &r, &mut st)?;
+                let mut rt = self.rt();
+                if rt.generation == generation {
+                    rt.progress.maintenance_problem = maintenance_problem;
+                    rt.last_maintenance = now_ms();
                 }
-                match sync::folder_sync(&r, &def, Path::new(&lf.path), &wd.join(&def.id), false, false) {
-                    Ok(_) => {
-                        lf.problem = None;
-                        lf.last_sync = Some(now_ms());
-                        let _ = sync::snapshot(&r, &mut st, &format!("folder-{}", def.id), &format!("folders/{}", def.id));
-                    }
-                    Err(e) => lf.problem = Some(e),
-                }
-                self.rt().folders.insert(def.id.clone(), lf);
             }
-            let mut rt = self.rt();
-            rt.state = Some(st);
-            let _ = self.save_runtime(&store, &mut rt);
-            res.map(|_| ())
+            Ok(())
         })();
         {
             let mut rt = self.rt();
-            match result {
-                Ok(()) => {
-                    rt.status = "idle".into();
-                    rt.message.clear();
+            if rt.generation == generation {
+                sync::absorb(&store, &mut st);
+                rt.progress.observe(&store, &st);
+                rt.state = Some(st);
+                if let Err(err) = self.save_runtime(&store, &mut rt) {
+                    if result.is_ok() {
+                        rt.progress.phase = "save";
+                        result = Err(SyncError::msg(err));
+                    }
                 }
-                Err(e) => {
-                    rt.status = if e.kind == "offline" { "offline".into() } else { "error".into() };
-                    rt.message = e.message;
+                match result {
+                    Ok(()) => {
+                        rt.progress.state = "idle".into();
+                        rt.progress.phase = "";
+                        rt.progress.detail.clear();
+                    }
+                    Err(err) => {
+                        rt.progress.state = if err.kind == "offline" { "offline".into() } else { "error".into() };
+                        rt.progress.problem = Some(err);
+                        rt.progress.retry_at = Some(now_ms().saturating_add(RETRY_MS));
+                    }
                 }
             }
         }
         self.busy.store(false, Ordering::SeqCst);
-        emit_status(self);
+        let _ = app.emit("hub://sync", self.status(&store));
     }
 
-    /// Фоновая работа: после паузы в правках, раз в 5 минут и по просьбе.
-    pub fn spawn_worker(app: AppHandle) {
-        std::thread::spawn(move || loop {
-            let hub = app.state::<Hub>();
-            {
-                let (m, c) = &hub.wake;
-                let guard = m.lock().unwrap_or_else(|e| e.into_inner());
-                let (mut g, _) = c.wait_timeout(guard, Duration::from_secs(3)).unwrap_or_else(|e| e.into_inner());
-                let forced = *g;
-                *g = false;
-                drop(g);
-                let store = app.state::<Store>();
-                if !store.is_open() {
-                    continue;
-                }
-                // правки ждут отправки: новые в хранилище или уже отмеченные, но не ушедшие (сделаны во время прошлой синхронизации)
-                let (n, last_change) = store.pending_changes();
-                let (last_sync, dirty_last, failing, last_try) = {
-                    let rt = hub.rt();
-                    let st = rt.state.as_ref();
-                    (
-                        st.and_then(|s| s.last_sync).unwrap_or(0),
-                        st.and_then(|s| s.dirty.values().max().copied()),
-                        rt.status == "offline" || rt.status == "error",
-                        rt.last_try,
-                    )
-                };
-                let now = now_ms();
-                let edited = if n > 0 { Some(last_change) } else { dirty_last };
-                let quiet = edited.map(|t| now.saturating_sub(t) > QUIET_AFTER_EDIT_MS).unwrap_or(false);
-                // без сети или после ошибки — не чаще раза в минуту
-                let backoff = failing && now.saturating_sub(last_try) < RETRY_MS;
-                let due = forced || (!backoff && (quiet || now.saturating_sub(last_sync.max(last_try)) > IDLE_SYNC_MS));
-                if !due {
-                    continue;
-                }
+    fn maintain(
+        &self, app: &AppHandle, store: &Store, generation: u64, r: &Rclone, st: &mut sync::State,
+    ) -> Result<Option<SyncError>, SyncError> {
+        self.phase(app, generation, st, "snapshot", String::new())?;
+        let mut warning = sync::snapshot(r, st, "hub", "hub").err();
+        let wd = self.sync_dir().join("bisync");
+        for def in Self::folder_defs(store) {
+            let folder = self.rt().folders.get(&def.id).cloned();
+            let Some(mut folder) = folder else { continue };
+            if !folder.started || folder.path.is_empty() || folder.problem.as_ref().is_some_and(|p| !["offline", "error"].contains(&p.kind.as_str())) {
+                continue;
             }
-            hub.run_once(&app);
+            self.phase(app, generation, st, "folders", def.name.clone())?;
+            match sync::folder_sync(r, &def, Path::new(&folder.path), &wd.join(&def.id), false, false) {
+                Ok(_) => {
+                    folder.problem = None;
+                    folder.last_sync = Some(now_ms());
+                    self.phase(app, generation, st, "snapshot", def.name.clone())?;
+                    if let Err(err) = sync::snapshot(r, st, &format!("folder-{}", def.id), &format!("folders/{}", def.id)) {
+                        warning = Some(err);
+                    }
+                }
+                Err(err) => folder.problem = Some(err),
+            }
+            let mut rt = self.rt();
+            if rt.generation != generation { return Ok(warning); }
+            rt.folders.insert(def.id, folder);
+        }
+        Ok(warning)
+    }
+
+    /// В открытом Хабе проверяем новые данные чаще. Снимки и папки — по прежнему интервалу.
+    pub fn spawn_worker(app: AppHandle) {
+        std::thread::spawn(move || {
+            let mut previous_pending = 0;
+            loop {
+                let hub = app.state::<Hub>();
+                let wake = {
+                    let (m, c) = &hub.wake;
+                    let guard = m.lock().unwrap_or_else(|e| e.into_inner());
+                    let (mut flags, _) = c.wait_timeout_while(guard, Duration::from_secs(1), |w| !w.manual && !w.activity)
+                        .unwrap_or_else(|e| e.into_inner());
+                    std::mem::take(&mut *flags)
+                };
+                let store = app.state::<Store>();
+                if !store.is_open() { continue; }
+                let foreground = hub.foreground.load(Ordering::SeqCst);
+                let now = now_ms();
+                let (due, maintenance, progress) = {
+                    let mut rt = hub.rt();
+                    if rt.target.is_none() { continue; }
+                    let Some(st) = &rt.state else { continue };
+                    let (pending, last_edit) = sync::pending_info(&store, st);
+                    let quiet_period_done = pending > 0 && now.saturating_sub(last_edit) >= QUIET_AFTER_EDIT_MS;
+                    let leaving_with_edits = wake.activity && !foreground && pending > 0;
+                    let since_attempt = now.saturating_sub(rt.progress.last_attempt.unwrap_or(0));
+                    let resumed = wake.activity && foreground && since_attempt >= MIN_RESUME_CHECK_MS;
+                    let interval = if foreground { FOREGROUND_SYNC_MS } else { BACKGROUND_SYNC_MS };
+                    let due = wake.manual || (rt.progress.retry_at.is_none_or(|retry| now >= retry)
+                        && (quiet_period_done || leaving_with_edits || resumed || since_attempt >= interval));
+                    let maintenance = wake.manual || now.saturating_sub(rt.last_maintenance) >= BACKGROUND_SYNC_MS;
+                    rt.progress.pending = pending;
+                    let progress = (pending != previous_pending).then(|| rt.progress.clone());
+                    previous_pending = pending;
+                    (due, maintenance, progress)
+                };
+                if due { hub.run_once(&app, maintenance); }
+                else if let Some(progress) = progress { let _ = app.emit("hub://sync-progress", progress); }
+            }
         });
     }
 }
@@ -382,9 +491,8 @@ pub async fn setup_create(hub: State<'_, Hub>, store: State<'_, Store>, password
     let c = crypto::create(&password)?;
     store.set_key(Some(c.key.clone()));
     store.encrypt_all()?;
-    store.take_changes();
     hub.write_keys(&c.file)?;
-    hub.open_runtime(&c.key)?;
+    hub.open_runtime(&store, &c.key)?;
     hub.opened(&store);
     Ok(c.recovery)
 }
@@ -394,7 +502,7 @@ pub async fn unlock(app: AppHandle, hub: State<'_, Hub>, store: State<'_, Store>
     let kf = hub.read_keys().ok_or("Хаб ещё не настроен")?;
     let key = crypto::unlock_password(&kf, &password)?;
     store.set_key(Some(key.clone()));
-    hub.open_runtime(&key)?;
+    hub.open_runtime(&store, &key)?;
     hub.opened(&store);
     let _ = app.emit("hub://sync", hub.status(&store));
     hub.poke();
@@ -409,7 +517,7 @@ pub async fn unlock_with_recovery(hub: State<'_, Hub>, store: State<'_, Store>, 
     let kf2 = crypto::change_password(&kf, &key, &new_password)?;
     hub.write_keys(&kf2)?;
     store.set_key(Some(key.clone()));
-    hub.open_runtime(&key)?;
+    hub.open_runtime(&store, &key)?;
     hub.opened(&store);
     hub.rt().keys_pending = true;
     hub.poke();
@@ -436,7 +544,7 @@ pub fn lock(hub: State<'_, Hub>, store: State<'_, Store>) -> Result<(), String> 
         if store.is_open() {
             let _ = hub.save_runtime(&store, &mut rt);
         }
-        *rt = Runtime::default();
+        *rt = Runtime { generation: rt.generation + 1, ..Runtime::default() };
     }
     store.set_key(None);
     Ok(())
@@ -453,6 +561,14 @@ pub async fn sync_status(app: AppHandle) -> Result<SyncStatus, String> {
 #[tauri::command]
 pub fn sync_now(hub: State<'_, Hub>) {
     hub.poke();
+}
+
+#[tauri::command]
+pub fn sync_activity(hub: State<'_, Hub>, foreground: bool) {
+    hub.foreground.store(foreground, Ordering::SeqCst);
+    let (flags, wake) = &hub.wake;
+    flags.lock().unwrap_or_else(|e| e.into_inner()).activity = true;
+    wake.notify_all();
 }
 
 /// Проверка без Google: HUB_SYNC_LOCAL=<папка> — «Drive» изображает обычная папка (только для тестов).
@@ -555,8 +671,7 @@ pub async fn setup_join(app: AppHandle, hub: State<'_, Hub>, store: State<'_, St
     hub.write_keys(&kf)?;
     store.set_key(Some(key.clone()));
     store.encrypt_all()?;
-    store.take_changes();
-    hub.open_runtime(&key)?;
+    hub.open_runtime(&store, &key)?;
     hub.opened(&store);
     {
         let mut rt = hub.rt();
@@ -574,6 +689,9 @@ pub async fn setup_join(app: AppHandle, hub: State<'_, Hub>, store: State<'_, St
 #[tauri::command]
 pub fn sync_disconnect(hub: State<'_, Hub>, store: State<'_, Store>) -> Result<(), String> {
     let mut rt = hub.rt();
+    if hub.busy.load(Ordering::SeqCst) {
+        return Err("Дождитесь окончания синхронизации перед отключением".into());
+    }
     rt.target = None;
     rt.rclone = None;
     hub.save_runtime(&store, &mut rt)

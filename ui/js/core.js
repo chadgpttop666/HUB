@@ -29,6 +29,7 @@ const tauriCore = {
   async notify(title, body) { try { await T.core.invoke("notify", { title, body }); } catch (e) { console.warn(e); } },
   async info() { return T.core.invoke("hub_info"); },
   openDevTools: () => T.core.invoke("open_devtools"),
+  setSystemBarColor: color => T.core.invoke("set_system_bar_color", { color }),
   updateCheck: () => T.core.invoke("update_check"),
   updateInstall: () => T.core.invoke("update_install"),
   async openDataDir() { return T.core.invoke("open_data_dir"); },
@@ -48,6 +49,7 @@ const tauriCore = {
   driveCancel: () => T.core.invoke("drive_cancel"),
   syncStatus: () => T.core.invoke("sync_status"),
   syncNow: () => T.core.invoke("sync_now"),
+  syncActivity: foreground => T.core.invoke("sync_activity", { foreground }),
   driveAuthorize: ({ clientId = "", clientSecret = "" } = {}) => T.core.invoke("drive_authorize", { clientId, clientSecret }),
   syncConnect: target => T.core.invoke("sync_connect", { target: Object.assign({ kind: "drive", token: "", clientId: "", clientSecret: "", path: "" }, target) }),
   syncDisconnect: () => T.core.invoke("sync_disconnect"),
@@ -64,6 +66,7 @@ const tauriCore = {
     catch (e) { console.warn(e); return null; }
   },
   onSync(cb) { T.event.listen("hub://sync", e => cb(e.payload)); },
+  onSyncProgress(cb) { T.event.listen("hub://sync-progress", e => cb(e.payload)); },
   onDataChanged(cb) { T.event.listen("hub://data-changed", e => cb(e.payload)); },
   /* пакеты: приложения и темы из папки или zip */
   inspectPackage: path => T.core.invoke("package_inspect", { path }),

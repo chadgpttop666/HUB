@@ -6,21 +6,43 @@ import { copyField } from "./help.js";
 const H = window.HubUI;
 const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const hm = d => `${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}`;
+const hms = new Intl.DateTimeFormat("ru-RU", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 const fmtDay = new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "long" });
-function when(ms) {
+function when(ms, seconds = false) {
   if (!ms) return "";
   const d = new Date(ms), now = new Date();
-  return d.toDateString() === now.toDateString() ? hm(d) : `${fmtDay.format(d)}, ${hm(d)}`;
+  const time = seconds ? hms.format(d) : hm(d);
+  return d.toDateString() === now.toDateString() ? time : `${fmtDay.format(d)}, ${time}`;
 }
 
 export let syncStatus = { configured: false, state: "off", folders: [] };
 export function setSyncStatus(s) { if (s) syncStatus = s; }
+export function setSyncProgress(s) { syncStatus = { ...syncStatus, ...s }; }
+
+const phases = {
+  prepare: "Подготовка подключения",
+  receive: "Проверка и получение данных",
+  send: "Отправка местных изменений",
+  keys: "Отправка ключей Хаба",
+  folders: "Синхронизация папки",
+  snapshot: "Резервное копирование",
+  save: "Запись состояния на устройство",
+};
+function phaseText(st) {
+  const label = phases[st.phase] || "Синхронизация";
+  return st.detail ? `${label} · ${st.detail}` : label;
+}
+const problemText = st => st.problem?.message || st.message || "";
+const pendingText = count => H.plural(count, ["изменение", "изменения", "изменений"]);
+function transferText(transfer) {
+  return transfer ? `${when(transfer.at, true)} · ${pendingText(transfer.count)}` : "—";
+}
 
 export function folderConflicts(st = syncStatus) { return (st.folders || []).reduce((n, f) => n + (f.conflicts || []).length, 0); }
 export function folderProblems(st = syncStatus) { return (st.folders || []).filter(f => !f.path || !f.started || f.problem).length; }
 
 export function syncPillTarget(dataConflicts) {
-  if (["error", "offline"].includes(syncStatus.state)) return "sync";
+  if (["error", "offline", "running"].includes(syncStatus.state) || syncStatus.pending || syncStatus.maintenanceProblem) return "sync";
   if (dataConflicts) return "sync-conflicts";
   if (folderConflicts() || folderProblems()) return "folders";
   return "sync";
@@ -35,9 +57,11 @@ export function syncPill(dataConflicts, style) {
   const target = syncPillTarget(dataConflicts);
   let state = "ok", icon = "cloud-check", text = `Синхронизировано · ${when(st.lastSync)}`, short = "";
   if (!st.lastSync) { state = "pending"; icon = "clock"; text = "Ожидает первой синхронизации"; }
-  if (st.state === "running") { state = "busy"; icon = "refresh-cw"; text = "Синхронизация…"; }
+  if (st.state === "running") { state = "busy"; icon = "refresh-cw"; text = `${phaseText(st)}…`; }
   else if (st.state === "offline") { state = "offline"; icon = "cloud-off"; text = "Нет сети · данные сохранены на устройстве"; short = "Нет сети"; }
   else if (st.state === "error") { state = "conflict"; icon = "triangle-alert"; text = "Синхронизация не прошла"; short = "Ошибка синхр."; }
+  else if (st.pending) { state = "pending"; icon = "clock"; text = `${pendingText(st.pending)} в очереди отправки`; short = "Ждёт отправки"; }
+  else if (st.maintenanceProblem) { state = "conflict"; icon = "triangle-alert"; text = "Снимок не создан"; short = "Ошибка снимка"; }
   else if (target !== "sync") {
     state = "conflict"; icon = "triangle-alert";
     text = conflicts ? H.plural(conflicts, ["конфликт", "конфликта", "конфликтов"]) : H.plural(attention, ["папка ждёт решения", "папки ждут решения", "папок ждут решения"]);
@@ -45,7 +69,8 @@ export function syncPill(dataConflicts, style) {
   }
   const visible = style === "phone" && short;
   const cls = style === "full" ? "" : visible ? " shell-sync-label" : " hub-sync--icon";
-  const reason = target === "sync" && st.state !== "running" && st.message ? `${text} · ${st.message}` : text;
+  const error = problemText(st);
+  const reason = target === "sync" && st.state !== "running" && error ? `${text} · ${error}` : text;
   return `<button class="hub-sync${cls}" type="button" data-state="${state}" data-go="sync" title="${esc(reason)}" aria-label="${esc(reason)}"><i data-icon="${icon}"></i><span>${esc(visible || text)}</span></button>`;
 }
 
@@ -66,16 +91,27 @@ export function renderSyncSettings(el, ctx) {
         <p class="hub-hint" id="sync-msg" role="status" style="margin-top:var(--space-3)"></p>` : `
         <dl class="shell-kv">
           <dt>Состояние</dt><dd id="sync-state" aria-live="polite"></dd>
-          <dt>Последний раз</dt><dd id="sync-last"></dd>
+          <dt>На отправку</dt><dd id="sync-pending"></dd>
+          <dt>Последняя отправка</dt><dd id="sync-sent"></dd>
+          <dt>Последнее получение</dt><dd id="sync-received"></dd>
+          <dt>Последний обмен</dt><dd id="sync-last"></dd>
+          <dt>Последняя попытка</dt><dd id="sync-attempt"></dd>
           <dt>Хранилище</dt><dd>${st.kind === "local" ? "папка (проверка)" : "Google Drive, папка «Hub»"}</dd>
           <dt>Это устройство</dt><dd>${esc(st.device)}</dd>
         </dl>
+        <p class="hub-hint hub-hint--warning" id="sync-maintenance" hidden></p>
         <div class="hub-btn-row" style="margin-top:var(--space-4)">
           <button class="hub-btn" type="button" data-sync="now"><i data-icon="refresh-cw"></i>Синхронизировать</button>
           ${st.kind === "drive" ? `<button class="hub-btn" type="button" data-sync="drive-client"><i data-icon="key-round"></i>Показать ключи Google Drive</button>` : ""}
           <button class="hub-btn hub-btn--quiet" type="button" data-sync="rclone"><i data-icon="key-round"></i>Пароли для rclone</button>
           <button class="hub-btn hub-btn--quiet" type="button" data-sync="disconnect">Отключить на этом устройстве</button>
         </div>
+        <details class="shell-guide">
+          <summary>Когда приходят изменения и что может задержать обмен</summary>
+          <p>Хаб отправляет местные правки после короткой паузы. Открытый Хаб проверяет Drive примерно раз в 30 секунд и при возвращении в окно. «Последняя отправка» показывает, когда изменения принял Drive. На втором устройстве «Последнее получение» показывает, когда Хаб применил правки.</p>
+          <p>Когда Android приостанавливает Хаб, очередь сохраняется на телефоне. При следующем открытии отправка продолжится. Для проверки можно нажать «Синхронизировать» сначала на телефоне, а после отправки — на ПК.</p>
+          <p>Сеть и таймаут требуют устойчивого соединения. Ошибка входа может означать истёкшее разрешение Google. Ошибка доступа или квоты указывает на аккаунт либо настройки Google Drive API. Для помеченных папок проверьте также доступ к файлам и сообщения стоп-крана под папкой.</p>
+        </details>
         <p class="hub-hint" style="margin-top:var(--space-3)">Страховка: ежедневный снимок данных и каждой папки на Drive (хранятся 30 последних); стоп-кран останавливает синхронизацию папки, если удаляется больше половины файлов.</p>`}
     </section>
 
@@ -122,17 +158,29 @@ export function renderSyncSettings(el, ctx) {
 export function updateSyncSettingsStatus(el) {
   const status = el?.querySelector("#sync-state");
   if (!status) return;
-  const { state, message, lastSync } = syncStatus;
+  const st = syncStatus;
+  const error = problemText(st);
   const label = {
-    idle: lastSync ? "Синхронизировано" : "Ожидает первой синхронизации",
-    running: "Идёт синхронизация",
-    offline: "Нет сети. Данные сохранены на устройстве",
+    idle: st.pending ? "Ждём отправки" : st.lastSync ? "Синхронизировано" : "Ожидает первой синхронизации",
+    running: `${phaseText(st)}…`,
+    offline: "Потеряна связь с хранилищем",
     error: "Синхронизация не прошла",
-  }[state] || state;
-  status.textContent = message && state !== "running" ? `${label}. ${message}` : label;
-  el.querySelector("#sync-last").textContent = when(lastSync) || (state === "running" ? "проверяем…" : "ещё не было");
+  }[st.state] || st.state;
+  const failed = st.state === "error" || st.state === "offline";
+  const retry = failed && st.retryAt ? ` Автоповтор после ${when(st.retryAt, true)}.` : "";
+  const reason = error && !/[.!?…]$/.test(error) ? `${error}.` : error;
+  status.textContent = failed && reason ? `${label}${st.phase ? ` · ${phaseText(st)}` : ""}. ${reason}${retry}` : label;
+  el.querySelector("#sync-pending").textContent = st.pending ? pendingText(st.pending) : "Очередь пуста";
+  el.querySelector("#sync-sent").textContent = transferText(st.lastSent);
+  el.querySelector("#sync-received").textContent = transferText(st.lastReceived);
+  el.querySelector("#sync-last").textContent = when(st.lastSync, true) || "ещё не было";
+  el.querySelector("#sync-attempt").textContent = when(st.lastAttempt, true) || "—";
+  const maintenance = el.querySelector("#sync-maintenance");
+  maintenance.hidden = !st.maintenanceProblem;
+  maintenance.textContent = st.maintenanceProblem ? `Снимок не создан. ${st.maintenanceProblem.message}` : "";
   const button = el.querySelector('[data-sync="now"]');
-  button.disabled = state === "running";
+  button.disabled = st.state === "running";
+  el.querySelector('[data-sync="disconnect"]').disabled = button.disabled;
   if (button.disabled) button.setAttribute("aria-busy", "true");
   else button.removeAttribute("aria-busy");
 }
@@ -320,7 +368,7 @@ function wire(el, ctx) {
           toast(r === "first" ? "Google Drive подключён — первая синхронизация через пару секунд" : "Хаб снова подключён к Drive", { tone: "success", icon: "circle-check" });
           await refresh();
         });
-      } else if (d.sync === "now") { await core.syncNow(); toast("Синхронизация пошла", { icon: "refresh-cw" }); }
+      } else if (d.sync === "now") { await core.syncNow(); toast("Запрос на синхронизацию отправлен", { icon: "refresh-cw" }); }
       else if (d.sync === "disconnect") { await core.syncDisconnect(); toast("Синхронизация на этом устройстве выключена. Данные на Drive остались", { icon: "cloud-off" }); refresh(); }
       else if (d.sync === "drive-client") showDriveClient();
       else if (d.sync === "rclone") {

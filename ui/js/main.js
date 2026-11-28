@@ -3,7 +3,7 @@ import { core, inTauri } from "./core.js";
 import { HubState, tagsOf, setDevice, DEVICE } from "./state.js";
 import { AppHost } from "./host.js";
 import { runSetup, runLock } from "./lock.js";
-import { renderSyncSettings, setSyncStatus, syncPill, syncPillTarget, syncStatus, updateSyncFolderList, updateSyncSettingsStatus } from "./syncui.js";
+import { renderSyncSettings, setSyncStatus, syncPill, syncPillTarget, syncStatus, setSyncProgress, updateSyncFolderList, updateSyncSettingsStatus } from "./syncui.js";
 import { watchSecrets } from "./secret.js";
 import { pickAndInstall, uninstall, watchDrops } from "./install.js";
 import { themeEditor, greetingText } from "./themes.js";
@@ -84,6 +84,24 @@ const themePhoto = t => {
 };
 function themePayload() { const t = currentTheme(); return { id: t.id, name: t.name, base: t.base, tokens: t.tokens || {} }; }
 let appliedTokens = {}, appliedTheme;
+let lastBarColor;
+function updateSystemBar() {
+  if (!inTauri || platform !== "phone" || !/Android/i.test(navigator.userAgent)) return;
+  const background = getComputedStyle(html).getPropertyValue("--bg").trim();
+  if (background === lastBarColor) return;
+  lastBarColor = background;
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = 1;
+  const context = canvas.getContext("2d");
+  if (!context) return;
+  context.fillStyle = "#0d1511";
+  context.fillRect(0, 0, 1, 1);
+  context.fillStyle = background;
+  context.fillRect(0, 0, 1, 1);
+  const [r, g, b] = context.getImageData(0, 0, 1, 1).data;
+  const color = "#" + [r, g, b].map(x => x.toString(16).padStart(2, "0")).join("");
+  core.setSystemBarColor(color).catch(() => { if (lastBarColor === background) lastBarColor = undefined; });
+}
 function applyTheme() {
   const t = currentTheme();
   const photo = themePhoto(t), position = t.photoPosition || "50% 38%";
@@ -97,6 +115,7 @@ function applyTheme() {
     appliedTokens = tokens;
     html.style.setProperty("--hub-photo", photo);
     html.style.setProperty("--hub-photo-pos", position);
+    updateSystemBar();
     if (host) host.broadcastTheme();
   }
   try {
@@ -722,7 +741,7 @@ function renderSettings() {
   const updates = $("#settings-updates");
   core.info().then(info => {
     for (const field of infoFields) field.textContent = info[field.dataset.info] || "—";
-    if (updates.isConnected && info.updatesSupported) renderUpdates(updates, info.version);
+    if (updates.isConnected && info.updatesSupported) renderUpdates(updates, info.version, info.updateMode);
   }).catch(() => {});
   if (inTauri && platform !== "phone") {
     const pc = $("#settings-pc");
@@ -1008,6 +1027,18 @@ core.onSync(st => {
     updateSyncFolderList(panel, state.folders);
   }
 });
+if (inTauri) {
+  core.onSyncProgress(progress => {
+    if (!unlocked || !syncStatus.configured) return;
+    setSyncProgress(progress);
+    renderSyncPills();
+    updateSyncSettingsStatus($("#settings-sync"));
+  });
+  const reportActivity = () => core.syncActivity(!document.hidden).catch(() => {});
+  document.addEventListener("visibilitychange", reportActivity);
+  window.addEventListener("focus", reportActivity);
+  window.addEventListener("online", reportActivity);
+}
 core.onDataChanged(async ({ namespaces = [] } = {}) => {
   if (!unlocked) return;
   if (namespaces.includes("hub")) {
@@ -1038,6 +1069,7 @@ async function start() {
   platform = st.platform || "pc";
   html.dataset.platform = platform;
   updatePhoneLayout();
+  updateSystemBar();
   html.dataset.view = "none";
   if (core.nativeWindow) html.dataset.nativeWindow = "";
   H.icons($("#titlebar"));
