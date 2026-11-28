@@ -550,7 +550,7 @@ pub async fn setup_join(app: AppHandle, hub: State<'_, Hub>, store: State<'_, St
         return Err("Хаб на этом устройстве уже настроен".into());
     }
     let target = test_target(target);
-    let kf = remote_keys(&target)?.ok_or("На этом Drive хаба нет — сначала настройте хаб на первом устройстве и включите там синхронизацию")?;
+    let kf = remote_keys(&target)?.ok_or("Хаб не видит существующую папку «Hub». Войдите в тот же аккаунт Google с Client ID и Client Secret с первого устройства. На первом устройстве дождитесь синхронизации.")?;
     let key = crypto::unlock_password(&kf, &password)?;
     hub.write_keys(&kf)?;
     store.set_key(Some(key.clone()));
@@ -577,6 +577,27 @@ pub fn sync_disconnect(hub: State<'_, Hub>, store: State<'_, Store>) -> Result<(
     rt.target = None;
     rt.rclone = None;
     hub.save_runtime(&store, &mut rt)
+}
+
+/// OAuth-пара текущего подключения, без токена и только после повторного ввода пароля.
+#[tauri::command]
+pub async fn sync_saved_drive_client(app: AppHandle, password: String) -> Result<Value, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let hub = app.state::<Hub>();
+        let store = app.state::<Store>();
+        if !store.is_open() {
+            return Err("Сначала разблокируйте Хаб".into());
+        }
+        let kf = hub.read_keys().ok_or("Хаб ещё не настроен")?;
+        crypto::unlock_password(&kf, &password)?;
+        let rt = hub.rt();
+        let target = rt.target.as_ref().filter(|t| t.kind == "drive")
+            .ok_or("На этом устройстве нет сохранённого подключения Google Drive")?;
+        if target.client_id.trim().is_empty() || target.client_secret.trim().is_empty() {
+            return Err("В этом подключении нет сохранённой пары Client ID и Client Secret".into());
+        }
+        Ok(json!({ "clientId": &target.client_id, "clientSecret": &target.client_secret }))
+    }).await.map_err(|e| e.to_string())?
 }
 
 /// Пароли crypt для обычного rclone — только после повторного ввода пароля хаба.

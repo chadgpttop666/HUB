@@ -65,33 +65,40 @@
   border: 0; border-radius: var(--radius-md); background: transparent; color: var(--text); font-family: var(--font-body); font-size: var(--font-size-sm); text-align: center; cursor: pointer; }
 .shell-app-tile:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 
-@media (max-width: 600px) {
-  .hub-rail, .hub-shell__top, .shell-desktop, .shell-hint-keys { display: none !important; }
-  .shell-navbar { display: flex; position: fixed; left: 0; right: 0; bottom: 0; }
-  html[data-view="app"] .shell-navbar, html[data-view="none"] .shell-navbar { display: none; }
-  .shell-apps:not([hidden]) { display: flex; }
-  .shell-appbar { display: flex; }
-  html[data-view="settings"] .shell-appbar [data-go="back"] { visibility: hidden; }
-  .hub-shell { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); gap: 0; padding: 0; }
-  .hub-shell__main { border-radius: var(--radius) var(--radius) 0 0; border-bottom: 0; }
-  html[data-view="settings"] .hub-shell__main { margin-bottom: 80px; }
-  .shell-page { padding: var(--space-4) var(--space-4) var(--space-12); }
-  .hub-today { padding: var(--space-3) var(--space-4) calc(80px + var(--space-6)); gap: var(--space-4); }
-  .hub-today .hub-topbar { flex-wrap: wrap; }
-  .shell-capture-wrap { margin-top: var(--space-2); }
-  .shell-cards { grid-template-columns: minmax(0, 1fr); margin-top: 0; }
-  .shell-triage { margin-top: 0; }
-  .shell-triage .hub-targets { grid-template-columns: minmax(0, 1fr); }
-  .shell-triage .hub-triage__actions { flex-wrap: wrap; }
-  .shell-triage .hub-hint { display: none; }
-  .shell-triage .hub-menu { position: fixed; left: 0 !important; right: 0; bottom: 0; top: auto; width: auto;
-    padding: var(--space-3) var(--space-2) var(--space-8); border-radius: var(--radius-xl) var(--radius-xl) 0 0; }
-  .shell-triage .hub-menu .hub-menu__item { min-height: 48px; }
-  .hub-toasts { bottom: calc(80px + var(--space-4)); }
-  html[data-view="app"] .hub-toasts { bottom: var(--space-6); }
-  .shell-setup { padding: var(--space-6) var(--space-4); }
-  .shell-kv, .shell-keys { grid-template-columns: minmax(0, 1fr); }
-}
+html[data-phone-layout] { --shell-titlebar: 0px; --shell-navbar-height: 80px; }
+html[data-phone-layout] :is(.shell-titlebar, .hub-rail, .hub-shell__top, .shell-desktop, .shell-hint-keys) { display: none; }
+html[data-phone-layout] .shell-navbar { display: flex; position: fixed; left: 0; right: 0; bottom: 0; height: var(--shell-navbar-height);
+  -webkit-backdrop-filter: none; backdrop-filter: none; }
+html[data-phone-layout]:is([data-view="app"], [data-view="none"]) .shell-navbar { display: none; }
+html[data-phone-layout] .shell-apps:not([hidden]), html[data-phone-layout] .shell-appbar { display: flex; }
+html[data-phone-layout][data-view="settings"] .shell-appbar [data-go="back"] { display: none; }
+html[data-phone-layout] .hub-shell { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); gap: 0; padding: 0; }
+html[data-phone-layout] .shell-appbar { grid-row: 1; padding-inline: var(--space-2); }
+html[data-phone-layout] .hub-shell__main { grid-row: 2; border-radius: var(--radius) var(--radius) 0 0; border-bottom: 0; }
+html[data-phone-layout][data-view="settings"] .hub-shell { bottom: var(--shell-navbar-height); }
+html[data-phone-layout] .shell-page { padding: var(--space-4) var(--space-4) var(--space-8); }
+html[data-phone-layout] .hub-today { bottom: var(--shell-navbar-height); padding: var(--space-3) var(--space-4) var(--space-6); gap: var(--space-4); }
+html[data-phone-layout] .hub-today .hub-topbar { flex-wrap: wrap; }
+html[data-phone-layout] .shell-capture-wrap { margin-top: var(--space-2); }
+html[data-phone-layout] .shell-cards { grid-template-columns: minmax(0, 1fr); margin-top: 0; }
+html[data-phone-layout] .shell-triage { margin-top: 0; }
+html[data-phone-layout] .shell-triage .hub-targets { grid-template-columns: minmax(0, 1fr); }
+html[data-phone-layout] .shell-triage .hub-triage__actions { flex-wrap: wrap; }
+html[data-phone-layout] .shell-triage .hub-hint { display: none; }
+html[data-phone-layout] .shell-triage .hub-menu { position: fixed; left: 0 !important; right: 0; bottom: 0; top: auto; width: auto;
+  padding: var(--space-3) var(--space-2) var(--space-8); border-radius: var(--radius-xl) var(--radius-xl) 0 0; }
+html[data-phone-layout] .shell-triage .hub-menu .hub-menu__item { min-height: 48px; }
+html[data-phone-layout] .hub-toasts { bottom: calc(var(--shell-navbar-height) + var(--space-4)); }
+html[data-phone-layout]:is([data-view="app"], [data-view="none"]) .hub-toasts { bottom: var(--space-6); }
+html[data-phone-layout] .shell-setup { padding: var(--space-6) var(--space-4); }
+html[data-phone-layout] :is(.shell-kv, .shell-keys) { grid-template-columns: minmax(0, 1fr); }
+html[data-phone-layout] #settings-sync .hub-row { flex-wrap: wrap; }
+html[data-phone-layout] #settings-sync .hub-row__body { overflow-wrap: anywhere; }
+
+.shell-sync-label { min-height: 44px; font-size: var(--font-size-xs); }
+.shell-sync-label[data-state="conflict"] { color: var(--warning); }
+.shell-drive-copy { display: grid; gap: var(--space-3); margin-top: var(--space-4); }
+.shell-drive-copy .hub-btn { justify-self: start; }
 
 /* поле пароля со своей кнопкой «показать» (встроенная кнопка WebView2 скрыта) */
 input::-ms-reveal, input::-ms-clear { display: none; }
@@ -135,17 +142,13 @@ html:not([data-native-window]) .shell-titlebar__win { display: none; }
 .hub-today, .hub-shell, .shell-lock { top: var(--shell-titlebar); }
 .hub-shell { inset: var(--shell-titlebar) 0 0 0; }
 
-/* панели, которые можно спрятать: боковая и строка ввода сверху */
-html[data-rail="off"] .hub-shell .hub-rail { display: none; }
-html[data-rail="off"] .hub-shell { grid-template-columns: minmax(0, 1fr); }
-html[data-top="off"]:not([data-top-peek]) .hub-shell .hub-shell__top { display: none; }
-html[data-top="off"]:not([data-top-peek]) .hub-shell { grid-template-rows: minmax(0, 1fr); }
-html[data-rail="off"][data-top="off"] .hub-shell { padding: 0 var(--space-3) var(--space-3); gap: var(--space-3); }
+/* панели ПК, которые можно спрятать: боковая и строка ввода сверху */
+html:not([data-phone-layout])[data-rail="off"] .hub-shell .hub-rail { display: none; }
+html:not([data-phone-layout])[data-rail="off"] .hub-shell { grid-template-columns: minmax(0, 1fr); }
+html:not([data-phone-layout])[data-top="off"]:not([data-top-peek]) .hub-shell .hub-shell__top { display: none; }
+html:not([data-phone-layout])[data-top="off"]:not([data-top-peek]) .hub-shell { grid-template-rows: minmax(0, 1fr); }
+html:not([data-phone-layout])[data-rail="off"][data-top="off"] .hub-shell { padding: 0 var(--space-3) var(--space-3); gap: var(--space-3); }
 
-@media (max-width: 600px) {
-  .shell-titlebar { display: none; }
-  :root { --shell-titlebar: 0px; }
-}
 /* замок и статус — в заголовке окна; в шапке оболочки они бы повторялись */
 html:not([data-platform="phone"]) .hub-shell__top .hub-topbar__right { display: none; }
 

@@ -51,6 +51,7 @@ const tauriCore = {
   driveAuthorize: ({ clientId = "", clientSecret = "" } = {}) => T.core.invoke("drive_authorize", { clientId, clientSecret }),
   syncConnect: target => T.core.invoke("sync_connect", { target: Object.assign({ kind: "drive", token: "", clientId: "", clientSecret: "", path: "" }, target) }),
   syncDisconnect: () => T.core.invoke("sync_disconnect"),
+  savedDriveClient: password => T.core.invoke("sync_saved_drive_client", { password }),
   rclonePasswords: password => T.core.invoke("sync_rclone_passwords", { password }),
   folderAdd: (path, name, mode, exclude = []) => T.core.invoke("folder_add", { path, name, mode, exclude }),
   folderPlace: (id, path) => T.core.invoke("folder_place", { id, path }),

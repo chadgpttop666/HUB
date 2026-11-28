@@ -12,7 +12,9 @@ const THEME_PROMPT = `Собери тему для Хаба.
 
 export function driveGuide() {
   return `<details class="shell-guide">
-    <summary>Как получить Client ID и Client Secret</summary>
+    <summary>Где взять Client ID и Client Secret</summary>
+    <p>Если Drive уже подключён на другом устройстве, откройте на нём «Настройки» → «Синхронизация» → «Показать ключи Google Drive». Используйте сохранённую пару и тот же аккаунт Google, чтобы Хаб увидел прежнюю папку.</p>
+    <p>Если подключаете Drive впервые, создайте свой OAuth-клиент.</p>
     <ol>
       <li>Откройте <a href="https://console.cloud.google.com/" target="_blank" rel="noopener" data-external>Google Cloud Console</a> и создайте проект или выберите существующий.</li>
       <li>В этом проекте откройте <a href="https://console.cloud.google.com/apis/library/drive.googleapis.com" target="_blank" rel="noopener" data-external>Google Drive API</a> и нажмите «Включить».</li>
@@ -54,21 +56,24 @@ export function showAiPrompt(kind, toast) {
   const field = dlg.querySelector("textarea");
   field.value = theme ? THEME_PROMPT : APP_PROMPT;
   dlg.querySelector("#copy-prompt").addEventListener("click", async () => {
-    try {
-      if (navigator.clipboard) await navigator.clipboard.writeText(field.value);
-      else {
-        field.select();
-        if (!document.execCommand("copy")) throw new Error();
-      }
-      toast("Запрос скопирован", { icon: "check" });
-    } catch {
-      field.select();
-      if (document.execCommand("copy")) toast("Запрос скопирован", { icon: "check" });
-      else toast("Запрос выделен. Нажмите Ctrl+C или выберите «Копировать»", { icon: "info" });
-    }
+    if (await copyField(field)) toast("Запрос скопирован", { icon: "check" });
+    else toast("Запрос выделен. Нажмите Ctrl+C или выберите «Копировать»", { icon: "info" });
   });
   dlg.addEventListener("close", () => dlg.remove(), { once: true });
   dlg.showModal();
+}
+
+export async function copyField(field) {
+  try {
+    if (navigator.clipboard) {
+      await navigator.clipboard.writeText(field.value);
+      return true;
+    }
+  } catch { /* системный буфер может быть недоступен в WebView */ }
+  field.focus();
+  field.select();
+  try { return document.execCommand("copy"); }
+  catch { return false; }
 }
 
 // В нативном окне Google Cloud открывается в системном браузере.

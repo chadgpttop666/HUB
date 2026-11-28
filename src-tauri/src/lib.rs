@@ -504,6 +504,7 @@ pub fn run() {
             hubsvc::sync_connect,
             hubsvc::sync_disconnect,
             hubsvc::sync_rclone_passwords,
+            hubsvc::sync_saved_drive_client,
             hubsvc::folder_add,
             hubsvc::folder_place,
             hubsvc::folder_preview,

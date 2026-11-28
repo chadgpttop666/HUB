@@ -3,7 +3,7 @@ import { core, inTauri } from "./core.js";
 import { HubState, tagsOf, setDevice, DEVICE } from "./state.js";
 import { AppHost } from "./host.js";
 import { runSetup, runLock } from "./lock.js";
-import { renderSyncSettings, setSyncStatus, syncPill, syncStatus, updateSyncSettingsStatus } from "./syncui.js";
+import { renderSyncSettings, setSyncStatus, syncPill, syncPillTarget, syncStatus, updateSyncFolderList, updateSyncSettingsStatus } from "./syncui.js";
 import { watchSecrets } from "./secret.js";
 import { pickAndInstall, uninstall, watchDrops } from "./install.js";
 import { themeEditor, greetingText } from "./themes.js";
@@ -166,7 +166,10 @@ function go(name) {
   if (name === "apps") { view = { name: "apps", app: null }; showScreen("apps"); renderApps(); remember(); return; }
   if (name === "today") { view = { name: "today", app: null }; showScreen("today"); renderToday(); remember(); if (!isPhone()) focusCapture(); }
   else if (name === "triage") startTriage();
-  else if (name === "sync") { go("settings"); $("#sync")?.scrollIntoView({ block: "start" }); }
+  else if (name === "sync") {
+    go("settings");
+    $(`#${syncPillTarget((state.conflicts || []).length)}`)?.scrollIntoView({ block: "start" });
+  }
   else if (name === "lock") lockNow();
   else if (name === "settings") {
     view = { name: "settings", app: null };
@@ -177,8 +180,10 @@ function go(name) {
   }
 }
 const phoneMQ = window.matchMedia("(max-width: 600px)");
-const isPhone = () => phoneMQ.matches;
+const isPhone = () => platform === "phone" || phoneMQ.matches;
+const updatePhoneLayout = () => html.toggleAttribute("data-phone-layout", isPhone());
 function phoneCapture() {
+  updatePhoneLayout();
   const f = $("#capture-main");
   f.classList.toggle("hub-capture--phone", isPhone());
   const send = f.querySelector(".hub-capture__send");
@@ -238,10 +243,10 @@ function renderHello() {
 }
 function renderSyncPills() {
   const conflicts = (state.conflicts || []).length;
-  for (const [sel, compact] of [["#today-sync", isPhone()], ["#shell-sync", true], ["#appbar-sync", true], ["#titlebar-sync", true]]) {
+  for (const [sel, style] of [["#today-sync", isPhone() ? "phone" : "full"], ["#shell-sync", "icon"], ["#appbar-sync", "phone"], ["#titlebar-sync", "icon"]]) {
     const el = $(sel);
     if (!el) continue;
-    el.innerHTML = syncPill(conflicts, compact);
+    el.innerHTML = syncPill(conflicts, style);
     H.icons(el);
   }
 }
@@ -993,10 +998,15 @@ async function lockNow() {
 
 /* синхронизация: статус и чужие правки */
 core.onSync(st => {
+  const previousFolders = syncStatus.folders;
   setSyncStatus(st);
   if (!unlocked) return;
   renderSyncPills();
-  updateSyncSettingsStatus($("#settings-sync"));
+  const panel = $("#settings-sync");
+  updateSyncSettingsStatus(panel);
+  if (view.name === "settings" && JSON.stringify(previousFolders) !== JSON.stringify(syncStatus.folders)) {
+    updateSyncFolderList(panel, state.folders);
+  }
 });
 core.onDataChanged(async ({ namespaces = [] } = {}) => {
   if (!unlocked) return;
@@ -1027,6 +1037,7 @@ async function start() {
   const st = await core.status();
   platform = st.platform || "pc";
   html.dataset.platform = platform;
+  updatePhoneLayout();
   html.dataset.view = "none";
   if (core.nativeWindow) html.dataset.nativeWindow = "";
   H.icons($("#titlebar"));

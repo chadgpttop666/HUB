@@ -1,6 +1,7 @@
 /* syncui.js — статус синхронизации в шапке и разделы настроек: синхронизация, папки, конфликты, безопасность. */
 import { core, inTauri } from "./core.js";
 import { bindDriveClient, driveClientFields, withDriveClient } from "./lock.js";
+import { copyField } from "./help.js";
 
 const H = window.HubUI;
 const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -16,31 +17,44 @@ export let syncStatus = { configured: false, state: "off", folders: [] };
 export function setSyncStatus(s) { if (s) syncStatus = s; }
 
 export function folderConflicts(st = syncStatus) { return (st.folders || []).reduce((n, f) => n + (f.conflicts || []).length, 0); }
-export function folderProblems(st = syncStatus) { return (st.folders || []).filter(f => !f.path || !f.started || (f.problem && !["offline", "error"].includes(f.problem.kind))).length; }
+export function folderProblems(st = syncStatus) { return (st.folders || []).filter(f => !f.path || !f.started || f.problem).length; }
+
+export function syncPillTarget(dataConflicts) {
+  if (["error", "offline"].includes(syncStatus.state)) return "sync";
+  if (dataConflicts) return "sync-conflicts";
+  if (folderConflicts() || folderProblems()) return "folders";
+  return "sync";
+}
 
 /* строка статуса в шапке (компонент «Статус синхронизации») */
-export function syncPill(dataConflicts, compact) {
+export function syncPill(dataConflicts, style) {
   const st = syncStatus;
   if (!st.configured) return "";
   const conflicts = dataConflicts + folderConflicts(st);
   const attention = folderProblems(st);
-  let state = "ok", icon = "cloud-check", text = st.lastSync ? `синхронизировано · ${when(st.lastSync)}` : "синхронизировано";
-  if (st.state === "running") { state = "busy"; icon = "refresh-cw"; text = "синхронизация…"; }
-  else if (st.state === "offline") { state = "offline"; icon = "cloud-off"; text = "нет сети · всё сохранено здесь"; }
-  if (st.state === "error") { state = "conflict"; icon = "triangle-alert"; text = "синхронизация не прошла"; }
-  if (attention) { state = "conflict"; icon = "triangle-alert"; text = H.plural(attention, ["папка ждёт решения", "папки ждут решения", "папок ждут решения"]); }
-  if (conflicts) { state = "conflict"; icon = "triangle-alert"; text = `${H.plural(conflicts, ["конфликт", "конфликта", "конфликтов"])}`; }
-  const cls = `hub-sync${compact ? " hub-sync--icon" : ""}`;
-  return `<button class="${cls}" type="button" data-state="${state}" data-go="sync" title="${esc(text)}"><i data-icon="${icon}"></i><span>${esc(text)}</span></button>`;
+  const target = syncPillTarget(dataConflicts);
+  let state = "ok", icon = "cloud-check", text = `Синхронизировано · ${when(st.lastSync)}`, short = "";
+  if (!st.lastSync) { state = "pending"; icon = "clock"; text = "Ожидает первой синхронизации"; }
+  if (st.state === "running") { state = "busy"; icon = "refresh-cw"; text = "Синхронизация…"; }
+  else if (st.state === "offline") { state = "offline"; icon = "cloud-off"; text = "Нет сети · данные сохранены на устройстве"; short = "Нет сети"; }
+  else if (st.state === "error") { state = "conflict"; icon = "triangle-alert"; text = "Синхронизация не прошла"; short = "Ошибка синхр."; }
+  else if (target !== "sync") {
+    state = "conflict"; icon = "triangle-alert";
+    text = conflicts ? H.plural(conflicts, ["конфликт", "конфликта", "конфликтов"]) : H.plural(attention, ["папка ждёт решения", "папки ждут решения", "папок ждут решения"]);
+    short = conflicts ? "Конфликты" : "Папки";
+  }
+  const visible = style === "phone" && short;
+  const cls = style === "full" ? "" : visible ? " shell-sync-label" : " hub-sync--icon";
+  const reason = target === "sync" && st.state !== "running" && st.message ? `${text} · ${st.message}` : text;
+  return `<button class="hub-sync${cls}" type="button" data-state="${state}" data-go="sync" title="${esc(reason)}" aria-label="${esc(reason)}"><i data-icon="${icon}"></i><span>${esc(visible || text)}</span></button>`;
 }
 
 /* ───────── настройки ───────── */
 
 export function renderSyncSettings(el, ctx) {
-  const { state, toast, rerender, platform } = ctx;
+  const { state, platform } = ctx;
   const st = syncStatus;
   const phone = platform === "phone";
-  const folders = (state.folders || []).map(def => Object.assign({}, def, (st.folders || []).find(f => f.id === def.id) || {}));
   const conflicts = state.conflicts || [];
 
   el.innerHTML = `
@@ -58,13 +72,14 @@ export function renderSyncSettings(el, ctx) {
         </dl>
         <div class="hub-btn-row" style="margin-top:var(--space-4)">
           <button class="hub-btn" type="button" data-sync="now"><i data-icon="refresh-cw"></i>Синхронизировать</button>
+          ${st.kind === "drive" ? `<button class="hub-btn" type="button" data-sync="drive-client"><i data-icon="key-round"></i>Показать ключи Google Drive</button>` : ""}
           <button class="hub-btn hub-btn--quiet" type="button" data-sync="rclone"><i data-icon="key-round"></i>Пароли для rclone</button>
           <button class="hub-btn hub-btn--quiet" type="button" data-sync="disconnect">Отключить на этом устройстве</button>
         </div>
         <p class="hub-hint" style="margin-top:var(--space-3)">Страховка: ежедневный снимок данных и каждой папки на Drive (хранятся 30 последних); стоп-кран останавливает синхронизацию папки, если удаляется больше половины файлов.</p>`}
     </section>
 
-    ${conflicts.length ? `<section class="shell-section"><h2 class="hub-section-title">Конфликты данных</h2>
+    ${conflicts.length ? `<section class="shell-section" id="sync-conflicts"><h2 class="hub-section-title">Конфликты данных</h2>
       <p class="hub-muted" style="margin:0 0 var(--space-3)">Одно и то же правили на двух устройствах. Осталась более поздняя правка; другая сохранена здесь.</p>
       <ul class="hub-list hub-list--divided hub-glass" style="padding:var(--space-1) var(--space-2)">${conflicts.map(c => `
         <li><div class="hub-row"><span class="hub-row__lead"><i data-icon="git-compare-arrows"></i></span>
@@ -76,7 +91,7 @@ export function renderSyncSettings(el, ctx) {
 
     ${inTauri && st.configured ? `<section class="shell-section" id="folders"><h2 class="hub-section-title">Помеченные папки</h2>
       <p class="hub-muted" style="margin:0 0 var(--space-3)">Например, хранилище Obsidian. Файлы лежат на диске открытыми — их читают другие программы; на Drive — зашифрованными.</p>
-      ${folders.length ? `<ul class="hub-list hub-list--divided hub-glass" style="padding:var(--space-1) var(--space-2)">${folders.map(f => folderRow(f)).join("")}</ul>` : ""}
+      <div id="sync-folder-list"></div>
       <div class="hub-btn-row" style="margin-top:var(--space-4)"><button class="hub-btn" type="button" data-folder-add="1"><i data-icon="folder-plus"></i>Синхронизировать папку</button></div>
       ${phone ? `<p class="hub-hint" style="margin-top:var(--space-3)">На телефоне папку указывают полным путём, например /storage/emulated/0/Documents/Obsidian. Хабу нужен «Доступ ко всем файлам»: Настройки Android → Приложения → Хаб.</p>` : ""}
     </section>` : ""}
@@ -101,19 +116,34 @@ export function renderSyncSettings(el, ctx) {
   H.icons(el);
   wire(el, ctx);
   updateSyncSettingsStatus(el);
+  updateSyncFolderList(el, state.folders);
 }
 
 export function updateSyncSettingsStatus(el) {
   const status = el?.querySelector("#sync-state");
   if (!status) return;
   const { state, message, lastSync } = syncStatus;
-  const label = { idle: "синхронизировано", running: "идёт синхронизация", offline: "нет сети — всё сохранено здесь, уйдёт позже", error: "не прошла" }[state] || state;
-  status.textContent = message ? `${label} · ${message}` : label;
-  el.querySelector("#sync-last").textContent = when(lastSync) || "ещё не было";
+  const label = {
+    idle: lastSync ? "Синхронизировано" : "Ожидает первой синхронизации",
+    running: "Идёт синхронизация",
+    offline: "Нет сети. Данные сохранены на устройстве",
+    error: "Синхронизация не прошла",
+  }[state] || state;
+  status.textContent = message && state !== "running" ? `${label}. ${message}` : label;
+  el.querySelector("#sync-last").textContent = when(lastSync) || (state === "running" ? "проверяем…" : "ещё не было");
   const button = el.querySelector('[data-sync="now"]');
   button.disabled = state === "running";
   if (button.disabled) button.setAttribute("aria-busy", "true");
   else button.removeAttribute("aria-busy");
+}
+
+export function updateSyncFolderList(el, defs = []) {
+  const list = el?.querySelector("#sync-folder-list");
+  if (!list) return;
+  const statuses = new Map((syncStatus.folders || []).map(f => [f.id, f]));
+  const folders = defs.map(def => ({ ...def, ...statuses.get(def.id) }));
+  list.innerHTML = folders.length ? `<ul class="hub-list hub-list--divided hub-glass" style="padding:var(--space-1) var(--space-2)">${folders.map(folderRow).join("")}</ul>` : "";
+  H.icons(list);
 }
 
 function folderRow(f) {
@@ -161,6 +191,66 @@ function dialog(html) {
   dlg.addEventListener("close", () => dlg.remove());
   dlg.showModal();
   return dlg;
+}
+
+function showDriveClient() {
+  const dlg = dialog(`<h2 class="hub-dialog__title" id="drive-client-title">Сохранённые ключи Google Drive</h2>
+    <p class="hub-dialog__body">На другом устройстве введите эту пару и войдите в тот же аккаунт Google. Client Secret храните у себя.</p>
+    <form class="shell-drive-copy">
+      <label class="hub-field"><span class="hub-label">Пароль Хаба</span>
+        <input class="hub-input hub-input--secret" name="password" type="password" autocomplete="current-password" required autofocus></label>
+      <button class="hub-btn hub-btn--primary" type="submit">Показать</button>
+    </form>
+    <div class="shell-drive-copy" hidden>
+      <label class="hub-field"><span class="hub-label">Client ID</span>
+        <input class="hub-input" id="saved-client-id" readonly autocomplete="off" spellcheck="false"></label>
+      <button class="hub-btn" type="button" data-copy-client="saved-client-id">Скопировать Client ID</button>
+      <label class="hub-field"><span class="hub-label">Client Secret</span>
+        <input class="hub-input" id="saved-client-secret" readonly autocomplete="off" spellcheck="false"></label>
+      <button class="hub-btn" type="button" data-copy-client="saved-client-secret">Скопировать Client Secret</button>
+    </div>
+    <p class="hub-hint" role="status" style="margin-top:var(--space-3)"></p>
+    <form method="dialog" class="hub-dialog__actions"><button class="hub-btn hub-btn--quiet">Закрыть</button></form>`);
+  dlg.setAttribute("aria-labelledby", "drive-client-title");
+  const form = dlg.querySelector("form.shell-drive-copy");
+  const password = form.elements.password;
+  const submit = form.querySelector("button");
+  const msg = dlg.querySelector('[role="status"]');
+  const clientId = dlg.querySelector("#saved-client-id");
+  const secret = dlg.querySelector("#saved-client-secret");
+  dlg.addEventListener("close", () => { form.reset(); clientId.value = ""; secret.value = ""; });
+  form.addEventListener("submit", async e => {
+    e.preventDefault();
+    if (submit.disabled) return;
+    submit.disabled = true;
+    submit.setAttribute("aria-busy", "true");
+    msg.textContent = "";
+    msg.className = "hub-hint";
+    try {
+      const data = await core.savedDriveClient(password.value);
+      if (!dlg.open) return;
+      clientId.value = data.clientId;
+      secret.value = data.clientSecret;
+      form.hidden = true;
+      clientId.closest("div").hidden = false;
+      dlg.querySelector('[data-copy-client="saved-client-id"]').focus();
+    } catch (err) {
+      if (!dlg.open) return;
+      msg.className = "hub-hint hub-hint--error";
+      msg.textContent = String(err.message || err);
+      password.focus();
+    } finally {
+      form.reset();
+      submit.disabled = false;
+      submit.removeAttribute("aria-busy");
+    }
+  });
+  dlg.addEventListener("click", async e => {
+    const button = e.target.closest("[data-copy-client]");
+    if (!button) return;
+    const copied = await copyField(dlg.querySelector(`#${button.dataset.copyClient}`));
+    if (dlg.open) msg.textContent = copied ? "Скопировано" : "Текст выделен. Выберите «Копировать».";
+  });
 }
 
 function confirmDialog(title, body, action) {
@@ -232,6 +322,7 @@ function wire(el, ctx) {
         });
       } else if (d.sync === "now") { await core.syncNow(); toast("Синхронизация пошла", { icon: "refresh-cw" }); }
       else if (d.sync === "disconnect") { await core.syncDisconnect(); toast("Синхронизация на этом устройстве выключена. Данные на Drive остались", { icon: "cloud-off" }); refresh(); }
+      else if (d.sync === "drive-client") showDriveClient();
       else if (d.sync === "rclone") {
         const dlg = dialog(`<form method="dialog"><h2 class="hub-dialog__title">Пароли для rclone</h2>
           <p class="hub-dialog__body">Чтобы достать данные без хаба: rclone, хранилище типа crypt поверх «Hub/crypt» на вашем Drive, с этими двумя паролями. Показываются после пароля хаба.</p>

@@ -1,7 +1,8 @@
 // Доработка сгенерированного проекта Android (src-tauri/gen/android) после `tauri android init`:
 // - «Доступ ко всем файлам» (MANAGE_EXTERNAL_STORAGE) — чтобы синхронизировать папку Obsidian по обычному пути;
 //   разрешение пользователь включает сам: Настройки Android → Приложения → Хаб;
-// - библиотеки распаковываются на диск (useLegacyPackaging) — иначе librclone.so нельзя запустить.
+// - библиотеки распаковываются на диск (useLegacyPackaging) — иначе librclone.so нельзя запустить;
+// - системные полосы, вырезы экрана и клавиатура учитываются в MainActivity.
 import { copyFileSync, mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 
@@ -25,7 +26,9 @@ const kotlin = join(sources, "java", "local", "hub", "mobile");
 const xml = join(sources, "res", "xml");
 mkdirSync(kotlin, { recursive: true });
 mkdirSync(xml, { recursive: true });
-copyFileSync("src-tauri/android/UpdateInstaller.kt", join(kotlin, "UpdateInstaller.kt"));
+for (const name of ["MainActivity.kt", "UpdateInstaller.kt"]) {
+  copyFileSync(join("src-tauri", "android", name), join(kotlin, name));
+}
 writeFileSync(join(xml, "hub_update_paths.xml"), '<paths><cache-path name="hub_updates" path="hub-updates/" /></paths>\n');
 
 const gradlePath = join(app, "build.gradle.kts");

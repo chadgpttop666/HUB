@@ -609,6 +609,84 @@ await test("настройки открывают DevTools и проверяют
   } finally { await native.close(); }
 });
 
+await test("настройки Android видны при скрытых панелях ПК, показывают причину ошибки и открывают сохранённую пару после пароля", async () => {
+  const native = await browser.newPage({ viewport: { width: 390, height: 740 }, isMobile: true, hasTouch: true });
+  try {
+    await native.addInitScript(() => {
+      const events = {};
+      const folder = { id: "notes", name: "Заметки", path: "/storage/emulated/0/Documents/Notes", started: true, mode: "two-way" };
+      const status = { configured: true, kind: "drive", state: "error", message: "Доступ к Google Drive отозван", folders: [folder] };
+      window.__syncTest = {
+        checks: 0, copied: [],
+        status: update => events["hub://sync"]({ payload: { ...status, ...update } }),
+      };
+      Object.defineProperty(navigator, "clipboard", { value: { writeText: async value => window.__syncTest.copied.push(value) } });
+      window.__TAURI__ = {
+        event: { listen: async (name, listener) => { events[name] = listener; } },
+        core: {
+          invoke: async (command, args) => {
+            if (command === "hub_status") return { setupDone: true, unlocked: true, platform: "phone" };
+            if (command === "hub_info") return { version: "0.1.7" };
+            if (command === "sync_status") return status;
+            if (command === "data_dump") return { json: { settings: { name: "Тест" }, "sync-folders/notes": folder }, blobs: {} };
+            if (command === "apps_list") return [];
+            if (command === "sync_saved_drive_client") {
+              window.__syncTest.checks++;
+              if (args.password !== "пароль хаба") throw "Неверный пароль";
+              return { clientId: "saved-google-client", clientSecret: "fake-client-secret" };
+            }
+          },
+        },
+      };
+    });
+    await native.goto(URL0);
+    const tab = native.locator('#navbar [data-go="settings"]');
+    await tab.click();
+    await native.locator("#set-name").waitFor();
+    const checkLayout = () => native.evaluate(() => {
+      const rect = id => document.getElementById(id).getBoundingClientRect();
+      const root = document.documentElement;
+      return root.dataset.top === "off" && rect("appbar").top === 0 && rect("appbar").height < 100
+        && rect("settings").height > 150 && rect("settings").bottom <= rect("navbar").top
+        && rect("navbar").bottom === innerHeight;
+    });
+    assert(await checkLayout(), "настройки занимают область между шапкой и нижней панелью");
+    await native.setViewportSize({ width: 740, height: 342 });
+    assert(await checkLayout(), "в альбомной ориентации у Android остаётся мобильная раскладка");
+    await native.setViewportSize({ width: 390, height: 740 });
+    await native.locator("#appbar-sync").getByText("Ошибка синхр.").click();
+    const state = native.locator("#sync-state");
+    assert((await state.innerText()).includes("Доступ к Google Drive отозван"), "показана причина из ядра");
+    await native.evaluate(() => window.__syncTest.status({ state: "idle", message: "" }));
+    assert((await state.innerText()).includes("Ожидает первой синхронизации"), "без успешной попытки статус показывает ожидание");
+    await native.evaluate(() => window.__syncTest.status({
+      state: "idle", message: "", lastSync: Date.now(),
+      folders: [{ id: "notes", name: "Заметки", path: "/storage/emulated/0/Documents/Notes", started: true, problem: { kind: "error", message: "Папка недоступна" } }],
+    }));
+    await native.locator("#appbar-sync").getByText("Папки").click();
+    await native.getByText("Папка недоступна", { exact: true }).waitFor();
+    await native.getByRole("button", { name: "Показать ключи Google Drive" }).click();
+    const dlg = native.getByRole("dialog", { name: "Сохранённые ключи Google Drive" });
+    const field = dlg.locator("#saved-client-secret");
+    const password = dlg.getByLabel("Пароль Хаба");
+    assert(await field.isHidden(), "секрет скрыт до ввода пароля");
+    eq(await native.evaluate(() => window.__syncTest.checks), 0, "ключи не запрашиваются при открытии");
+    await password.fill("неправильный пароль");
+    await password.press("Enter");
+    await dlg.getByText("Неверный пароль").waitFor();
+    eq(await field.inputValue(), "", "после ошибки ключа нет в поле");
+    await password.fill("пароль хаба");
+    await password.press("Enter");
+    await field.waitFor();
+    eq(await field.inputValue(), "fake-client-secret", "используется сохранённый Client Secret");
+    await dlg.getByRole("button", { name: "Скопировать Client ID" }).click();
+    await dlg.getByRole("button", { name: "Скопировать Client Secret" }).click();
+    eq(await native.evaluate(() => window.__syncTest.copied), ["saved-google-client", "fake-client-secret"], "оба значения копируются отдельно");
+    await dlg.getByRole("button", { name: "Закрыть" }).click();
+    await field.waitFor({ state: "detached" });
+  } finally { await native.close(); }
+});
+
 await test("большая база Повторения: повторный вход сохраняет DOM, а режим пишет только метаданные", async () => {
   const native = await browser.newPage();
   try {
